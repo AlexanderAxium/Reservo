@@ -11,11 +11,12 @@ import {
 } from "@prisma/client";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { hashPassword } from "better-auth/crypto";
 
 const prisma = new PrismaClient();
 
 // Create a better-auth instance for seed that doesn't send emails
-const seedAuth = betterAuth({
+const _seedAuth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   emailAndPassword: {
     enabled: true,
@@ -610,61 +611,41 @@ async function main() {
       }
       console.log("   ✅ Email is available");
 
-      // Use better-auth API to create user (no email verification)
-      console.log("   🔐 Creating user with better-auth...");
-      console.log("   📝 Auth request data:", {
+      // Create user directly with Prisma (including username from the start)
+      console.log("   🔐 Creating user with Prisma...");
+      console.log("   📝 User data:", {
         email: userData.email,
         name: userData.name,
+        username: userData.username || userData.email.split("@")[0],
         passwordLength: userData.password.length,
       });
 
-      const result = await seedAuth.api.signUpEmail({
-        body: {
-          email: userData.email,
-          password: userData.password,
-          name: userData.name,
-        },
-      });
+      // Hash password using Better Auth's hashPassword function
+      const hashedPassword = await hashPassword(userData.password);
 
-      console.log("   📊 Better-auth result:", {
-        success: !!result.user,
-        hasUser: !!result.user,
-        hasSession: !!(result as Record<string, unknown>).session,
-        hasError: !!(result as Record<string, unknown>).error,
-        errorMessage:
-          ((result as Record<string, unknown>).error as { message?: string })
-            ?.message || "No error",
-      });
+      // Create user directly with all required fields
+      // Ensure username is always defined
+      const username =
+        userData.username ??
+        userData.email.split("@")[0] ??
+        `user_${Date.now()}`;
 
-      if (!result.user) {
-        console.error(
-          `   ❌ Better-auth failed to create user ${userData.email}`
-        );
-        console.error(
-          "   📋 Full result object:",
-          JSON.stringify(result, null, 2)
-        );
-        continue;
-      }
-
-      console.log(`   ✅ Better-auth user created with ID: ${result.user.id}`);
-
-      // Update user with additional fields and tenantId
-      console.log("   🔄 Updating user with additional fields and tenantId...");
-      const newUser = await prisma.user.update({
-        where: { id: result.user.id },
+      const newUser = await prisma.user.create({
         data: {
-          username: userData.username || userData.email.split("@")[0],
+          username,
+          name: userData.name,
+          email: userData.email,
+          emailVerified: true, // Mark as verified for seed
           phone: userData.phone,
           language: userData.language || "ES",
-          emailVerified: true, // Mark as verified for seed
-          image: "/images/avatars/default-avatar.png",
-          tenantId: userData.tenantId, // Assign tenantId after creation
+          image: "/images/avatars/robert-fox.png",
+          tenantId: userData.tenantId,
         },
         select: {
           id: true,
           email: true,
           name: true,
+          username: true,
           emailVerified: true,
           image: true,
           phone: true,
@@ -675,9 +656,8 @@ async function main() {
         },
       });
 
-      console.log(
-        `   ✅ User updated successfully with tenantId: ${newUser.tenantId}`
-      );
+      console.log(`   ✅ User created successfully with ID: ${newUser.id}`);
+      console.log(`   ✅ User created with tenantId: ${newUser.tenantId}`);
 
       // Get the role for this tenant
       console.log(`   🎭 Getting role for tenant ${userData.tenantId}...`);
@@ -724,6 +704,18 @@ async function main() {
       });
 
       console.log("   ✅ Role assigned successfully");
+
+      // Create Account record for better-auth (required for email/password authentication)
+      console.log("   🔐 Creating account for better-auth...");
+      await prisma.account.create({
+        data: {
+          userId: newUser.id,
+          accountId: newUser.email, // Use email as accountId for credential provider
+          providerId: "credential", // Better-auth uses "credential" for email/password
+          password: hashedPassword, // Store hashed password in account
+        },
+      });
+      console.log("   ✅ Account created for better-auth");
 
       createdUsers.push(newUser);
       console.log(
@@ -1053,48 +1045,75 @@ async function main() {
     // ================================
     console.log("🔧 Creating field features...");
 
-    const fieldFeatures = [
-      {
-        fieldId: createdFields[0].id,
-        featureId: createdFeatures.find((f) => f.name === "Césped Sintético")!
-          .id,
-        value: "Césped sintético de última generación",
-      },
-      {
-        fieldId: createdFields[0].id,
-        featureId: createdFeatures.find((f) => f.name === "Iluminación")!.id,
-        value: "Sí",
-      },
-      {
-        fieldId: createdFields[0].id,
-        featureId: createdFeatures.find((f) => f.name === "Duchas")!.id,
-        value: "4 duchas",
-      },
-      {
-        fieldId: createdFields[0].id,
-        featureId: createdFeatures.find((f) => f.name === "Estacionamiento")!
-          .id,
-        value: "20 plazas",
-      },
-      {
-        fieldId: createdFields[1].id,
-        featureId: createdFeatures.find((f) => f.name === "Césped Sintético")!
-          .id,
-        value: "Césped sintético",
-      },
-      {
-        fieldId: createdFields[1].id,
-        featureId: createdFeatures.find((f) => f.name === "Iluminación")!.id,
-        value: "Sí",
-      },
-    ];
+    // Verify fields exist before creating features
+    if (createdFields.length >= 2) {
+      const firstField = createdFields[0];
+      const secondField = createdFields[1];
 
-    for (const featureData of fieldFeatures) {
-      await prisma.fieldFeature.create({
-        data: featureData,
-      });
+      if (firstField && secondField) {
+        const cespedFeature = createdFeatures.find(
+          (f) => f.name === "Césped Sintético"
+        );
+        const iluminacionFeature = createdFeatures.find(
+          (f) => f.name === "Iluminación"
+        );
+        const duchasFeature = createdFeatures.find((f) => f.name === "Duchas");
+        const estacionamientoFeature = createdFeatures.find(
+          (f) => f.name === "Estacionamiento"
+        );
+
+        if (
+          cespedFeature &&
+          iluminacionFeature &&
+          duchasFeature &&
+          estacionamientoFeature
+        ) {
+          const fieldFeatures = [
+            {
+              fieldId: firstField.id,
+              featureId: cespedFeature.id,
+              value: "Césped sintético de última generación",
+            },
+            {
+              fieldId: firstField.id,
+              featureId: iluminacionFeature.id,
+              value: "Sí",
+            },
+            {
+              fieldId: firstField.id,
+              featureId: duchasFeature.id,
+              value: "4 duchas",
+            },
+            {
+              fieldId: firstField.id,
+              featureId: estacionamientoFeature.id,
+              value: "20 plazas",
+            },
+            {
+              fieldId: secondField.id,
+              featureId: cespedFeature.id,
+              value: "Césped sintético",
+            },
+            {
+              fieldId: secondField.id,
+              featureId: iluminacionFeature.id,
+              value: "Sí",
+            },
+          ];
+
+          for (const featureData of fieldFeatures) {
+            await prisma.fieldFeature.create({
+              data: featureData,
+            });
+          }
+          console.log(`✅ Created ${fieldFeatures.length} field features`);
+        } else {
+          console.log("⚠️ Missing required features, skipping field features");
+        }
+      }
+    } else {
+      console.log("⚠️ Not enough fields created, skipping field features");
     }
-    console.log(`✅ Created ${fieldFeatures.length} field features`);
 
     // ================================
     // 11. CREATE SCHEDULES (Horarios de canchas)
@@ -1146,7 +1165,8 @@ async function main() {
     const clientUser = createdUsers.find((u) => u.email === "user@myapp.com");
     const mariaUser = createdUsers.find((u) => u.email === "maria@myapp.com");
 
-    if (clientUser && mariaUser) {
+    // Verify users and fields exist before creating reservations
+    if (clientUser && mariaUser && createdFields.length >= 2) {
       const now = new Date();
       const tomorrow = new Date(now);
       tomorrow.setDate(tomorrow.getDate() + 1);
@@ -1156,97 +1176,132 @@ async function main() {
       dayAfter.setDate(dayAfter.getDate() + 2);
       dayAfter.setHours(19, 0, 0, 0);
 
-      const reservations = [
-        {
-          startDate: tomorrow,
-          endDate: new Date(tomorrow.getTime() + 2 * 60 * 60 * 1000), // +2 horas
-          amount: 160.0,
-          status: ReservationStatus.CONFIRMED,
-          createdByChatbot: false,
-          userId: clientUser.id,
-          fieldId: createdFields[0].id,
-        },
-        {
-          startDate: dayAfter,
-          endDate: new Date(dayAfter.getTime() + 1.5 * 60 * 60 * 1000), // +1.5 horas
-          amount: 90.0,
-          status: ReservationStatus.PENDING,
-          createdByChatbot: true,
-          userId: mariaUser.id,
-          fieldId: createdFields[1].id,
-        },
-      ];
+      // Ensure fields exist (TypeScript safety)
+      const firstField = createdFields[0];
+      const secondField = createdFields[1];
 
-      const createdReservations = [];
-      for (const reservationData of reservations) {
-        const reservation = await prisma.reservation.create({
-          data: reservationData,
-        });
-        createdReservations.push(reservation);
+      if (!firstField || !secondField) {
+        console.log("⚠️ Not enough fields created, skipping reservations");
+      } else {
+        const reservations = [
+          {
+            startDate: tomorrow,
+            endDate: new Date(tomorrow.getTime() + 2 * 60 * 60 * 1000), // +2 horas
+            amount: 160.0,
+            status: ReservationStatus.CONFIRMED,
+            createdByChatbot: false,
+            userId: clientUser.id,
+            fieldId: firstField.id,
+          },
+          {
+            startDate: dayAfter,
+            endDate: new Date(dayAfter.getTime() + 1.5 * 60 * 60 * 1000), // +1.5 horas
+            amount: 90.0,
+            status: ReservationStatus.PENDING,
+            createdByChatbot: true,
+            userId: mariaUser.id,
+            fieldId: secondField.id,
+          },
+        ];
+
+        const createdReservations = [];
+        for (const reservationData of reservations) {
+          const reservation = await prisma.reservation.create({
+            data: reservationData,
+          });
+          createdReservations.push(reservation);
+        }
+        console.log(`✅ Created ${createdReservations.length} reservations`);
+
+        // ================================
+        // 14. CREATE PAYMENTS
+        // ================================
+        console.log("💵 Creating payments...");
+
+        const yapeMethod = createdPaymentMethods.find((m) => m.name === "Yape");
+        const plinMethod = createdPaymentMethods.find((m) => m.name === "Plin");
+
+        if (!yapeMethod || !plinMethod || createdReservations.length < 2) {
+          console.log(
+            "⚠️ Missing payment methods or reservations, skipping payments"
+          );
+        } else {
+          const firstReservation = createdReservations[0];
+          const secondReservation = createdReservations[1];
+
+          if (!firstReservation || !secondReservation) {
+            console.log("⚠️ Reservations not found, skipping payments");
+          } else {
+            const payments = [
+              {
+                amount: 160.0,
+                status: PaymentStatus.PAID,
+                proofImages: [
+                  "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400",
+                ],
+                reservationId: firstReservation.id,
+                paymentMethodId: yapeMethod.id,
+              },
+              {
+                amount: 90.0,
+                status: PaymentStatus.PENDING,
+                proofImages: [],
+                reservationId: secondReservation.id,
+                paymentMethodId: plinMethod.id,
+              },
+            ];
+
+            for (const paymentData of payments) {
+              await prisma.payment.create({
+                data: paymentData,
+              });
+            }
+            console.log(`✅ Created ${payments.length} payments`);
+          }
+        }
+
+        // ================================
+        // 15. CREATE NOTIFICATIONS
+        // ================================
+        console.log("🔔 Creating notifications...");
+
+        const ownerUser = createdUsers.find(
+          (u) => u.email === "owner@myapp.com"
+        );
+
+        if (ownerUser && clientUser) {
+          const notifications = [
+            {
+              title: "Nueva Reserva Pendiente",
+              message:
+                "Tienes una nueva reserva pendiente de verificación de pago",
+              type: NotificationType.PAYMENT_TO_VERIFY,
+              isRead: false,
+              userId: ownerUser.id,
+            },
+            {
+              title: "Reserva Confirmada",
+              message: "Tu reserva ha sido confirmada exitosamente",
+              type: NotificationType.RESERVATION_CONFIRMED,
+              isRead: true,
+              userId: clientUser.id,
+            },
+          ];
+
+          for (const notificationData of notifications) {
+            await prisma.notification.create({
+              data: notificationData,
+            });
+          }
+          console.log(`✅ Created ${notifications.length} notifications`);
+        } else {
+          console.log("⚠️ Missing owner or client user, skipping notifications");
+        }
       }
-      console.log(`✅ Created ${createdReservations.length} reservations`);
-
-      // ================================
-      // 14. CREATE PAYMENTS
-      // ================================
-      console.log("💵 Creating payments...");
-
-      const payments = [
-        {
-          amount: 160.0,
-          status: PaymentStatus.PAID,
-          proofImages: [
-            "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400",
-          ],
-          reservationId: createdReservations[0].id,
-          paymentMethodId: createdPaymentMethods.find((m) => m.name === "Yape")!
-            .id,
-        },
-        {
-          amount: 90.0,
-          status: PaymentStatus.PENDING,
-          proofImages: [],
-          reservationId: createdReservations[1].id,
-          paymentMethodId: createdPaymentMethods.find((m) => m.name === "Plin")!
-            .id,
-        },
-      ];
-
-      for (const paymentData of payments) {
-        await prisma.payment.create({
-          data: paymentData,
-        });
-      }
-      console.log(`✅ Created ${payments.length} payments`);
-
-      // ================================
-      // 15. CREATE NOTIFICATIONS
-      // ================================
-      console.log("🔔 Creating notifications...");
-
-      const notifications = [
-        {
-          title: "Nueva Reserva Pendiente",
-          message: "Tienes una nueva reserva pendiente de verificación de pago",
-          type: NotificationType.PAYMENT_TO_VERIFY,
-          isRead: false,
-          userId: ownerUser.id,
-        },
-        {
-          title: "Reserva Confirmada",
-          message: "Tu reserva ha sido confirmada exitosamente",
-          type: NotificationType.RESERVATION_CONFIRMED,
-          isRead: true,
-          userId: clientUser.id,
-        },
-      ];
-
-      for (const notificationData of notifications) {
-        await prisma.notification.create({
-          data: notificationData,
-        });
-      }
-      console.log(`✅ Created ${notifications.length} notifications`);
+    } else {
+      console.log(
+        "⚠️ Missing users or fields, skipping reservations and related data"
+      );
     }
   }
 
