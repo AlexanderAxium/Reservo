@@ -1,12 +1,13 @@
 services:
+  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: template-i18n-db
+    container_name: reservo-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: dev
       POSTGRES_PASSWORD: dev123
-      POSTGRES_DB: miapp_dev
+      POSTGRES_DB: reservo_dev
     ports:
       - "5433:5432"
     volumes:

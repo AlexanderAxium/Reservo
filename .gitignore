@@ -42,5 +42,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
+# Prisma Zod Generator (archivos generados automáticamente)
+# Estos archivos se regeneran cada vez que ejecutas 'prisma generate'
+/src/lib/zod
+
 # idea files
 .idea
