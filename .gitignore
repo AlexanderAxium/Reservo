@@ -44,7 +44,10 @@ yarn-error.log*
 
 # Prisma Zod Generator (archivos generados automáticamente)
 # Estos archivos se regeneran cada vez que ejecutas 'prisma generate'
-/src/lib/zod
+# y se modifican en cada inicio, por lo que no deben trackearse
+src/lib/zod/
+src/lib/zod/**
+*.prisma-zod-generator-manifest.json
 
 # idea files
 .idea
