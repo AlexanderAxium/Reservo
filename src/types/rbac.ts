@@ -13,6 +13,11 @@ export enum PermissionResource {
   PERMISSION = "PERMISSION",
   DASHBOARD = "DASHBOARD",
   ADMIN = "ADMIN",
+  SPORT_CENTER = "SPORT_CENTER",
+  FIELD = "FIELD",
+  RESERVATION = "RESERVATION",
+  REVIEW = "REVIEW",
+  PAYMENT = "PAYMENT",
 }
 
 export interface Role {
@@ -87,6 +92,7 @@ export const DEFAULT_ROLES = {
   SUPER_ADMIN: "super_admin",
   ADMIN: "admin",
   USER: "user",
+  OWNER: "owner",
   VIEWER: "viewer",
 } as const;
 

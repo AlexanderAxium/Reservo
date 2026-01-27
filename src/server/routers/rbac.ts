@@ -1,3 +1,6 @@
+import { PermissionUncheckedCreateInputObjectZodSchema } from "@/lib/zod/schemas/objects/PermissionUncheckedCreateInput.schema";
+import { RoleUncheckedCreateInputObjectZodSchema } from "@/lib/zod/schemas/objects/RoleUncheckedCreateInput.schema";
+import { RoleUncheckedUpdateInputObjectZodSchema } from "@/lib/zod/schemas/objects/RoleUncheckedUpdateInput.schema";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
@@ -5,11 +8,6 @@ import {
   createPaginatedResponse,
   paginationInputSchema,
 } from "../../lib/pagination";
-import {
-  PermissionUncheckedCreateInputObjectZodSchema,
-  RoleUncheckedCreateInputObjectZodSchema,
-  RoleUncheckedUpdateInputObjectZodSchema,
-} from "../../lib/zod/schemas";
 import {
   assignPermissionToRole,
   assignRole,

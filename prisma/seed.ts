@@ -311,6 +311,16 @@ async function main() {
           tenantId: tenant.id,
         },
       }),
+      owner: await prisma.role.create({
+        data: {
+          name: "owner",
+          displayName: "Owner",
+          description:
+            "Dueño de canchas deportivas con acceso a gestión de campos y reservas",
+          isSystem: true,
+          tenantId: tenant.id,
+        },
+      }),
       viewer: await prisma.role.create({
         data: {
           name: "viewer",
@@ -381,6 +391,31 @@ async function main() {
       await prisma.rolePermission.create({
         data: {
           roleId: tenantRoles.user.id,
+          permissionId: permission.id,
+        },
+      });
+    }
+
+    // Owner gets FIELD and RESERVATION permissions
+    const ownerPermissions = tenantPermissions.filter(
+      (p) =>
+        (p.resource === PermissionResource.FIELD &&
+          (p.action === PermissionAction.CREATE ||
+            p.action === PermissionAction.READ ||
+            p.action === PermissionAction.UPDATE ||
+            p.action === PermissionAction.DELETE ||
+            p.action === PermissionAction.MANAGE)) ||
+        (p.resource === PermissionResource.RESERVATION &&
+          (p.action === PermissionAction.READ ||
+            p.action === PermissionAction.UPDATE ||
+            p.action === PermissionAction.MANAGE)) ||
+        (p.resource === PermissionResource.DASHBOARD &&
+          p.action === PermissionAction.READ)
+    );
+    for (const permission of ownerPermissions) {
+      await prisma.rolePermission.create({
+        data: {
+          roleId: tenantRoles.owner.id,
           permissionId: permission.id,
         },
       });
@@ -531,7 +566,7 @@ async function main() {
       phone: "+1 (555) 111-2222",
       language: "ES" as const,
       tenantId: defaultTenant.id,
-      roleName: "user",
+      roleName: "owner",
       username: "carlosowner",
     },
     {
@@ -673,6 +708,7 @@ async function main() {
         admin: "admin",
         moderator: "moderator",
         user: "user",
+        owner: "owner",
         viewer: "viewer",
       };
 

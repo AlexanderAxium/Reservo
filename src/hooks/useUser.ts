@@ -5,7 +5,13 @@ import { useRBAC } from "@/hooks/useRBAC";
 import { trpc } from "@/utils/trpc";
 import { useEffect, useState } from "react";
 
-export type UserRole = "admin" | "user" | "viewer" | "super_admin" | "unknown";
+export type UserRole =
+  | "admin"
+  | "user"
+  | "owner"
+  | "viewer"
+  | "super_admin"
+  | "unknown";
 
 export function useUser() {
   const { user: authUser, isAuthenticated } = useAuthContext();
@@ -34,10 +40,11 @@ export function useUser() {
       return;
     }
 
-    // Priority order: super_admin > admin > user > viewer
+    // Priority order: super_admin > admin > owner > user > viewer
     const roleHierarchy: Record<string, UserRole> = {
       super_admin: "super_admin",
       admin: "admin",
+      owner: "owner",
       user: "user",
       viewer: "viewer",
     };
@@ -56,6 +63,10 @@ export function useUser() {
         }
         if (mappedRole === "admin") {
           highestRole = "admin";
+        } else if (mappedRole === "owner") {
+          if (highestRole === "viewer" || highestRole === "user") {
+            highestRole = "owner";
+          }
         } else if (mappedRole === "user") {
           if (highestRole === "viewer") {
             highestRole = "user";
@@ -84,6 +95,7 @@ export function useUser() {
 
     // Role utilities
     isUser: primaryRole === "user",
+    isOwner: primaryRole === "owner",
     isAdmin: ["admin", "super_admin"].includes(primaryRole),
     isSuperAdmin: primaryRole === "super_admin",
     isViewer: primaryRole === "viewer",

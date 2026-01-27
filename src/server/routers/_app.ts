@@ -1,5 +1,6 @@
 import { router } from "../trpc";
 import { companyInfoRouter } from "./companyInfo";
+import { fieldRouter } from "./field";
 import { rbacRouter } from "./rbac";
 import { translationRouter } from "./translation";
 import { userRouter } from "./user";
@@ -9,6 +10,7 @@ export const appRouter = router({
   rbac: rbacRouter,
   companyInfo: companyInfoRouter,
   translation: translationRouter,
+  field: fieldRouter,
 });
 
 export type AppRouter = typeof appRouter;

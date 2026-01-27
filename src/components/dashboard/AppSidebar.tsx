@@ -29,13 +29,18 @@ import { useRBAC } from "@/hooks/useRBAC";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useUser } from "@/hooks/useUser";
 import { cn } from "@/lib/utils";
+import { trpc } from "@/utils/trpc";
 import {
+  Calendar,
   ChevronDown,
+  CreditCard,
   LayoutDashboard,
   LogOut,
+  MapPin,
   Plus,
   Settings,
   Shield,
+  TrendingUp,
   User,
   Users,
 } from "lucide-react";
@@ -62,6 +67,9 @@ export function AppSidebar() {
   const { primaryRole } = useUser();
   const { isSuperAdmin, isAdmin, hasRole } = useRBAC();
 
+  // Verificar si el usuario tiene el rol owner
+  const isOwner = hasRole("owner");
+
   // Configuración de navegación por rol
   const getNavItems = (): NavItem[] => {
     const baseItems: NavItem[] = [
@@ -84,6 +92,12 @@ export function AppSidebar() {
           description: t("manageUsers"),
         },
         {
+          title: "Canchas",
+          href: "/dashboard/admin/fields",
+          icon: MapPin,
+          description: "Gestiona todas las canchas",
+        },
+        {
           title: t("rolesPermissions"),
           href: "/dashboard/roles",
           icon: Shield,
@@ -94,6 +108,42 @@ export function AppSidebar() {
           href: "/dashboard/settings",
           icon: Settings,
           description: t("systemSettings"),
+        },
+      ];
+    }
+
+    // Owner - panel de gestión de canchas
+    if (isOwner) {
+      return [
+        {
+          title: "Panel de Dueño",
+          href: "/dashboard/owner",
+          icon: LayoutDashboard,
+          description: "Vista general de tus canchas",
+        },
+        {
+          title: "Mis Canchas",
+          href: "/dashboard/owner/fields",
+          icon: MapPin,
+          description: "Gestiona tus canchas deportivas",
+        },
+        {
+          title: "Reservas",
+          href: "/dashboard/owner/reservations",
+          icon: Calendar,
+          description: "Gestiona las reservas de tus canchas",
+        },
+        {
+          title: "Pagos",
+          href: "/dashboard/owner/payments",
+          icon: CreditCard,
+          description: "Gestiona pagos y comprobantes",
+        },
+        {
+          title: "Estadísticas",
+          href: "/dashboard/owner/analytics",
+          icon: TrendingUp,
+          description: "Analiza el rendimiento",
         },
       ];
     }
