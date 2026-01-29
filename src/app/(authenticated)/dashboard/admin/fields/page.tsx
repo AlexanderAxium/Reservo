@@ -35,12 +35,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { FeatureIcon } from "@/lib/feature-icons";
 import { formatPrice } from "@/lib/utils";
 import { trpc } from "@/utils/trpc";
-import { Edit, Eye, MapPin, Trash2, User } from "lucide-react";
+import {
+  Edit,
+  Eye,
+  LayoutGrid,
+  List,
+  MapPin,
+  Plus,
+  Trash2,
+  User,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
+
+type ViewMode = "list" | "grid";
 
 export default function AdminFieldsPage() {
   const [page, setPage] = useState(1);
@@ -51,11 +63,12 @@ export default function AdminFieldsPage() {
   );
   const [ownerFilter, setOwnerFilter] = useState<string | undefined>(undefined);
   const [deleteFieldId, setDeleteFieldId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   const { data, isLoading, refetch } = trpc.field.getAll.useQuery({
     page,
     limit: 20,
-    search: search || undefined,
+    search: search && search.trim() !== "" ? search.trim() : undefined,
     sport: sportFilter as
       | "FOOTBALL"
       | "TENNIS"
@@ -64,7 +77,7 @@ export default function AdminFieldsPage() {
       | "FUTSAL"
       | undefined,
     available: availableFilter,
-    ownerId: ownerFilter,
+    ownerId: ownerFilter && ownerFilter !== "" ? ownerFilter : undefined,
   });
 
   // Los owners se extraerán de las canchas mostradas
@@ -107,6 +120,10 @@ export default function AdminFieldsPage() {
     }
   });
 
+  // Imagen por defecto
+  const defaultImageUrl =
+    "https://images.unsplash.com/photo-1575361204480-05e88e6e8b1f?w=800";
+
   return (
     <ProtectedRoute>
       <div className="space-y-6">
@@ -120,6 +137,12 @@ export default function AdminFieldsPage() {
               Administra todas las canchas del sistema
             </p>
           </div>
+          <Link href="/dashboard/admin/fields/new">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Nueva Cancha
+            </Button>
+          </Link>
         </div>
 
         {/* Filtros */}
@@ -156,9 +179,9 @@ export default function AdminFieldsPage() {
                   Deporte
                 </label>
                 <Select
-                  value={sportFilter || ""}
+                  value={sportFilter || "all"}
                   onValueChange={(value) => {
-                    setSportFilter(value === "" ? undefined : value);
+                    setSportFilter(value === "all" ? undefined : value);
                     setPage(1);
                   }}
                 >
@@ -166,7 +189,7 @@ export default function AdminFieldsPage() {
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos</SelectItem>
+                    <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="FOOTBALL">Fútbol</SelectItem>
                     <SelectItem value="TENNIS">Tenis</SelectItem>
                     <SelectItem value="BASKETBALL">Básquet</SelectItem>
@@ -185,12 +208,12 @@ export default function AdminFieldsPage() {
                 <Select
                   value={
                     availableFilter === undefined
-                      ? ""
+                      ? "all"
                       : availableFilter.toString()
                   }
                   onValueChange={(value) => {
                     setAvailableFilter(
-                      value === "" ? undefined : value === "true"
+                      value === "all" ? undefined : value === "true"
                     );
                     setPage(1);
                   }}
@@ -199,7 +222,7 @@ export default function AdminFieldsPage() {
                     <SelectValue placeholder="Todas" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todas</SelectItem>
+                    <SelectItem value="all">Todas</SelectItem>
                     <SelectItem value="true">Disponibles</SelectItem>
                     <SelectItem value="false">No disponibles</SelectItem>
                   </SelectContent>
@@ -213,9 +236,11 @@ export default function AdminFieldsPage() {
                   Dueño
                 </label>
                 <Select
-                  value={ownerFilter || ""}
+                  value={ownerFilter || "all"}
                   onValueChange={(value) => {
-                    setOwnerFilter(value === "" ? undefined : value);
+                    setOwnerFilter(
+                      value === "all" || value === "" ? undefined : value
+                    );
                     setPage(1);
                   }}
                 >
@@ -223,7 +248,7 @@ export default function AdminFieldsPage() {
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos los dueños</SelectItem>
+                    <SelectItem value="all">Todos los dueños</SelectItem>
                     {Array.from(uniqueOwners.values()).map((owner) => (
                       <SelectItem key={owner.id} value={owner.id}>
                         {owner.name} ({owner.email})
@@ -239,11 +264,31 @@ export default function AdminFieldsPage() {
         {/* Tabla de Canchas */}
         <Card>
           <CardHeader>
-            <CardTitle>Lista de Canchas</CardTitle>
-            <CardDescription>
-              {data?.pagination.total || 0} cancha(s) encontrada(s) en el
-              sistema
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Lista de Canchas</CardTitle>
+                <CardDescription>
+                  {data?.pagination.total || 0} cancha(s) encontrada(s) en el
+                  sistema
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={viewMode === "grid" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setViewMode("grid")}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === "list" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setViewMode("list")}
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -255,6 +300,139 @@ export default function AdminFieldsPage() {
                   No se encontraron canchas
                 </p>
               </div>
+            ) : viewMode === "grid" ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {data.data.map((field) => (
+                    <Card
+                      key={field.id}
+                      className="overflow-hidden flex flex-col"
+                    >
+                      <div className="relative aspect-[4/3] w-full">
+                        <img
+                          src={
+                            field.images && field.images.length > 0
+                              ? field.images[0]
+                              : defaultImageUrl
+                          }
+                          alt={field.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = defaultImageUrl;
+                          }}
+                        />
+                        {field.fieldFeatures &&
+                          field.fieldFeatures.length > 0 && (
+                            <div className="absolute inset-x-0 bottom-0 flex flex-wrap gap-1 px-2 pb-2 pt-4 bg-gradient-to-t from-black/70 via-black/40 to-transparent">
+                              {field.fieldFeatures.slice(0, 3).map((ff) => (
+                                <Badge
+                                  key={ff.id}
+                                  variant="secondary"
+                                  className="gap-1 px-2 py-0.5 text-[10px] bg-black/60 text-white border-white/10"
+                                >
+                                  <FeatureIcon
+                                    iconName={ff.feature.icon}
+                                    className="h-3 w-3"
+                                  />
+                                  <span className="truncate max-w-[80px]">
+                                    {ff.feature.name}
+                                  </span>
+                                </Badge>
+                              ))}
+                              {field.fieldFeatures.length > 3 && (
+                                <Badge
+                                  variant="secondary"
+                                  className="px-2 py-0.5 text-[10px] bg-black/60 text-white border-white/10"
+                                >
+                                  +{field.fieldFeatures.length - 3}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                      </div>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base truncate">
+                          {field.name}
+                        </CardTitle>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            <span className="truncate">
+                              {field.address}
+                              {field.district && ` • ${field.district}`}
+                            </span>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-2 pt-1 pb-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <Badge variant="outline">
+                            {sportLabels[field.sport] || field.sport}
+                          </Badge>
+                          <span className="font-semibold text-base">
+                            S/ {formatPrice(field.price)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">
+                              {field.owner?.name || "N/A"}
+                            </span>
+                          </div>
+                          <Badge
+                            variant={field.available ? "default" : "secondary"}
+                          >
+                            {field.available ? "Disponible" : "No disponible"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">
+                            Reservas: {field._count?.reservations || 0}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 pt-2 border-t">
+                          <Link
+                            href={`/dashboard/admin/fields/${field.id}`}
+                            className="flex-1"
+                          >
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              Ver
+                            </Button>
+                          </Link>
+                          <Link
+                            href={`/dashboard/admin/fields/${field.id}/edit`}
+                            className="flex-1"
+                          >
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Editar
+                            </Button>
+                          </Link>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setDeleteFieldId(field.id)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </>
             ) : (
               <>
                 <div className="rounded-md border">

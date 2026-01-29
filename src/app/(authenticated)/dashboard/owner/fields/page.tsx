@@ -32,6 +32,8 @@ import { trpc } from "@/utils/trpc";
 import {
   Edit,
   Eye,
+  LayoutGrid,
+  List,
   MapPin,
   Plus,
   ToggleLeft,
@@ -42,6 +44,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 
+type ViewMode = "list" | "grid";
+
 export default function OwnerFieldsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -50,6 +54,7 @@ export default function OwnerFieldsPage() {
     undefined
   );
   const [deleteFieldId, setDeleteFieldId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   const { data, isLoading, refetch } = trpc.field.getAll.useQuery({
     page,
@@ -107,6 +112,10 @@ export default function OwnerFieldsPage() {
     VOLLEYBALL: "Vóley",
     FUTSAL: "Futsal",
   };
+
+  // Imagen por defecto
+  const defaultImageUrl =
+    "https://images.unsplash.com/photo-1575361204480-05e88e6e8b1f?w=800";
 
   return (
     <div className="space-y-6">
@@ -213,10 +222,30 @@ export default function OwnerFieldsPage() {
       {/* Tabla de Canchas */}
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Canchas</CardTitle>
-          <CardDescription>
-            {data?.pagination.total || 0} cancha(s) encontrada(s)
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Lista de Canchas</CardTitle>
+              <CardDescription>
+                {data?.pagination.total || 0} cancha(s) encontrada(s)
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant={viewMode === "grid" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("grid")}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("list")}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -234,6 +263,116 @@ export default function OwnerFieldsPage() {
                 </Button>
               </Link>
             </div>
+          ) : viewMode === "grid" ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {data.data.map((field) => (
+                  <Card key={field.id} className="overflow-hidden">
+                    <div className="relative aspect-video w-full">
+                      <img
+                        src={
+                          field.images && field.images.length > 0
+                            ? field.images[0]
+                            : defaultImageUrl
+                        }
+                        alt={field.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = defaultImageUrl;
+                        }}
+                      />
+                    </div>
+                    <CardHeader>
+                      <CardTitle className="text-lg">{field.name}</CardTitle>
+                      <div className="mt-1 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1 text-xs">
+                          <MapPin className="h-3 w-3" />
+                          <span className="truncate">
+                            {field.address}
+                            {field.district && ` • ${field.district}`}
+                          </span>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline">
+                          {sportLabels[field.sport] || field.sport}
+                        </Badge>
+                        <span className="font-semibold text-lg">
+                          S/ {formatPrice(field.price)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            handleToggleAvailability(field.id, field.available)
+                          }
+                          disabled={updateAvailabilityMutation.isPending}
+                          className="h-auto p-0"
+                        >
+                          {field.available ? (
+                            <>
+                              <ToggleRight className="mr-2 h-4 w-4 text-green-600" />
+                              <span className="text-green-600">Disponible</span>
+                            </>
+                          ) : (
+                            <>
+                              <ToggleLeft className="mr-2 h-4 w-4 text-red-600" />
+                              <span className="text-red-600">
+                                No disponible
+                              </span>
+                            </>
+                          )}
+                        </Button>
+                        <Badge variant="secondary">
+                          {field._count?.reservations || 0} reservas
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 pt-2 border-t">
+                        <Link
+                          href={`/dashboard/owner/fields/${field.id}`}
+                          className="flex-1"
+                        >
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            Ver
+                          </Button>
+                        </Link>
+                        <Link
+                          href={`/dashboard/owner/fields/${field.id}/edit`}
+                          className="flex-1"
+                        >
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Editar
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeleteFieldId(field.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </>
           ) : (
             <>
               <div className="rounded-md border">
