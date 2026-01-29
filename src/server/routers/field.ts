@@ -17,6 +17,10 @@ import {
 import { PermissionAction, PermissionResource } from "../../types/rbac";
 import { protectedProcedure, router } from "../trpc";
 
+// IDs en este proyecto pueden ser UUID o CUID (ej: "cmkye...").
+// Usamos un schema único para evitar errores de "Invalid uuid".
+const IdSchema = z.union([z.string().uuid(), z.string().cuid()]);
+
 // Enum de deportes
 const SportEnum = z.enum([
   "FOOTBALL",
@@ -46,12 +50,22 @@ const createFieldSchema = z.object({
   description: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
-  sportCenterId: z.string().uuid().optional(),
+  sportCenterId: IdSchema.optional(),
+  ownerId: IdSchema.optional(), // Solo para admin
+  features: z
+    .array(
+      z.object({
+        featureId: IdSchema,
+        value: z.string().optional(),
+      })
+    )
+    .optional()
+    .default([]),
 });
 
 // Schema para actualizar una cancha
 const updateFieldSchema = z.object({
-  id: z.string().uuid(),
+  id: IdSchema,
   name: z.string().min(1).optional(),
   sport: SportEnum.optional(),
   price: z.number().positive().optional(),
@@ -66,8 +80,16 @@ const updateFieldSchema = z.object({
   description: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email().optional().or(z.literal("")),
-  sportCenterId: z.string().uuid().optional(),
-  ownerId: z.string().uuid().optional(), // Solo para admin
+  sportCenterId: IdSchema.optional(),
+  ownerId: IdSchema.optional(), // Solo para admin
+  features: z
+    .array(
+      z.object({
+        featureId: IdSchema,
+        value: z.string().optional(),
+      })
+    )
+    .optional(),
 });
 
 // Helper para convertir número a Decimal de Prisma
@@ -128,6 +150,31 @@ export const fieldRouter = router({
         }
       }
 
+      // Determinar el ownerId: admin puede especificar uno, owner usa el suyo
+      const ownerId =
+        userIsAdmin && input.ownerId ? input.ownerId : ctx.user.id;
+
+      // Si admin especificó un ownerId, verificar que existe y pertenece al mismo tenant
+      if (userIsAdmin && input.ownerId) {
+        const ownerUser = await prisma.user.findUnique({
+          where: { id: input.ownerId },
+        });
+
+        if (!ownerUser) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "El usuario propietario no existe",
+          });
+        }
+
+        if (ownerUser.tenantId !== ctx.user.tenantId) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "El usuario propietario no pertenece al mismo tenant",
+          });
+        }
+      }
+
       // Verificar que el sportCenter existe si se proporciona
       if (input.sportCenterId) {
         const sportCenter = await prisma.sportCenter.findUnique({
@@ -141,8 +188,8 @@ export const fieldRouter = router({
           });
         }
 
-        // Verificar que el sportCenter pertenece al mismo owner
-        if (sportCenter.ownerId !== ctx.user.id) {
+        // Verificar que el sportCenter pertenece al mismo owner (o admin puede asignarlo)
+        if (!userIsAdmin && sportCenter.ownerId !== ctx.user.id) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "El centro deportivo no te pertenece",
@@ -159,31 +206,69 @@ export const fieldRouter = router({
         });
       }
 
-      const field = await prisma.field.create({
-        data: {
-          name: input.name,
-          sport: input.sport,
-          price: priceDecimal,
-          available: input.available,
-          images: input.images,
-          address: input.address,
-          city: input.city,
-          district: input.district,
-          latitude: toDecimal(input.latitude),
-          longitude: toDecimal(input.longitude),
-          googleMapsUrl: input.googleMapsUrl || null,
-          description: input.description,
-          phone: input.phone,
-          email: input.email || null,
-          owner: {
-            connect: { id: ctx.user.id },
+      // Verificar que las features existen si se proporcionan
+      if (input.features && input.features.length > 0) {
+        const featureIds = input.features.map((f) => f.featureId);
+        const existingFeatures = await prisma.feature.findMany({
+          where: {
+            id: { in: featureIds },
+            isActive: true,
           },
-          ...(input.sportCenterId && {
-            sportCenter: {
-              connect: { id: input.sportCenterId },
+        });
+
+        if (existingFeatures.length !== featureIds.length) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Una o más características no existen o están inactivas",
+          });
+        }
+      }
+
+      const field = await prisma.$transaction(async (tx) => {
+        const createdField = await tx.field.create({
+          data: {
+            name: input.name,
+            sport: input.sport,
+            price: priceDecimal,
+            available: input.available,
+            images: input.images,
+            address: input.address,
+            city: input.city,
+            district: input.district,
+            latitude: toDecimal(input.latitude),
+            longitude: toDecimal(input.longitude),
+            googleMapsUrl: input.googleMapsUrl || null,
+            description: input.description,
+            phone: input.phone,
+            email: input.email || null,
+            owner: {
+              connect: { id: ownerId },
             },
-          }),
-        },
+            ...(input.sportCenterId && {
+              sportCenter: {
+                connect: { id: input.sportCenterId },
+              },
+            }),
+          },
+        });
+
+        // Crear fieldFeatures si se proporcionan
+        if (input.features && input.features.length > 0) {
+          await tx.fieldFeature.createMany({
+            data: input.features.map((f) => ({
+              fieldId: createdField.id,
+              featureId: f.featureId,
+              value: f.value || null,
+            })),
+          });
+        }
+
+        return createdField;
+      });
+
+      // Obtener el field completo con relaciones
+      const fieldWithRelations = await prisma.field.findUnique({
+        where: { id: field.id },
         include: {
           owner: {
             select: {
@@ -207,7 +292,13 @@ export const fieldRouter = router({
         },
       });
 
-      return field;
+      if (!fieldWithRelations) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "No se pudo obtener la cancha recién creada",
+        });
+      }
+      return fieldWithRelations;
     }),
 
   // Obtener todas las canchas (owner ve solo las suyas, admin ve todas)
@@ -218,7 +309,7 @@ export const fieldRouter = router({
           sport: SportEnum.optional(),
           available: z.boolean().optional(),
           search: z.string().optional(),
-          ownerId: z.string().uuid().optional(), // Filtro opcional para admin
+          ownerId: z.union([IdSchema, z.literal("")]).optional(), // UUID/CUID o vacío
         })
         .optional()
     )
@@ -281,13 +372,18 @@ export const fieldRouter = router({
       });
 
       // Construir filtros
-      // Admin puede ver todas las canchas o filtrar por ownerId
+      // Admin puede ver todas las canchas del tenant o filtrar por ownerId
       // Owner solo ve sus propias canchas
       const whereClause: Prisma.FieldWhereInput = {
         ...(userIsAdmin
-          ? ownerId
+          ? ownerId && ownerId !== ""
             ? { ownerId } // Admin puede filtrar por owner específico
-            : {} // Admin ve todas las canchas
+            : {
+                // Admin ve todas las canchas del tenant (filtro por owner.tenantId)
+                owner: {
+                  tenantId: ctx.user.tenantId,
+                },
+              }
           : { ownerId: ctx.user.id }), // Owner solo ve sus canchas
         ...searchFilter,
         ...(sport && { sport }),
@@ -337,7 +433,7 @@ export const fieldRouter = router({
 
   // Obtener una cancha por ID
   getById: protectedProcedure
-    .input(z.object({ id: z.string().uuid() }))
+    .input(z.object({ id: IdSchema }))
     .query(async ({ input, ctx }) => {
       if (!ctx.user?.id || !ctx.user.tenantId) {
         throw new TRPCError({
@@ -355,6 +451,7 @@ export const fieldRouter = router({
               name: true,
               email: true,
               phone: true,
+              tenantId: true,
             },
           },
           sportCenter: {
@@ -379,6 +476,15 @@ export const fieldRouter = router({
               reservations: true,
             },
           },
+          reservations: {
+            include: {
+              payments: true, // Incluir todos los pagos para calcular ingresos
+            },
+            orderBy: {
+              startDate: "desc",
+            },
+            take: 100, // Limitar para no sobrecargar
+          },
         },
       });
 
@@ -389,7 +495,15 @@ export const fieldRouter = router({
         });
       }
 
-      // Verificar permisos: admin puede ver cualquier cancha, owner solo las suyas
+      // Verificar multi-tenant: la cancha debe pertenecer al mismo tenant
+      if (field.owner.tenantId !== ctx.user.tenantId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "No tienes permisos para ver esta cancha",
+        });
+      }
+
+      // Verificar permisos: admin puede ver cualquier cancha del tenant, owner solo las suyas
       const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
 
       if (!userIsAdmin && field.ownerId !== ctx.user.id) {
@@ -547,10 +661,56 @@ export const fieldRouter = router({
         };
       }
 
-      // Actualizar la cancha
-      const updatedField = await prisma.field.update({
+      // Actualizar la cancha y features en una transacción
+      const _updatedField = await prisma.$transaction(async (tx) => {
+        // Actualizar el field
+        const field = await tx.field.update({
+          where: { id: input.id },
+          data: updateData,
+        });
+
+        // Actualizar features si se proporcionan
+        if (input.features !== undefined) {
+          // Eliminar todas las features existentes
+          await tx.fieldFeature.deleteMany({
+            where: { fieldId: input.id },
+          });
+
+          // Verificar que las nuevas features existen
+          if (input.features.length > 0) {
+            const featureIds = input.features.map((f) => f.featureId);
+            const existingFeatures = await tx.feature.findMany({
+              where: {
+                id: { in: featureIds },
+                isActive: true,
+              },
+            });
+
+            if (existingFeatures.length !== featureIds.length) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message:
+                  "Una o más características no existen o están inactivas",
+              });
+            }
+
+            // Crear las nuevas features
+            await tx.fieldFeature.createMany({
+              data: input.features.map((f) => ({
+                fieldId: input.id,
+                featureId: f.featureId,
+                value: f.value || null,
+              })),
+            });
+          }
+        }
+
+        return field;
+      });
+
+      // Obtener el field completo con relaciones
+      const fieldWithRelations = await prisma.field.findUnique({
         where: { id: input.id },
-        data: updateData,
         include: {
           owner: {
             select: {
@@ -574,7 +734,13 @@ export const fieldRouter = router({
         },
       });
 
-      return updatedField;
+      if (!fieldWithRelations) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "No se pudo obtener la cancha actualizada",
+        });
+      }
+      return fieldWithRelations;
     }),
 
   // Eliminar una cancha
@@ -721,7 +887,7 @@ export const fieldRouter = router({
 
   // Obtener horarios de una cancha
   getSchedules: protectedProcedure
-    .input(z.object({ fieldId: z.string().uuid() }))
+    .input(z.object({ fieldId: IdSchema }))
     .query(async ({ input, ctx }) => {
       if (!ctx.user?.id) {
         throw new TRPCError({
@@ -786,7 +952,7 @@ export const fieldRouter = router({
   updateSchedules: protectedProcedure
     .input(
       z.object({
-        fieldId: z.string().uuid(),
+        fieldId: IdSchema,
         schedules: z.array(
           z.object({
             day: z.enum([
@@ -919,5 +1085,250 @@ export const fieldRouter = router({
       });
 
       return updatedSchedules;
+    }),
+
+  // Crear un horario individual
+  createSchedule: protectedProcedure
+    .input(
+      z.object({
+        fieldId: IdSchema,
+        day: z.enum([
+          "MONDAY",
+          "TUESDAY",
+          "WEDNESDAY",
+          "THURSDAY",
+          "FRIDAY",
+          "SATURDAY",
+          "SUNDAY",
+        ]),
+        startHour: z
+          .string()
+          .regex(
+            /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/,
+            "Formato inválido. Use HH:mm"
+          ),
+        endHour: z
+          .string()
+          .regex(
+            /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/,
+            "Formato inválido. Use HH:mm"
+          ),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.user?.id || !ctx.user.tenantId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario no autenticado",
+        });
+      }
+
+      const field = await prisma.field.findUnique({
+        where: { id: input.fieldId },
+        select: { id: true, ownerId: true },
+      });
+
+      if (!field) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Cancha no encontrada",
+        });
+      }
+
+      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
+      if (!userIsAdmin && field.ownerId !== ctx.user.id) {
+        const canUpdate = await hasPermissionOrManage(
+          ctx.user.id,
+          PermissionAction.UPDATE,
+          PermissionResource.FIELD,
+          ctx.user.tenantId
+        );
+        if (!canUpdate) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "No tienes permisos para crear horarios en esta cancha",
+          });
+        }
+      }
+
+      // Validar horas
+      const [startH, startM] = input.startHour.split(":").map(Number);
+      const [endH, endM] = input.endHour.split(":").map(Number);
+      const startTime = startH * 60 + startM;
+      const endTime = endH * 60 + endM;
+
+      if (startTime >= endTime) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "La hora de inicio debe ser menor que la hora de fin",
+        });
+      }
+
+      // Verificar si ya existe un horario para este día
+      const existing = await prisma.schedule.findUnique({
+        where: {
+          fieldId_day: {
+            fieldId: input.fieldId,
+            day: input.day,
+          },
+        },
+      });
+
+      if (existing) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Ya existe un horario para este día. Usa la opción de editar.",
+        });
+      }
+
+      const schedule = await prisma.schedule.create({
+        data: {
+          fieldId: input.fieldId,
+          day: input.day,
+          startHour: input.startHour,
+          endHour: input.endHour,
+        },
+      });
+
+      return schedule;
+    }),
+
+  // Actualizar un horario individual
+  updateSchedule: protectedProcedure
+    .input(
+      z.object({
+        scheduleId: IdSchema,
+        startHour: z
+          .string()
+          .regex(
+            /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/,
+            "Formato inválido. Use HH:mm"
+          )
+          .optional(),
+        endHour: z
+          .string()
+          .regex(
+            /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/,
+            "Formato inválido. Use HH:mm"
+          )
+          .optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.user?.id || !ctx.user.tenantId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario no autenticado",
+        });
+      }
+
+      const schedule = await prisma.schedule.findUnique({
+        where: { id: input.scheduleId },
+        include: {
+          field: {
+            select: { id: true, ownerId: true },
+          },
+        },
+      });
+
+      if (!schedule) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Horario no encontrado",
+        });
+      }
+
+      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
+      if (!userIsAdmin && schedule.field.ownerId !== ctx.user.id) {
+        const canUpdate = await hasPermissionOrManage(
+          ctx.user.id,
+          PermissionAction.UPDATE,
+          PermissionResource.FIELD,
+          ctx.user.tenantId
+        );
+        if (!canUpdate) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "No tienes permisos para actualizar este horario",
+          });
+        }
+      }
+
+      const startHour = input.startHour || schedule.startHour;
+      const endHour = input.endHour || schedule.endHour;
+
+      // Validar horas
+      const [startH, startM] = startHour.split(":").map(Number);
+      const [endH, endM] = endHour.split(":").map(Number);
+      const startTime = startH * 60 + startM;
+      const endTime = endH * 60 + endM;
+
+      if (startTime >= endTime) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "La hora de inicio debe ser menor que la hora de fin",
+        });
+      }
+
+      const updated = await prisma.schedule.update({
+        where: { id: input.scheduleId },
+        data: {
+          startHour: input.startHour,
+          endHour: input.endHour,
+        },
+      });
+
+      return updated;
+    }),
+
+  // Eliminar un horario individual
+  deleteSchedule: protectedProcedure
+    .input(z.object({ scheduleId: IdSchema }))
+    .mutation(async ({ input, ctx }) => {
+      if (!ctx.user?.id || !ctx.user.tenantId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario no autenticado",
+        });
+      }
+
+      const schedule = await prisma.schedule.findUnique({
+        where: { id: input.scheduleId },
+        include: {
+          field: {
+            select: { id: true, ownerId: true },
+          },
+        },
+      });
+
+      if (!schedule) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Horario no encontrado",
+        });
+      }
+
+      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
+      if (!userIsAdmin && schedule.field.ownerId !== ctx.user.id) {
+        const canDelete = await hasPermissionOrManage(
+          ctx.user.id,
+          PermissionAction.DELETE,
+          PermissionResource.FIELD,
+          ctx.user.tenantId
+        );
+        if (!canDelete) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "No tienes permisos para eliminar este horario",
+          });
+        }
+      }
+
+      await prisma.schedule.delete({
+        where: { id: input.scheduleId },
+      });
+
+      return { success: true };
     }),
 });

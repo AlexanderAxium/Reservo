@@ -570,6 +570,16 @@ async function main() {
       username: "carlosowner",
     },
     {
+      name: "María Cancha Owner",
+      email: "owner2@myapp.com",
+      password: "Owner123!@#",
+      phone: "+1 (555) 111-2223",
+      language: "ES" as const,
+      tenantId: defaultTenant.id,
+      roleName: "owner",
+      username: "mariacancha",
+    },
+    {
       name: "Viewer User",
       email: "viewer@myapp.com",
       password: "Viewer123!@#",
@@ -909,10 +919,11 @@ async function main() {
   // ================================
   console.log("⚽ Creating individual fields...");
 
-  // Get owner user
+  // Get owner users
   const ownerUser = createdUsers.find((u) => u.email === "owner@myapp.com");
-  if (!ownerUser) {
-    console.log("⚠️ Owner user not found, skipping fields");
+  const ownerUser2 = createdUsers.find((u) => u.email === "owner2@myapp.com");
+  if (!ownerUser || !ownerUser2) {
+    console.log("⚠️ Owner users not found, skipping fields");
   } else {
     // Canchas individuales con ubicación completa (Opción 7 - Híbrida)
     const fields = [
@@ -921,9 +932,7 @@ async function main() {
         sport: Sport.FOOTBALL,
         price: 80.0,
         available: true,
-        images: [
-          "https://images.unsplash.com/photo-1575361204480-05e88e6e8b1f?w=800",
-        ],
+        images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
         address: "Av. Javier Prado Este 4200",
         city: "Lima",
         district: "San Isidro",
@@ -942,7 +951,7 @@ async function main() {
         price: 60.0,
         available: true,
         images: [
-          "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800",
+          "https://sport-12.com/wp-content/uploads/2022/02/Cancha-Chapultepec_cuadrado.jpg",
         ],
         address: "Av. Larco 1234",
         city: "Lima",
@@ -954,14 +963,14 @@ async function main() {
           "Cancha de futsal techada con piso de calidad profesional. Iluminación LED.",
         phone: "+51 987 654 322",
         email: "cancha2@reservo.com",
-        ownerId: ownerUser.id,
+        ownerId: ownerUser2.id,
       },
       {
         name: "Cancha de Fútbol - La Molina",
         sport: Sport.FOOTBALL,
         price: 75.0,
         available: true,
-        images: [],
+        images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
         address: "Av. La Molina 5678",
         city: "Lima",
         district: "La Molina",
@@ -979,7 +988,9 @@ async function main() {
         sport: Sport.TENNIS,
         price: 50.0,
         available: true,
-        images: [],
+        images: [
+          "https://sport-12.com/wp-content/uploads/2022/02/Cancha-Chapultepec_cuadrado.jpg",
+        ],
         address: "Av. Caminos del Inca 3456",
         city: "Lima",
         district: "Santiago de Surco",
@@ -990,14 +1001,14 @@ async function main() {
           "Cancha de tenis con superficie de arcilla. Vestuarios y duchas disponibles.",
         phone: "+51 987 654 324",
         email: "cancha4@reservo.com",
-        ownerId: ownerUser.id,
+        ownerId: ownerUser2.id,
       },
       {
         name: "Cancha de Básquet - San Borja",
         sport: Sport.BASKETBALL,
         price: 70.0,
         available: true,
-        images: [],
+        images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
         address: "Av. San Borja Norte 789",
         city: "Lima",
         district: "San Borja",
@@ -1015,7 +1026,9 @@ async function main() {
         sport: Sport.FOOTBALL,
         price: 65.0,
         available: true,
-        images: [],
+        images: [
+          "https://sport-12.com/wp-content/uploads/2022/02/Cancha-Chapultepec_cuadrado.jpg",
+        ],
         address: "Jr. 28 de Julio 456",
         city: "Lima",
         district: "Barranco",
@@ -1026,14 +1039,14 @@ async function main() {
           "Cancha de fútbol con césped sintético. Ubicada cerca del malecón.",
         phone: "+51 987 654 326",
         email: "cancha6@reservo.com",
-        ownerId: ownerUser.id,
+        ownerId: ownerUser2.id,
       },
       {
         name: "Cancha de Vóley - Chorrillos",
         sport: Sport.VOLLEYBALL,
         price: 55.0,
         available: true,
-        images: [],
+        images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
         address: "Av. Defensores del Morro 123",
         city: "Lima",
         district: "Chorrillos",
@@ -1051,7 +1064,9 @@ async function main() {
         sport: Sport.FUTSAL,
         price: 58.0,
         available: true,
-        images: [],
+        images: [
+          "https://sport-12.com/wp-content/uploads/2022/02/Cancha-Chapultepec_cuadrado.jpg",
+        ],
         address: "Av. Brasil 2345",
         city: "Lima",
         district: "Jesús María",
@@ -1062,7 +1077,7 @@ async function main() {
           "Cancha de futsal techada con piso sintético. Estacionamiento disponible.",
         phone: "+51 987 654 328",
         email: "cancha8@reservo.com",
-        ownerId: ownerUser.id,
+        ownerId: ownerUser2.id,
       },
     ];
 
@@ -1364,6 +1379,7 @@ async function main() {
 - User: user@myapp.com / User123!@#
 - User: maria@myapp.com / Maria123!@#
 - Owner: owner@myapp.com / Owner123!@#
+- Owner 2: owner2@myapp.com / Owner123!@#
 - Viewer: viewer@myapp.com / Viewer123!@#
 
 🏢 Demo Corporation (Demo Tenant):

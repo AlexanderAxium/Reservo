@@ -40,6 +40,7 @@ import {
   Plus,
   Settings,
   Shield,
+  Tag,
   TrendingUp,
   User,
   Users,
@@ -96,6 +97,12 @@ export function AppSidebar() {
           href: "/dashboard/admin/fields",
           icon: MapPin,
           description: "Gestiona todas las canchas",
+        },
+        {
+          title: "Características",
+          href: "/dashboard/admin/features",
+          icon: Tag,
+          description: "Gestiona características de canchas",
         },
         {
           title: t("rolesPermissions"),
