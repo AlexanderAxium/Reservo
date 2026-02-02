@@ -64,27 +64,55 @@ async function main() {
   // ================================
   console.log("🗑️ Clearing all existing data...");
 
-  await prisma.payment.deleteMany({});
-  await prisma.reservation.deleteMany({});
-  await prisma.notification.deleteMany({});
-  await prisma.fieldFeature.deleteMany({});
-  await prisma.schedule.deleteMany({});
-  await prisma.operatingSchedule.deleteMany({});
-  await prisma.field.deleteMany({});
-  await prisma.sportCenter.deleteMany({});
-  await prisma.userRole.deleteMany({});
-  await prisma.session.deleteMany({});
-  await prisma.account.deleteMany({});
-  await prisma.verification.deleteMany({});
-  await prisma.user.deleteMany({});
-  await prisma.translation.deleteMany({}); // i18n translations
-  await prisma.rolePermission.deleteMany({});
-  await prisma.role.deleteMany({});
-  await prisma.permission.deleteMany({});
-  await prisma.tenant.deleteMany({});
-  // Note: We don't delete locales, features, or payment methods as they are shared system data
+  // P2021 = "The table does not exist" - ignorar si la migración no se ha aplicado
+  const safeDeleteMany = async (
+    name: string,
+    fn: () => Promise<unknown>
+  ): Promise<void> => {
+    try {
+      await fn();
+    } catch (error: unknown) {
+      const prismaError = error as { code?: string };
+      if (prismaError?.code === "P2021") {
+        console.log(`   ⏭️  Tabla "${name}" no existe, omitiendo...`);
+        return;
+      }
+      throw error;
+    }
+  };
 
-  console.log("✅ All data cleared successfully");
+  await safeDeleteMany("payments", () => prisma.payment.deleteMany({}));
+  await safeDeleteMany("reservations", () => prisma.reservation.deleteMany({}));
+  await safeDeleteMany("notifications", () =>
+    prisma.notification.deleteMany({})
+  );
+  await safeDeleteMany("field_features", () =>
+    prisma.fieldFeature.deleteMany({})
+  );
+  await safeDeleteMany("schedules", () => prisma.schedule.deleteMany({}));
+  await safeDeleteMany("operating_schedules", () =>
+    prisma.operatingSchedule.deleteMany({})
+  );
+  await safeDeleteMany("fields", () => prisma.field.deleteMany({}));
+  await safeDeleteMany("sport_centers", () =>
+    prisma.sportCenter.deleteMany({})
+  );
+  await safeDeleteMany("user_roles", () => prisma.userRole.deleteMany({}));
+  await safeDeleteMany("sessions", () => prisma.session.deleteMany({}));
+  await safeDeleteMany("accounts", () => prisma.account.deleteMany({}));
+  await safeDeleteMany("verifications", () =>
+    prisma.verification.deleteMany({})
+  );
+  await safeDeleteMany("users", () => prisma.user.deleteMany({}));
+  await safeDeleteMany("translations", () => prisma.translation.deleteMany({}));
+  await safeDeleteMany("role_permissions", () =>
+    prisma.rolePermission.deleteMany({})
+  );
+  await safeDeleteMany("roles", () => prisma.role.deleteMany({}));
+  await safeDeleteMany("permissions", () => prisma.permission.deleteMany({}));
+  await safeDeleteMany("tenants", () => prisma.tenant.deleteMany({}));
+
+  console.log("✅ Limpieza de datos completada");
 
   // ================================
   // 2. CREATE TENANTS
@@ -1082,14 +1110,23 @@ async function main() {
     ];
 
     const createdFields = [];
-    for (const fieldData of fields) {
-      const field = await prisma.field.create({
-        data: fieldData,
-      });
-      createdFields.push(field);
-      console.log(`   ✅ Created field: ${field.name} (${field.district})`);
+    try {
+      for (const fieldData of fields) {
+        const field = await prisma.field.create({
+          data: fieldData,
+        });
+        createdFields.push(field);
+        console.log(`   ✅ Created field: ${field.name} (${field.district})`);
+      }
+      console.log(`✅ Created ${createdFields.length} individual fields`);
+    } catch (error: unknown) {
+      const prismaError = error as { code?: string };
+      if (prismaError?.code === "P2021") {
+        console.log("⏭️ Tabla fields no existe, omitiendo canchas...");
+      } else {
+        throw error;
+      }
     }
-    console.log(`✅ Created ${createdFields.length} individual fields`);
 
     // ================================
     // 10. CREATE FIELD FEATURES
@@ -1256,13 +1293,24 @@ async function main() {
         ];
 
         const createdReservations = [];
-        for (const reservationData of reservations) {
-          const reservation = await prisma.reservation.create({
-            data: reservationData,
-          });
-          createdReservations.push(reservation);
+        try {
+          for (const reservationData of reservations) {
+            const reservation = await prisma.reservation.create({
+              data: reservationData,
+            });
+            createdReservations.push(reservation);
+          }
+          console.log(`✅ Created ${createdReservations.length} reservations`);
+        } catch (error: unknown) {
+          const prismaError = error as { code?: string };
+          if (prismaError?.code === "P2021") {
+            console.log(
+              "⏭️ Tabla reservations no existe, omitiendo reservas..."
+            );
+          } else {
+            throw error;
+          }
         }
-        console.log(`✅ Created ${createdReservations.length} reservations`);
 
         // ================================
         // 14. CREATE PAYMENTS
@@ -1302,12 +1350,21 @@ async function main() {
               },
             ];
 
-            for (const paymentData of payments) {
-              await prisma.payment.create({
-                data: paymentData,
-              });
+            try {
+              for (const paymentData of payments) {
+                await prisma.payment.create({
+                  data: paymentData,
+                });
+              }
+              console.log(`✅ Created ${payments.length} payments`);
+            } catch (error: unknown) {
+              const prismaError = error as { code?: string };
+              if (prismaError?.code === "P2021") {
+                console.log("⏭️ Tabla payments no existe, omitiendo pagos...");
+              } else {
+                throw error;
+              }
             }
-            console.log(`✅ Created ${payments.length} payments`);
           }
         }
 
@@ -1357,6 +1414,27 @@ async function main() {
   }
 
   console.log("✅ Multitenant seed finished successfully!");
+
+  const safeCount = async (_name: string, fn: () => Promise<number>) => {
+    try {
+      return await fn();
+    } catch (error: unknown) {
+      if ((error as { code?: string })?.code === "P2021") return 0;
+      throw error;
+    }
+  };
+
+  const fieldCount = await safeCount("fields", () => prisma.field.count());
+  const reservationCount = await safeCount("reservations", () =>
+    prisma.reservation.count()
+  );
+  const paymentCount = await safeCount("payments", () =>
+    prisma.payment.count()
+  );
+  const notificationCount = await safeCount("notifications", () =>
+    prisma.notification.count()
+  );
+
   console.log(`
 📊 Summary:
 - Tenants: 2 (MyApp Platform, Demo Corporation)
@@ -1365,10 +1443,10 @@ async function main() {
 - Permissions: ${createdPermissions.length} permissions
 - Features: ${createdFeatures.length} features
 - Payment Methods: ${createdPaymentMethods.length} payment methods
-- Fields (Individual Canchas): ${await prisma.field.count()} fields with individual locations
-- Reservations: ${await prisma.reservation.count()} reservations
-- Payments: ${await prisma.payment.count()} payments
-- Notifications: ${await prisma.notification.count()} notifications
+- Fields (Individual Canchas): ${fieldCount} fields with individual locations
+- Reservations: ${reservationCount} reservations
+- Payments: ${paymentCount} payments
+- Notifications: ${notificationCount} notifications
 
 🔐 Login Credentials:
 
@@ -1385,6 +1463,8 @@ async function main() {
 🏢 Demo Corporation (Demo Tenant):
 - Admin: admin@democorp.com / DemoAdmin123!@#
 - User: user@democorp.com / DemoUser123!@#
+
+${fieldCount === 0 || reservationCount === 0 ? "⚠️ Si faltan canchas o reservas, ejecuta: npx prisma migrate dev" : ""}
   `);
 }
 

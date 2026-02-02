@@ -467,20 +467,24 @@ model Schedule {
 
 /// Reservation model
 model Reservation {
-  id              String            @id @default(uuid())
-  startDate       DateTime
-  endDate         DateTime
-  amount          Decimal           @db.Decimal(10, 2)
-  status          ReservationStatus @default(PENDING)
-  createdByChatbot Boolean          @default(false)
-  userId          String
-  fieldId         String
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id               String             @id @default(uuid())
+  startDate        DateTime
+  endDate          DateTime
+  amount           Decimal            @db.Decimal(10, 2)
+  status           ReservationStatus  @default(PENDING)
+  createdByChatbot Boolean            @default(false)
+  userId           String?            // Opcional: reservas de invitados no tienen user
+  fieldId          String
+  // Datos de invitado (cuando userId es null)
+  guestName        String?
+  guestEmail       String?
+  guestPhone       String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
 
   // Foreign Keys
-  field   Field @relation(fields: [fieldId], references: [id], onDelete: Cascade)
-  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  field Field @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   // Relations
   payments Payment[]

@@ -15,7 +15,7 @@ import {
   isAdmin,
 } from "../../services/rbacService";
 import { PermissionAction, PermissionResource } from "../../types/rbac";
-import { protectedProcedure, router } from "../trpc";
+import { protectedProcedure, publicProcedure, router } from "../trpc";
 
 // IDs en este proyecto pueden ser UUID o CUID (ej: "cmkye...").
 // Usamos un schema único para evitar errores de "Invalid uuid".
@@ -1330,5 +1330,198 @@ export const fieldRouter = router({
       });
 
       return { success: true };
+    }),
+
+  // ----- Público: reservas sin login -----
+
+  // Listar canchas disponibles (público)
+  getAllPublic: publicProcedure
+    .input(
+      z
+        .object({
+          page: z.number().min(1).optional(),
+          limit: z.number().min(1).max(50).optional(),
+          search: z.string().optional(),
+          sport: SportEnum.optional(),
+        })
+        .optional()
+    )
+    .query(async ({ input }) => {
+      const { page = 1, limit = 12, search, sport } = input ?? {};
+      const offset = (page - 1) * limit;
+      const where: Prisma.FieldWhereInput = {
+        available: true,
+        ...(search?.trim() && {
+          OR: [
+            { name: { contains: search.trim(), mode: "insensitive" } },
+            { district: { contains: search.trim(), mode: "insensitive" } },
+            { city: { contains: search.trim(), mode: "insensitive" } },
+          ],
+        }),
+        ...(sport && { sport }),
+      };
+      const [fields, total] = await Promise.all([
+        prisma.field.findMany({
+          where,
+          select: {
+            id: true,
+            name: true,
+            sport: true,
+            price: true,
+            city: true,
+            district: true,
+            description: true,
+            images: true,
+            sportCenter: { select: { name: true } },
+          },
+          orderBy: { name: "asc" },
+          skip: offset,
+          take: limit,
+        }),
+        prisma.field.count({ where }),
+      ]);
+      return {
+        data: fields,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    }),
+
+  // Obtener cancha por ID (público, para página de reserva)
+  getByIdPublic: publicProcedure
+    .input(z.object({ id: IdSchema }))
+    .query(async ({ input }) => {
+      const field = await prisma.field.findUnique({
+        where: { id: input.id, available: true },
+        include: {
+          sportCenter: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              district: true,
+              _count: { select: { fields: true } },
+            },
+          },
+          schedules: { orderBy: { day: "asc" } },
+          fieldFeatures: { include: { feature: true } },
+        },
+      });
+      if (!field) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Cancha no encontrada",
+        });
+      }
+      return field;
+    }),
+
+  // Obtener reservas de una cancha en un rango de fechas (público, para calcular huecos)
+  getReservationsForRange: publicProcedure
+    .input(
+      z.object({
+        fieldId: IdSchema,
+        startDate: z.string().datetime(),
+        endDate: z.string().datetime(),
+      })
+    )
+    .query(async ({ input }) => {
+      const reservations = await prisma.reservation.findMany({
+        where: {
+          fieldId: input.fieldId,
+          status: { in: ["PENDING", "CONFIRMED"] },
+          OR: [
+            {
+              startDate: { lte: new Date(input.endDate) },
+              endDate: { gte: new Date(input.startDate) },
+            },
+          ],
+        },
+        select: { startDate: true, endDate: true },
+      });
+      return reservations;
+    }),
+
+  // Crear reserva (público: con datos de invitado o userId si está logueado)
+  createReservation: publicProcedure
+    .input(
+      z.object({
+        fieldId: IdSchema,
+        startDate: z.string().datetime(),
+        endDate: z.string().datetime(),
+        amount: z.number().positive(),
+        // Invitado (cuando no hay sesión)
+        guestName: z.string().min(1).optional(),
+        guestEmail: z.string().email().optional(),
+        guestPhone: z.string().min(1).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const field = await prisma.field.findUnique({
+        where: { id: input.fieldId, available: true },
+      });
+      if (!field) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Cancha no encontrada",
+        });
+      }
+
+      const isGuest = !ctx.user?.id;
+      if (isGuest) {
+        if (
+          !input.guestName?.trim() ||
+          !input.guestEmail?.trim() ||
+          !input.guestPhone?.trim()
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Nombre, email y teléfono son obligatorios para reservar como invitado",
+          });
+        }
+      }
+
+      // Comprobar solapamiento con otras reservas
+      const overlapping = await prisma.reservation.count({
+        where: {
+          fieldId: input.fieldId,
+          status: { in: ["PENDING", "CONFIRMED"] },
+          OR: [
+            {
+              startDate: { lt: new Date(input.endDate) },
+              endDate: { gt: new Date(input.startDate) },
+            },
+          ],
+        },
+      });
+      if (overlapping > 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "El horario seleccionado ya no está disponible",
+        });
+      }
+
+      const reservation = await prisma.reservation.create({
+        data: {
+          fieldId: input.fieldId,
+          startDate: new Date(input.startDate),
+          endDate: new Date(input.endDate),
+          amount: new Prisma.Decimal(input.amount),
+          userId: ctx.user?.id ?? null,
+          guestName: isGuest ? (input.guestName?.trim() ?? null) : null,
+          guestEmail: isGuest ? (input.guestEmail?.trim() ?? null) : null,
+          guestPhone: isGuest ? (input.guestPhone?.trim() ?? null) : null,
+        },
+      });
+
+      return {
+        id: reservation.id,
+        message: "Reserva registrada correctamente",
+      };
     }),
 });
