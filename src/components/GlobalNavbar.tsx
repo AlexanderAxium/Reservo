@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuthContext } from "@/AuthContext";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -21,76 +22,21 @@ import {
 import { useTranslation } from "@/hooks/useTranslation";
 import { useUser } from "@/hooks/useUser";
 import { getInitials } from "@/lib/utils/avatar";
-import {
-  ChevronDown,
-  Cloud,
-  Code,
-  Grid,
-  LayoutDashboard,
-  LogOut,
-  Menu,
-  Settings,
-  Shield,
-  Smartphone,
-  User,
-  Workflow,
-  Zap,
-} from "lucide-react";
+import { LayoutDashboard, LogOut, Menu, Settings, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-const services = [
-  {
-    icon: Smartphone,
-    title: "Aplicaciones Móviles",
-    description:
-      "Apps nativas e híbridas para iOS y Android con soporte offline.",
-  },
-  {
-    icon: Cloud,
-    title: "Aplicaciones Web",
-    description:
-      "Plataformas cloud-native con alta disponibilidad y seguridad enterprise.",
-  },
-  {
-    icon: Code,
-    title: "Software a Medida",
-    description:
-      "Soluciones enterprise-grade adaptadas a tu arquitectura de negocio.",
-  },
-  {
-    icon: Workflow,
-    title: "Automatización de Procesos",
-    description:
-      "Workflows inteligentes que reducen tareas manuales hasta en un 80%.",
-  },
-];
+// Navbar simplificado: solo Inicio y Canchas (landing Cancha Libre)
 
 export default function GlobalNavbar() {
   const _pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isServicesOpen, setIsServicesOpen] = useState(false);
-  const servicesTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { user, isAuthenticated, signOut } = useAuthContext();
   const { primaryRole } = useUser();
   const router = useRouter();
   const { t } = useTranslation("common");
-
-  const handleServicesMouseEnter = useCallback(() => {
-    if (servicesTimeoutRef.current) {
-      clearTimeout(servicesTimeoutRef.current);
-      servicesTimeoutRef.current = null;
-    }
-    setIsServicesOpen(true);
-  }, []);
-
-  const handleServicesMouseLeave = useCallback(() => {
-    servicesTimeoutRef.current = setTimeout(() => {
-      setIsServicesOpen(false);
-    }, 200);
-  }, []);
 
   const handleSignOut = useCallback(async () => {
     await signOut();
@@ -124,140 +70,69 @@ export default function GlobalNavbar() {
     };
 
     window.addEventListener("scroll", handleScroll);
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      if (servicesTimeoutRef.current) {
-        clearTimeout(servicesTimeoutRef.current);
-      }
-    };
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   return (
     <>
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 lg:px-8 transition-all duration-300 ${
+        className={`fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 lg:px-8 py-3 transition-all duration-300 ${
           isScrolled
-            ? "backdrop-blur-md bg-card/80 border-b border-border/50 shadow-sm"
-            : "bg-transparent border-b border-transparent backdrop-blur-md"
+            ? "backdrop-blur-md bg-white/95 dark:bg-gray-900/95 border-b border-gray-200 dark:border-gray-800 shadow-sm"
+            : "bg-white/80 dark:bg-transparent border-b border-gray-200/50 dark:border-transparent backdrop-blur-md"
         }`}
       >
         <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center h-14 md:h-16">
-            {/* Logo */}
+          <div className="flex justify-between items-center h-12 md:h-14">
+            {/* Logo Cancha Libre */}
             <div className="flex-shrink-0">
-              <Link href="/" className="flex items-center">
-                <img
-                  src={isScrolled ? "/logo2.png" : "/logo3.png"}
-                  alt="AXIUM"
-                  className="h-8 w-auto md:h-9 transition-all duration-300"
-                />
+              <Link href="/" className="flex items-center gap-2">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white font-bold text-sm">
+                  CL
+                </span>
+                <span className="font-semibold text-lg text-foreground dark:text-white">
+                  Cancha Libre
+                </span>
               </Link>
             </div>
 
-            {/* Desktop Navigation Links */}
-            <div className="hidden lg:flex items-center gap-6 flex-1 justify-center ml-8">
+            {/* Desktop: solo Inicio y Canchas */}
+            <div className="hidden lg:flex items-center gap-8 flex-1 justify-center">
               <Link
-                href="#casos"
+                href="/"
                 className={`text-sm font-medium transition-colors ${
                   isScrolled
-                    ? "text-foreground hover:text-secondary"
-                    : "text-white hover:text-white/80"
+                    ? "text-foreground hover:text-emerald-600"
+                    : "text-foreground dark:text-white hover:text-emerald-400"
                 }`}
               >
-                Casos de Éxito
+                Inicio
               </Link>
-
-              {/* Services Dropdown */}
-              <div
-                className="relative"
-                onMouseEnter={handleServicesMouseEnter}
-                onMouseLeave={handleServicesMouseLeave}
-              >
-                <button
-                  type="button"
-                  className={`flex items-center gap-1 text-sm font-medium transition-colors ${
-                    isScrolled
-                      ? "text-foreground hover:text-secondary"
-                      : "text-white hover:text-white/80"
-                  }`}
-                >
-                  Servicios
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform ${isServicesOpen ? "rotate-180" : ""}`}
-                  />
-                </button>
-
-                {/* Services Mega Menu */}
-                {isServicesOpen && (
-                  <div
-                    className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[600px] bg-white rounded-lg shadow-2xl border border-gray-200 p-6 z-[60]"
-                    onMouseEnter={handleServicesMouseEnter}
-                    onMouseLeave={handleServicesMouseLeave}
-                  >
-                    <div className="flex items-center gap-2 mb-4">
-                      <Grid className="h-5 w-5 text-secondary" />
-                      <h3 className="font-semibold text-gray-900">Servicios</h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      {services.map((service) => (
-                        <Link
-                          key={service.title}
-                          href="#servicios"
-                          className="block group hover:bg-gray-50 p-3 rounded-lg transition-colors"
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="w-8 h-8 bg-secondary/10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-secondary/20 transition-colors">
-                              <service.icon className="w-4 h-4 text-secondary" />
-                            </div>
-                            <div>
-                              <h4 className="font-medium text-gray-900 text-sm mb-1 group-hover:text-secondary transition-colors">
-                                {service.title}
-                              </h4>
-                              <p className="text-xs text-gray-600 leading-relaxed">
-                                {service.description}
-                              </p>
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
               <Link
-                href="#como-trabajamos"
+                href="/canchas"
                 className={`text-sm font-medium transition-colors ${
                   isScrolled
-                    ? "text-foreground hover:text-secondary"
-                    : "text-white hover:text-white/80"
+                    ? "text-foreground hover:text-emerald-600"
+                    : "text-foreground dark:text-white hover:text-emerald-400"
                 }`}
               >
-                Cómo Trabajamos
-              </Link>
-
-              <Link
-                href="#contacto"
-                className={`text-sm font-medium transition-colors ${
-                  isScrolled
-                    ? "text-foreground hover:text-secondary"
-                    : "text-white hover:text-white/80"
-                }`}
-              >
-                Contacto
+                Canchas
               </Link>
             </div>
 
             {/* Desktop Auth Section */}
             <div className="hidden lg:block">
-              <div className="ml-4 flex items-center md:ml-6 gap-4">
+              <div className="ml-4 flex items-center md:ml-6 gap-3">
+                <ThemeToggle />
                 <LanguageSelector isTransparent={!isScrolled} />
                 {isAuthenticated ? (
                   <div className="flex items-center space-x-4">
                     {/* User Name */}
                     <span
                       className={`font-medium text-sm transition-colors ${
-                        isScrolled ? "text-foreground" : "text-white"
+                        isScrolled
+                          ? "text-foreground"
+                          : "text-foreground dark:text-white"
                       }`}
                     >
                       {user?.name || t("user")}
@@ -330,7 +205,7 @@ export default function GlobalNavbar() {
                       className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors shadow-sm ${
                         isScrolled
                           ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                          : "bg-white text-gray-900 hover:bg-white/90 border border-white/20"
+                          : "bg-primary text-primary-foreground dark:bg-white dark:text-gray-900 hover:opacity-90 border border-border dark:border-white/20"
                       }`}
                     >
                       {t("signIn")}
@@ -361,15 +236,32 @@ export default function GlobalNavbar() {
                 </SheetTrigger>
                 <SheetContent
                   side="right"
-                  className="w-96 bg-white border-gray-200"
+                  className="w-96 bg-white dark:bg-gray-900 border-gray-200"
                 >
                   <SheetHeader className="px-2">
-                    <SheetTitle className="text-white text-lg">
+                    <SheetTitle className="text-foreground text-lg">
                       {t("mainMenu")}
                     </SheetTitle>
                   </SheetHeader>
                   <div className="mt-6 px-2">
-                    <div className="mb-4 px-2">
+                    <div className="mb-4 flex flex-col gap-2">
+                      <Link
+                        href="/"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="rounded-lg px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                      >
+                        Inicio
+                      </Link>
+                      <Link
+                        href="/canchas"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="rounded-lg px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                      >
+                        Canchas
+                      </Link>
+                    </div>
+                    <div className="mb-4 flex items-center gap-2 px-2">
+                      <ThemeToggle />
                       <LanguageSelector />
                     </div>
                     {isAuthenticated ? (

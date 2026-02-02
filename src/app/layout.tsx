@@ -24,7 +24,7 @@ export default function RootLayout({
         {GA_TRACKING_ID && <GoogleAnalytics gaTrackingId={GA_TRACKING_ID} />}
         <StructuredData />
       </head>
-      <body>
+      <body className="min-h-screen bg-background text-foreground">
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
