@@ -238,8 +238,8 @@ export default function FieldDetailPage() {
   }, [field]);
 
   const calculateHours = (startHour: string, endHour: string): number => {
-    const [startH, startM] = startHour.split(":").map(Number);
-    const [endH, endM] = endHour.split(":").map(Number);
+    const [startH = 0, startM = 0] = startHour.split(":").map(Number);
+    const [endH = 0, endM = 0] = endHour.split(":").map(Number);
     const startMinutes = startH * 60 + startM;
     const endMinutes = endH * 60 + endM;
     return (endMinutes - startMinutes) / 60;

@@ -33,7 +33,6 @@ import { trpc } from "@/utils/trpc";
 import {
   Calendar,
   ChevronDown,
-  CreditCard,
   LayoutDashboard,
   LogOut,
   MapPin,
@@ -41,7 +40,6 @@ import {
   Settings,
   Shield,
   Tag,
-  TrendingUp,
   User,
   Users,
 } from "lucide-react";
@@ -99,6 +97,12 @@ export function AppSidebar() {
           description: "Gestiona todas las canchas",
         },
         {
+          title: "Reservas",
+          href: "/dashboard/admin/reservations",
+          icon: Calendar,
+          description: "Gestiona todas las reservas",
+        },
+        {
           title: "Características",
           href: "/dashboard/admin/features",
           icon: Tag,
@@ -139,18 +143,6 @@ export function AppSidebar() {
           href: "/dashboard/owner/reservations",
           icon: Calendar,
           description: "Gestiona las reservas de tus canchas",
-        },
-        {
-          title: "Pagos",
-          href: "/dashboard/owner/payments",
-          icon: CreditCard,
-          description: "Gestiona pagos y comprobantes",
-        },
-        {
-          title: "Estadísticas",
-          href: "/dashboard/owner/analytics",
-          icon: TrendingUp,
-          description: "Analiza el rendimiento",
         },
       ];
     }
@@ -311,10 +303,15 @@ export function AppSidebar() {
               )}
             >
               {navItems.map((item) => {
+                const hasChildInNav = navItems.some(
+                  (o) =>
+                    o.href !== item.href && o.href.startsWith(`${item.href}/`)
+                );
                 const isActive =
                   pathname === item.href ||
-                  (item.href !== "/dashboard" &&
-                    pathname.startsWith(item.href));
+                  (!hasChildInNav &&
+                    item.href !== "/dashboard" &&
+                    pathname.startsWith(`${item.href}/`));
 
                 return (
                   <SidebarMenuItem

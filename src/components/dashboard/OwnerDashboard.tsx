@@ -10,14 +10,7 @@ import {
 } from "@/components/ui/card";
 import { formatPrice } from "@/lib/utils";
 import { trpc } from "@/utils/trpc";
-import {
-  Calendar,
-  CreditCard,
-  DollarSign,
-  MapPin,
-  TrendingUp,
-  Users,
-} from "lucide-react";
+import { Calendar, DollarSign, MapPin, Users } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
 
@@ -96,24 +89,6 @@ export default function OwnerDashboard({ user }: OwnerDashboardProps) {
       href: "/dashboard/owner/reservations",
       count: stats.totalReservations,
       badge: stats.totalReservations > 0 ? "Nuevas" : undefined,
-    },
-    {
-      title: "Pagos",
-      description: "Gestiona los pagos y comprobantes",
-      icon: <CreditCard className="h-5 w-5" />,
-      iconColor: "text-secondary",
-      bgColor: "bg-secondary/10",
-      href: "/dashboard/owner/payments",
-      badge: "Próximamente",
-    },
-    {
-      title: "Estadísticas",
-      description: "Analiza el rendimiento de tus canchas",
-      icon: <TrendingUp className="h-5 w-5" />,
-      iconColor: "text-green-600",
-      bgColor: "bg-green-50",
-      href: "/dashboard/owner/analytics",
-      badge: "Próximamente",
     },
   ];
 
