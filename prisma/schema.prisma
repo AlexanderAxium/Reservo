@@ -48,29 +48,41 @@ model Tenant {
   permissions     Permission[]
   roles           Role[]
   translations    Translation[]
+  sportCenters    SportCenter[]
 
   @@map("tenants")
 }
 
 model User {
   id            String     @id @default(cuid())
+  username      String     @unique
   name          String
   email         String     @unique
   emailVerified Boolean    @default(false)
-  image         String?
+  image         String?    
+  password      String?    
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   phone         String?
   language      Language   @default(ES)
   theme         Theme      @default(AUTO)
+  isActive      Boolean    @default(true)
   tenantId      String?
   accounts      Account[]
   sessions      Session[]
   tenant        Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userRoles     UserRole[]
+  
+  // Relaciones del sistema de reservas
+  sportCenters SportCenter[] @relation("OwnerSportCenters")
+  fields       Field[]       @relation("OwnerFields")  // Canchas individuales del owner
+  reservations Reservation[]
+  notifications Notification[]
 
   @@index([tenantId])
   @@index([email, tenantId])
+  @@index([username])
+  @@index([isActive])
 }
 
 model Session {
@@ -164,7 +176,6 @@ model UserRole {
   @@unique([userId, roleId])
   @@index([userId])
   @@index([roleId])
-  @@index([expiresAt])
   @@map("user_roles")
 }
 
@@ -208,6 +219,10 @@ enum PermissionResource {
   PERMISSION
   DASHBOARD
   ADMIN
+  SPORT_CENTER
+  FIELD
+  RESERVATION
+  REVIEW
 }
 
 // ================================
@@ -278,3 +293,333 @@ enum TranslationStatus {
   APPROVED
   PUBLISHED
 }
+
+// ===========================================
+// ENUMS DEL SISTEMA DE RESERVAS
+// ===========================================
+
+enum UserRoleType {
+  ADMIN
+  OWNER
+  CLIENT
+}
+
+
+enum Sport {
+  FOOTBALL
+  TENNIS
+  BASKETBALL
+  VOLLEYBALL
+  FUTSAL
+}
+
+enum WeekDay {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELLED
+  REFUNDED
+  FAILED
+}
+
+
+enum SportCenterStatus {
+  ACTIVE
+  PENDING
+  REJECTED
+  SUSPENDED
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum NotificationType {
+  NEW_RESERVATION
+  PAYMENT_TO_VERIFY
+  RESERVATION_CONFIRMED
+  SYSTEM_ALERT
+}
+
+// ===========================================
+// MODELOS DEL SISTEMA DE RESERVAS
+// ===========================================
+
+/// SportCenter model
+model SportCenter {
+  id          String            @id @default(uuid())
+  tenantId    String           
+  name        String
+  slug        String            @unique
+  address     String
+  city        String?           @default("Lima")
+  district    String?           // Distrito para filtrado rápido
+  description String?           @db.Text
+  phone       String?
+  email       String?
+  website     String?
+  latitude    Decimal?          @db.Decimal(10, 8)  // Latitud para geolocalización
+  longitude   Decimal?          @db.Decimal(11, 8)  // Longitud para geolocalización
+  googleMapsUrl String?         // Link directo a Google Maps para navegación
+  status      SportCenterStatus @default(PENDING)
+  rating      Decimal?          @db.Decimal(3, 2)
+  images      String[]          // Array de URLs de imágenes
+  ownerId     String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Foreign Keys
+  owner   User   @relation("OwnerSportCenters", fields: [ownerId], references: [id], onDelete: Cascade)
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Relations
+  fields            Field[]  // Canchas que pertenecen a este centro (opcional)
+  operatingSchedule OperatingSchedule[]
+
+  @@index([ownerId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([slug])
+  @@index([latitude, longitude])  // Para búsquedas por proximidad
+  @@index([district])              // Para filtrar por distrito
+  @@map("sport_centers")
+}
+
+/// Field model
+model Field {
+  id            String   @id @default(uuid())
+  name          String
+  sport         Sport
+  price         Decimal  @db.Decimal(10, 2)
+  available     Boolean  @default(true)
+  images        String[] // Array de URLs de imágenes
+  
+  // Ubicación de la cancha (Opción 7 - Híbrida)
+  address       String
+  city          String?  @default("Lima")
+  district      String?  // Distrito para filtrado rápido
+  latitude      Decimal? @db.Decimal(10, 8)  // Latitud para geolocalización
+  longitude     Decimal? @db.Decimal(11, 8)  // Longitud para geolocalización
+  googleMapsUrl String?  // Link directo a Google Maps para navegación
+  
+  // Descripción y detalles
+  description   String?  @db.Text
+  phone         String?
+  email         String?
+  
+  // Owner directo (cancha individual)
+  ownerId       String
+  
+  // SportCenter opcional (para escalabilidad futura)
+  sportCenterId String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Foreign Keys
+  owner       User        @relation("OwnerFields", fields: [ownerId], references: [id], onDelete: Cascade)
+  sportCenter SportCenter? @relation(fields: [sportCenterId], references: [id], onDelete: SetNull)
+
+  // Relations
+  schedules     Schedule[]
+  reservations  Reservation[]
+  fieldFeatures FieldFeature[]
+
+  @@index([ownerId])
+  @@index([sportCenterId])
+  @@index([sport])
+  @@index([available])
+  @@index([latitude, longitude])  // Para búsquedas por proximidad
+  @@index([district])              // Para filtrar por distrito
+  @@map("fields")
+}
+
+/// Schedule model
+model Schedule {
+  id        String   @id @default(uuid())
+  day       WeekDay
+  startHour String   // Format: "HH:mm" (e.g., "08:00")
+  endHour   String   // Format: "HH:mm" (e.g., "22:00")
+  fieldId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Foreign Keys
+  field Field @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([fieldId, day])
+  @@index([fieldId])
+  @@map("schedules")
+}
+
+/// Reservation model
+model Reservation {
+  id               String             @id @default(uuid())
+  startDate        DateTime
+  endDate          DateTime
+  amount           Decimal            @db.Decimal(10, 2)
+  status           ReservationStatus  @default(PENDING)
+  createdByChatbot Boolean            @default(false)
+  userId           String?            // Opcional: reservas de invitados no tienen user
+  fieldId          String
+  // Datos de invitado (cuando userId es null)
+  guestName        String?
+  guestEmail       String?
+  guestPhone       String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  // Foreign Keys
+  field Field @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Relations
+  payments Payment[]
+
+  @@index([fieldId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdByChatbot])
+  @@index([startDate, endDate])
+  @@map("reservations")
+}
+
+// ===========================================
+// MODELOS AUXILIARES DEL SISTEMA DE RESERVAS
+// ===========================================
+
+/// FieldFeature model (Join table)
+model FieldFeature {
+  id        String   @id @default(uuid())
+  value     String?  // Valor específico para este campo (ej: "2 duchas", "20 plazas")
+  createdAt DateTime @default(now())
+
+  // Foreign Keys
+  fieldId   String
+  field     Field   @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  
+  featureId String
+  feature   Feature @relation(fields: [featureId], references: [id], onDelete: Cascade)
+
+  @@unique([fieldId, featureId])
+  @@index([fieldId])
+  @@index([featureId])
+  @@map("field_features")
+}
+
+/// OperatingSchedule model
+model OperatingSchedule {
+  id           String   @id @default(uuid())
+  day          WeekDay
+  openTime     String   // Format: "HH:mm"
+  closeTime    String   // Format: "HH:mm"
+  sportCenterId String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Foreign Keys
+  sportCenter SportCenter @relation(fields: [sportCenterId], references: [id], onDelete: Cascade)
+
+  @@unique([sportCenterId, day])
+  @@index([sportCenterId])
+  @@map("operating_schedules")
+}
+
+/// Notification model
+model Notification {
+  id        String           @id @default(uuid())
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false)
+  userId    String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  // Foreign Keys
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([type])
+  @@map("notifications")
+}
+
+// ===========================================
+// FEATURE MODEL - Catálogo de características
+// ===========================================
+
+/// Feature model - Catálogo global de características disponibles
+model Feature {
+  id          String         @id @default(uuid())
+  name        String         @unique // e.g., "Duchas", "Vestidores", "Estacionamiento", "WiFi"
+  description String?        @db.Text
+  icon        String?        // Nombre del ícono o URL
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // Relations
+  fieldFeatures FieldFeature[]
+
+  @@index([isActive])
+  @@map("features")
+}
+
+// ===========================================
+// PAYMENT SYSTEM MODELS
+// ===========================================
+
+/// PaymentMethod model - Métodos de pago disponibles
+model PaymentMethod {
+  id            String    @id @default(uuid())
+  name          String    @unique
+  provider      String
+  requiresProof Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  payments Payment[]
+
+  @@index([isActive])
+  @@index([provider])
+  @@map("payment_methods")
+}
+
+/// Payment model - Pagos realizados
+model Payment {
+  id              String        @id @default(uuid())
+  amount          Decimal       @db.Decimal(10, 2)
+  status          PaymentStatus @default(PENDING)
+  proofImages     String[]      // URLs de capturas de pago
+  reservationId   String
+  paymentMethodId String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Foreign Keys
+  reservation   Reservation   @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id], onDelete: Restrict)
+
+  @@index([reservationId])
+  @@index([paymentMethodId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("payments")
+}
+

@@ -1,3 +1,5 @@
+import { UserUncheckedCreateInputObjectZodSchema } from "@/lib/zod/schemas/objects/UserUncheckedCreateInput.schema";
+import { UserUncheckedUpdateInputObjectZodSchema } from "@/lib/zod/schemas/objects/UserUncheckedUpdateInput.schema";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../lib/db";
@@ -8,10 +10,6 @@ import {
   createSortOrder,
   paginationInputSchema,
 } from "../../lib/pagination";
-import {
-  UserUncheckedCreateInputObjectZodSchema,
-  UserUncheckedUpdateInputObjectZodSchema,
-} from "../../lib/zod/schemas";
 import { hasPermissionOrManage } from "../../services/rbacService";
 import { PermissionAction, PermissionResource } from "../../types/rbac";
 import { validateEmail } from "../../utils/validate";

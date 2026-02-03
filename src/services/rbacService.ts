@@ -5,6 +5,7 @@ import {
   PermissionAction,
   PermissionResource,
 } from "@/types/rbac";
+import type { $Enums } from "@prisma/client";
 
 // Use Prisma types directly
 type Role = {
@@ -413,8 +414,8 @@ export async function createPermission(
 ): Promise<Permission> {
   return await prisma.permission.create({
     data: {
-      action: data.action.toString() as PermissionAction,
-      resource: data.resource.toString() as PermissionResource,
+      action: data.action.toString() as $Enums.PermissionAction,
+      resource: data.resource.toString() as $Enums.PermissionResource,
       description: data.description,
       tenantId,
     },
@@ -545,8 +546,8 @@ export async function getPermissionByActionAndResource(
   return await prisma.permission.findUnique({
     where: {
       action_resource_tenantId: {
-        action: action.toString() as PermissionAction,
-        resource: resource.toString() as PermissionResource,
+        action: action.toString() as $Enums.PermissionAction,
+        resource: resource.toString() as $Enums.PermissionResource,
         tenantId,
       },
     },

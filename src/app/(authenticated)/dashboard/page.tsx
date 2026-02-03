@@ -3,6 +3,7 @@
 import { useAuthContext } from "@/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminDashboard from "@/components/dashboard/AdminDashboard";
+import OwnerDashboard from "@/components/dashboard/OwnerDashboard";
 import ViewerDashboard from "@/components/dashboard/ViewerDashboard";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,6 +16,7 @@ import {
 import { useTranslation } from "@/hooks/useTranslation";
 import { useUser } from "@/hooks/useUser";
 import type { AuthUser } from "@/types/user";
+import { trpc } from "@/utils/trpc";
 import Image from "next/image";
 
 export default function DashboardPage() {
@@ -175,11 +177,22 @@ export default function DashboardPage() {
     };
   };
 
+  // Verificar si el usuario tiene el rol owner
+  const isOwner = hasRole("owner");
+
   // Renderizar el dashboard apropiado según el rol del usuario
   if (isSuperAdmin || isAdmin) {
     return (
       <ProtectedRoute>
         <AdminDashboard user={adaptUserForDashboard(user)} />
+      </ProtectedRoute>
+    );
+  }
+
+  if (isOwner) {
+    return (
+      <ProtectedRoute>
+        <OwnerDashboard user={adaptUserForDashboard(user)} />
       </ProtectedRoute>
     );
   }

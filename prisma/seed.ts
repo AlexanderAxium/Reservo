@@ -1,15 +1,22 @@
 import {
+  NotificationType,
+  PaymentStatus,
   PermissionAction,
   PermissionResource,
   PrismaClient,
+  ReservationStatus,
+  Sport,
+  SportCenterStatus,
+  WeekDay,
 } from "@prisma/client";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { hashPassword } from "better-auth/crypto";
 
 const prisma = new PrismaClient();
 
 // Create a better-auth instance for seed that doesn't send emails
-const seedAuth = betterAuth({
+const _seedAuth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   emailAndPassword: {
     enabled: true,
@@ -57,19 +64,55 @@ async function main() {
   // ================================
   console.log("🗑️ Clearing all existing data...");
 
-  await prisma.userRole.deleteMany({});
-  await prisma.session.deleteMany({});
-  await prisma.account.deleteMany({});
-  await prisma.verification.deleteMany({});
-  await prisma.user.deleteMany({});
-  await prisma.translation.deleteMany({}); // i18n translations
-  await prisma.rolePermission.deleteMany({});
-  await prisma.role.deleteMany({});
-  await prisma.permission.deleteMany({});
-  await prisma.tenant.deleteMany({});
-  // Note: We don't delete locales as they are shared system data
+  // P2021 = "The table does not exist" - ignorar si la migración no se ha aplicado
+  const safeDeleteMany = async (
+    name: string,
+    fn: () => Promise<unknown>
+  ): Promise<void> => {
+    try {
+      await fn();
+    } catch (error: unknown) {
+      const prismaError = error as { code?: string };
+      if (prismaError?.code === "P2021") {
+        console.log(`   ⏭️  Tabla "${name}" no existe, omitiendo...`);
+        return;
+      }
+      throw error;
+    }
+  };
 
-  console.log("✅ All data cleared successfully");
+  await safeDeleteMany("payments", () => prisma.payment.deleteMany({}));
+  await safeDeleteMany("reservations", () => prisma.reservation.deleteMany({}));
+  await safeDeleteMany("notifications", () =>
+    prisma.notification.deleteMany({})
+  );
+  await safeDeleteMany("field_features", () =>
+    prisma.fieldFeature.deleteMany({})
+  );
+  await safeDeleteMany("schedules", () => prisma.schedule.deleteMany({}));
+  await safeDeleteMany("operating_schedules", () =>
+    prisma.operatingSchedule.deleteMany({})
+  );
+  await safeDeleteMany("fields", () => prisma.field.deleteMany({}));
+  await safeDeleteMany("sport_centers", () =>
+    prisma.sportCenter.deleteMany({})
+  );
+  await safeDeleteMany("user_roles", () => prisma.userRole.deleteMany({}));
+  await safeDeleteMany("sessions", () => prisma.session.deleteMany({}));
+  await safeDeleteMany("accounts", () => prisma.account.deleteMany({}));
+  await safeDeleteMany("verifications", () =>
+    prisma.verification.deleteMany({})
+  );
+  await safeDeleteMany("users", () => prisma.user.deleteMany({}));
+  await safeDeleteMany("translations", () => prisma.translation.deleteMany({}));
+  await safeDeleteMany("role_permissions", () =>
+    prisma.rolePermission.deleteMany({})
+  );
+  await safeDeleteMany("roles", () => prisma.role.deleteMany({}));
+  await safeDeleteMany("permissions", () => prisma.permission.deleteMany({}));
+  await safeDeleteMany("tenants", () => prisma.tenant.deleteMany({}));
+
+  console.log("✅ Limpieza de datos completada");
 
   // ================================
   // 2. CREATE TENANTS
@@ -182,6 +225,60 @@ async function main() {
     { action: PermissionAction.READ, resource: PermissionResource.ADMIN },
     { action: PermissionAction.UPDATE, resource: PermissionResource.ADMIN },
     { action: PermissionAction.MANAGE, resource: PermissionResource.ADMIN },
+
+    // Sport Center permissions
+    {
+      action: PermissionAction.CREATE,
+      resource: PermissionResource.SPORT_CENTER,
+    },
+    {
+      action: PermissionAction.READ,
+      resource: PermissionResource.SPORT_CENTER,
+    },
+    {
+      action: PermissionAction.UPDATE,
+      resource: PermissionResource.SPORT_CENTER,
+    },
+    {
+      action: PermissionAction.DELETE,
+      resource: PermissionResource.SPORT_CENTER,
+    },
+    {
+      action: PermissionAction.MANAGE,
+      resource: PermissionResource.SPORT_CENTER,
+    },
+
+    // Field permissions
+    { action: PermissionAction.CREATE, resource: PermissionResource.FIELD },
+    { action: PermissionAction.READ, resource: PermissionResource.FIELD },
+    { action: PermissionAction.UPDATE, resource: PermissionResource.FIELD },
+    { action: PermissionAction.DELETE, resource: PermissionResource.FIELD },
+    { action: PermissionAction.MANAGE, resource: PermissionResource.FIELD },
+
+    // Reservation permissions
+    {
+      action: PermissionAction.CREATE,
+      resource: PermissionResource.RESERVATION,
+    },
+    { action: PermissionAction.READ, resource: PermissionResource.RESERVATION },
+    {
+      action: PermissionAction.UPDATE,
+      resource: PermissionResource.RESERVATION,
+    },
+    {
+      action: PermissionAction.DELETE,
+      resource: PermissionResource.RESERVATION,
+    },
+    {
+      action: PermissionAction.MANAGE,
+      resource: PermissionResource.RESERVATION,
+    },
+
+    // Review permissions
+    { action: PermissionAction.CREATE, resource: PermissionResource.REVIEW },
+    { action: PermissionAction.READ, resource: PermissionResource.REVIEW },
+    { action: PermissionAction.UPDATE, resource: PermissionResource.REVIEW },
+    { action: PermissionAction.DELETE, resource: PermissionResource.REVIEW },
   ];
 
   // Create permissions for each tenant
@@ -238,6 +335,16 @@ async function main() {
           name: "user",
           displayName: "User",
           description: "Standard user with basic access",
+          isSystem: true,
+          tenantId: tenant.id,
+        },
+      }),
+      owner: await prisma.role.create({
+        data: {
+          name: "owner",
+          displayName: "Owner",
+          description:
+            "Dueño de canchas deportivas con acceso a gestión de campos y reservas",
           isSystem: true,
           tenantId: tenant.id,
         },
@@ -312,6 +419,31 @@ async function main() {
       await prisma.rolePermission.create({
         data: {
           roleId: tenantRoles.user.id,
+          permissionId: permission.id,
+        },
+      });
+    }
+
+    // Owner gets FIELD and RESERVATION permissions
+    const ownerPermissions = tenantPermissions.filter(
+      (p) =>
+        (p.resource === PermissionResource.FIELD &&
+          (p.action === PermissionAction.CREATE ||
+            p.action === PermissionAction.READ ||
+            p.action === PermissionAction.UPDATE ||
+            p.action === PermissionAction.DELETE ||
+            p.action === PermissionAction.MANAGE)) ||
+        (p.resource === PermissionResource.RESERVATION &&
+          (p.action === PermissionAction.READ ||
+            p.action === PermissionAction.UPDATE ||
+            p.action === PermissionAction.MANAGE)) ||
+        (p.resource === PermissionResource.DASHBOARD &&
+          p.action === PermissionAction.READ)
+    );
+    for (const permission of ownerPermissions) {
+      await prisma.rolePermission.create({
+        data: {
+          roleId: tenantRoles.owner.id,
           permissionId: permission.id,
         },
       });
@@ -413,6 +545,7 @@ async function main() {
       language: "EN" as const,
       tenantId: defaultTenant.id,
       roleName: "super_admin",
+      username: "superadmin",
     },
     {
       name: "Admin User",
@@ -422,6 +555,7 @@ async function main() {
       language: "EN" as const,
       tenantId: defaultTenant.id,
       roleName: "admin",
+      username: "admin",
     },
     {
       name: "Moderator User",
@@ -431,6 +565,7 @@ async function main() {
       language: "ES" as const,
       tenantId: defaultTenant.id,
       roleName: "moderator",
+      username: "moderator",
     },
     {
       name: "John Doe",
@@ -440,6 +575,7 @@ async function main() {
       language: "EN" as const,
       tenantId: defaultTenant.id,
       roleName: "user",
+      username: "johndoe",
     },
     {
       name: "Maria Rodriguez",
@@ -449,6 +585,27 @@ async function main() {
       language: "ES" as const,
       tenantId: defaultTenant.id,
       roleName: "user",
+      username: "mariarodriguez",
+    },
+    {
+      name: "Carlos Sport Owner",
+      email: "owner@myapp.com",
+      password: "Owner123!@#",
+      phone: "+1 (555) 111-2222",
+      language: "ES" as const,
+      tenantId: defaultTenant.id,
+      roleName: "owner",
+      username: "carlosowner",
+    },
+    {
+      name: "María Cancha Owner",
+      email: "owner2@myapp.com",
+      password: "Owner123!@#",
+      phone: "+1 (555) 111-2223",
+      language: "ES" as const,
+      tenantId: defaultTenant.id,
+      roleName: "owner",
+      username: "mariacancha",
     },
     {
       name: "Viewer User",
@@ -458,6 +615,7 @@ async function main() {
       language: "EN" as const,
       tenantId: defaultTenant.id,
       roleName: "viewer",
+      username: "viewer",
     },
     // Demo tenant users
     {
@@ -468,6 +626,7 @@ async function main() {
       language: "EN" as const,
       tenantId: demoTenant.id,
       roleName: "admin",
+      username: "demoadmin",
     },
     {
       name: "Demo User",
@@ -477,6 +636,7 @@ async function main() {
       language: "EN" as const,
       tenantId: demoTenant.id,
       roleName: "user",
+      username: "demouser",
     },
   ];
 
@@ -524,60 +684,41 @@ async function main() {
       }
       console.log("   ✅ Email is available");
 
-      // Use better-auth API to create user (no email verification)
-      console.log("   🔐 Creating user with better-auth...");
-      console.log("   📝 Auth request data:", {
+      // Create user directly with Prisma (including username from the start)
+      console.log("   🔐 Creating user with Prisma...");
+      console.log("   📝 User data:", {
         email: userData.email,
         name: userData.name,
+        username: userData.username || userData.email.split("@")[0],
         passwordLength: userData.password.length,
       });
 
-      const result = await seedAuth.api.signUpEmail({
-        body: {
-          email: userData.email,
-          password: userData.password,
-          name: userData.name,
-        },
-      });
+      // Hash password using Better Auth's hashPassword function
+      const hashedPassword = await hashPassword(userData.password);
 
-      console.log("   📊 Better-auth result:", {
-        success: !!result.user,
-        hasUser: !!result.user,
-        hasSession: !!(result as Record<string, unknown>).session,
-        hasError: !!(result as Record<string, unknown>).error,
-        errorMessage:
-          ((result as Record<string, unknown>).error as { message?: string })
-            ?.message || "No error",
-      });
+      // Create user directly with all required fields
+      // Ensure username is always defined
+      const username =
+        userData.username ??
+        userData.email.split("@")[0] ??
+        `user_${Date.now()}`;
 
-      if (!result.user) {
-        console.error(
-          `   ❌ Better-auth failed to create user ${userData.email}`
-        );
-        console.error(
-          "   📋 Full result object:",
-          JSON.stringify(result, null, 2)
-        );
-        continue;
-      }
-
-      console.log(`   ✅ Better-auth user created with ID: ${result.user.id}`);
-
-      // Update user with additional fields and tenantId
-      console.log("   🔄 Updating user with additional fields and tenantId...");
-      const newUser = await prisma.user.update({
-        where: { id: result.user.id },
+      const newUser = await prisma.user.create({
         data: {
+          username,
+          name: userData.name,
+          email: userData.email,
+          emailVerified: true, // Mark as verified for seed
           phone: userData.phone,
           language: userData.language || "ES",
-          emailVerified: true, // Mark as verified for seed
-          image: "/images/avatars/default-avatar.png",
-          tenantId: userData.tenantId, // Assign tenantId after creation
+          image: "/images/avatars/robert-fox.png",
+          tenantId: userData.tenantId,
         },
         select: {
           id: true,
           email: true,
           name: true,
+          username: true,
           emailVerified: true,
           image: true,
           phone: true,
@@ -588,9 +729,8 @@ async function main() {
         },
       });
 
-      console.log(
-        `   ✅ User updated successfully with tenantId: ${newUser.tenantId}`
-      );
+      console.log(`   ✅ User created successfully with ID: ${newUser.id}`);
+      console.log(`   ✅ User created with tenantId: ${newUser.tenantId}`);
 
       // Get the role for this tenant
       console.log(`   🎭 Getting role for tenant ${userData.tenantId}...`);
@@ -606,6 +746,7 @@ async function main() {
         admin: "admin",
         moderator: "moderator",
         user: "user",
+        owner: "owner",
         viewer: "viewer",
       };
 
@@ -638,6 +779,18 @@ async function main() {
 
       console.log("   ✅ Role assigned successfully");
 
+      // Create Account record for better-auth (required for email/password authentication)
+      console.log("   🔐 Creating account for better-auth...");
+      await prisma.account.create({
+        data: {
+          userId: newUser.id,
+          accountId: newUser.email, // Use email as accountId for credential provider
+          providerId: "credential", // Better-auth uses "credential" for email/password
+          password: hashedPassword, // Store hashed password in account
+        },
+      });
+      console.log("   ✅ Account created for better-auth");
+
       createdUsers.push(newUser);
       console.log(
         `   🎉 User ${userData.email} created successfully with role ${userData.roleName} in tenant ${userData.tenantId}`
@@ -667,13 +820,633 @@ async function main() {
     }
   }
 
+  // ================================
+  // 6. CREATE FEATURES (Características de canchas)
+  // ================================
+  console.log("🏗️ Creating features...");
+
+  const features = [
+    {
+      name: "Duchas",
+      description: "Duchas disponibles para los jugadores",
+      icon: "shower",
+      isActive: true,
+    },
+    {
+      name: "Vestidores",
+      description: "Vestidores con casilleros",
+      icon: "locker",
+      isActive: true,
+    },
+    {
+      name: "Estacionamiento",
+      description: "Estacionamiento gratuito",
+      icon: "parking",
+      isActive: true,
+    },
+    {
+      name: "WiFi",
+      description: "Conexión WiFi gratuita",
+      icon: "wifi",
+      isActive: true,
+    },
+    {
+      name: "Iluminación",
+      description: "Iluminación para partidos nocturnos",
+      icon: "light",
+      isActive: true,
+    },
+    {
+      name: "Cafetería",
+      description: "Cafetería con snacks y bebidas",
+      icon: "coffee",
+      isActive: true,
+    },
+    {
+      name: "Césped Sintético",
+      description: "Superficie de césped sintético",
+      icon: "grass",
+      isActive: true,
+    },
+    {
+      name: "Césped Natural",
+      description: "Superficie de césped natural",
+      icon: "grass",
+      isActive: true,
+    },
+  ];
+
+  const createdFeatures = [];
+  for (const featureData of features) {
+    const feature = await prisma.feature.upsert({
+      where: { name: featureData.name },
+      update: featureData,
+      create: featureData,
+    });
+    createdFeatures.push(feature);
+  }
+  console.log(`✅ Created ${createdFeatures.length} features`);
+
+  // ================================
+  // 7. CREATE PAYMENT METHODS
+  // ================================
+  console.log("💳 Creating payment methods...");
+
+  const paymentMethods = [
+    {
+      name: "Yape",
+      provider: "yape",
+      requiresProof: true,
+      isActive: true,
+    },
+    {
+      name: "Plin",
+      provider: "plin",
+      requiresProof: true,
+      isActive: true,
+    },
+    {
+      name: "Mercado Pago",
+      provider: "mercadopago",
+      requiresProof: false,
+      isActive: true,
+    },
+    {
+      name: "Qulqi",
+      provider: "qulqi",
+      requiresProof: false,
+      isActive: true,
+    },
+    {
+      name: "Efectivo",
+      provider: "cash",
+      requiresProof: false,
+      isActive: true,
+    },
+    {
+      name: "Transferencia Bancaria",
+      provider: "bank_transfer",
+      requiresProof: true,
+      isActive: true,
+    },
+  ];
+
+  const createdPaymentMethods = [];
+  for (const methodData of paymentMethods) {
+    const method = await prisma.paymentMethod.upsert({
+      where: { name: methodData.name },
+      update: methodData,
+      create: methodData,
+    });
+    createdPaymentMethods.push(method);
+  }
+  console.log(`✅ Created ${createdPaymentMethods.length} payment methods`);
+
+  // ================================
+  // 8. CREATE FIELDS (Canchas Individuales)
+  // ================================
+  console.log("⚽ Creating individual fields...");
+
+  // Get owner users
+  const ownerUser = createdUsers.find((u) => u.email === "owner@myapp.com");
+  const ownerUser2 = createdUsers.find((u) => u.email === "owner2@myapp.com");
+  if (!ownerUser || !ownerUser2) {
+    console.log("⚠️ Owner users not found, skipping fields");
+  } else {
+    // Canchas individuales con ubicación completa (Opción 7 - Híbrida)
+    const fields = [
+      {
+        name: "Cancha de Fútbol - San Isidro",
+        sport: Sport.FOOTBALL,
+        price: 80.0,
+        available: true,
+        images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+        address: "Av. Javier Prado Este 4200",
+        city: "Lima",
+        district: "San Isidro",
+        latitude: -12.0969,
+        longitude: -77.0338,
+        googleMapsUrl: "https://maps.google.com/?q=-12.0969,-77.0338",
+        description:
+          "Cancha de fútbol con césped sintético de última generación. Ideal para partidos y entrenamientos.",
+        phone: "+51 987 654 321",
+        email: "cancha1@reservo.com",
+        ownerId: ownerUser.id,
+      },
+      {
+        name: "Cancha de Futsal - Miraflores",
+        sport: Sport.FUTSAL,
+        price: 60.0,
+        available: true,
+        images: [
+          "https://sport-12.com/wp-content/uploads/2022/02/Cancha-Chapultepec_cuadrado.jpg",
+        ],
+        address: "Av. Larco 1234",
+        city: "Lima",
+        district: "Miraflores",
+        latitude: -12.1224,
+        longitude: -77.0303,
+        googleMapsUrl: "https://maps.google.com/?q=-12.1224,-77.0303",
+        description:
+          "Cancha de futsal techada con piso de calidad profesional. Iluminación LED.",
+        phone: "+51 987 654 322",
+        email: "cancha2@reservo.com",
+        ownerId: ownerUser2.id,
+      },
+      {
+        name: "Cancha de Fútbol - La Molina",
+        sport: Sport.FOOTBALL,
+        price: 75.0,
+        available: true,
+        images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+        address: "Av. La Molina 5678",
+        city: "Lima",
+        district: "La Molina",
+        latitude: -12.0759,
+        longitude: -76.9475,
+        googleMapsUrl: "https://maps.google.com/?q=-12.0759,-76.9475",
+        description:
+          "Cancha de fútbol con césped natural. Perfecta para partidos de fin de semana.",
+        phone: "+51 987 654 323",
+        email: "cancha3@reservo.com",
+        ownerId: ownerUser.id,
+      },
+      {
+        name: "Cancha de Tenis - Surco",
+        sport: Sport.TENNIS,
+        price: 50.0,
+        available: true,
+        images: [
+          "https://sport-12.com/wp-content/uploads/2022/02/Cancha-Chapultepec_cuadrado.jpg",
+        ],
+        address: "Av. Caminos del Inca 3456",
+        city: "Lima",
+        district: "Santiago de Surco",
+        latitude: -12.1355,
+        longitude: -76.9904,
+        googleMapsUrl: "https://maps.google.com/?q=-12.1355,-76.9904",
+        description:
+          "Cancha de tenis con superficie de arcilla. Vestuarios y duchas disponibles.",
+        phone: "+51 987 654 324",
+        email: "cancha4@reservo.com",
+        ownerId: ownerUser2.id,
+      },
+      {
+        name: "Cancha de Básquet - San Borja",
+        sport: Sport.BASKETBALL,
+        price: 70.0,
+        available: true,
+        images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+        address: "Av. San Borja Norte 789",
+        city: "Lima",
+        district: "San Borja",
+        latitude: -12.0956,
+        longitude: -77.0064,
+        googleMapsUrl: "https://maps.google.com/?q=-12.0956,-77.0064",
+        description:
+          "Cancha de básquet techada con piso de parquet. Iluminación profesional.",
+        phone: "+51 987 654 325",
+        email: "cancha5@reservo.com",
+        ownerId: ownerUser.id,
+      },
+      {
+        name: "Cancha de Fútbol - Barranco",
+        sport: Sport.FOOTBALL,
+        price: 65.0,
+        available: true,
+        images: [
+          "https://sport-12.com/wp-content/uploads/2022/02/Cancha-Chapultepec_cuadrado.jpg",
+        ],
+        address: "Jr. 28 de Julio 456",
+        city: "Lima",
+        district: "Barranco",
+        latitude: -12.1442,
+        longitude: -77.0206,
+        googleMapsUrl: "https://maps.google.com/?q=-12.1442,-77.0206",
+        description:
+          "Cancha de fútbol con césped sintético. Ubicada cerca del malecón.",
+        phone: "+51 987 654 326",
+        email: "cancha6@reservo.com",
+        ownerId: ownerUser2.id,
+      },
+      {
+        name: "Cancha de Vóley - Chorrillos",
+        sport: Sport.VOLLEYBALL,
+        price: 55.0,
+        available: true,
+        images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+        address: "Av. Defensores del Morro 123",
+        city: "Lima",
+        district: "Chorrillos",
+        latitude: -12.1696,
+        longitude: -77.0081,
+        googleMapsUrl: "https://maps.google.com/?q=-12.1696,-77.0081",
+        description:
+          "Cancha de vóley playa y sala. Ideal para entrenamientos y partidos.",
+        phone: "+51 987 654 327",
+        email: "cancha7@reservo.com",
+        ownerId: ownerUser.id,
+      },
+      {
+        name: "Cancha de Futsal - Jesús María",
+        sport: Sport.FUTSAL,
+        price: 58.0,
+        available: true,
+        images: [
+          "https://sport-12.com/wp-content/uploads/2022/02/Cancha-Chapultepec_cuadrado.jpg",
+        ],
+        address: "Av. Brasil 2345",
+        city: "Lima",
+        district: "Jesús María",
+        latitude: -12.0833,
+        longitude: -77.0333,
+        googleMapsUrl: "https://maps.google.com/?q=-12.0833,-77.0333",
+        description:
+          "Cancha de futsal techada con piso sintético. Estacionamiento disponible.",
+        phone: "+51 987 654 328",
+        email: "cancha8@reservo.com",
+        ownerId: ownerUser2.id,
+      },
+    ];
+
+    const createdFields = [];
+    try {
+      for (const fieldData of fields) {
+        const field = await prisma.field.create({
+          data: fieldData,
+        });
+        createdFields.push(field);
+        console.log(`   ✅ Created field: ${field.name} (${field.district})`);
+      }
+      console.log(`✅ Created ${createdFields.length} individual fields`);
+    } catch (error: unknown) {
+      const prismaError = error as { code?: string };
+      if (prismaError?.code === "P2021") {
+        console.log("⏭️ Tabla fields no existe, omitiendo canchas...");
+      } else {
+        throw error;
+      }
+    }
+
+    // ================================
+    // 10. CREATE FIELD FEATURES
+    // ================================
+    console.log("🔧 Creating field features...");
+
+    // Verify fields exist before creating features
+    if (createdFields.length >= 2) {
+      const firstField = createdFields[0];
+      const secondField = createdFields[1];
+
+      if (firstField && secondField) {
+        const cespedFeature = createdFeatures.find(
+          (f) => f.name === "Césped Sintético"
+        );
+        const iluminacionFeature = createdFeatures.find(
+          (f) => f.name === "Iluminación"
+        );
+        const duchasFeature = createdFeatures.find((f) => f.name === "Duchas");
+        const estacionamientoFeature = createdFeatures.find(
+          (f) => f.name === "Estacionamiento"
+        );
+
+        if (
+          cespedFeature &&
+          iluminacionFeature &&
+          duchasFeature &&
+          estacionamientoFeature
+        ) {
+          const fieldFeatures = [
+            {
+              fieldId: firstField.id,
+              featureId: cespedFeature.id,
+              value: "Césped sintético de última generación",
+            },
+            {
+              fieldId: firstField.id,
+              featureId: iluminacionFeature.id,
+              value: "Sí",
+            },
+            {
+              fieldId: firstField.id,
+              featureId: duchasFeature.id,
+              value: "4 duchas",
+            },
+            {
+              fieldId: firstField.id,
+              featureId: estacionamientoFeature.id,
+              value: "20 plazas",
+            },
+            {
+              fieldId: secondField.id,
+              featureId: cespedFeature.id,
+              value: "Césped sintético",
+            },
+            {
+              fieldId: secondField.id,
+              featureId: iluminacionFeature.id,
+              value: "Sí",
+            },
+          ];
+
+          for (const featureData of fieldFeatures) {
+            await prisma.fieldFeature.create({
+              data: featureData,
+            });
+          }
+          console.log(`✅ Created ${fieldFeatures.length} field features`);
+        } else {
+          console.log("⚠️ Missing required features, skipping field features");
+        }
+      }
+    } else {
+      console.log("⚠️ Not enough fields created, skipping field features");
+    }
+
+    // ================================
+    // 11. CREATE SCHEDULES (Horarios de canchas)
+    // ================================
+    console.log("⏰ Creating field schedules...");
+
+    const schedules = [];
+    for (const field of createdFields) {
+      // Horario de lunes a domingo: 8:00 - 22:00
+      const days = [
+        WeekDay.MONDAY,
+        WeekDay.TUESDAY,
+        WeekDay.WEDNESDAY,
+        WeekDay.THURSDAY,
+        WeekDay.FRIDAY,
+        WeekDay.SATURDAY,
+        WeekDay.SUNDAY,
+      ];
+
+      for (const day of days) {
+        schedules.push({
+          day,
+          startHour: "08:00",
+          endHour: "22:00",
+          fieldId: field.id,
+        });
+      }
+    }
+
+    for (const scheduleData of schedules) {
+      await prisma.schedule.create({
+        data: scheduleData,
+      });
+    }
+    console.log(`✅ Created ${schedules.length} field schedules`);
+
+    // ================================
+    // 12. OPERATING SCHEDULES (Omitido - Solo para SportCenters futuros)
+    // ================================
+    console.log(
+      "⏭️ Skipping operating schedules (only for future SportCenters)"
+    );
+
+    // ================================
+    // 13. CREATE RESERVATIONS
+    // ================================
+    console.log("📅 Creating reservations...");
+
+    const clientUser = createdUsers.find((u) => u.email === "user@myapp.com");
+    const mariaUser = createdUsers.find((u) => u.email === "maria@myapp.com");
+
+    // Verify users and fields exist before creating reservations
+    if (clientUser && mariaUser && createdFields.length >= 2) {
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(18, 0, 0, 0);
+
+      const dayAfter = new Date(now);
+      dayAfter.setDate(dayAfter.getDate() + 2);
+      dayAfter.setHours(19, 0, 0, 0);
+
+      // Ensure fields exist (TypeScript safety)
+      const firstField = createdFields[0];
+      const secondField = createdFields[1];
+
+      if (!firstField || !secondField) {
+        console.log("⚠️ Not enough fields created, skipping reservations");
+      } else {
+        const reservations = [
+          {
+            startDate: tomorrow,
+            endDate: new Date(tomorrow.getTime() + 2 * 60 * 60 * 1000), // +2 horas
+            amount: 160.0,
+            status: ReservationStatus.CONFIRMED,
+            createdByChatbot: false,
+            userId: clientUser.id,
+            fieldId: firstField.id,
+          },
+          {
+            startDate: dayAfter,
+            endDate: new Date(dayAfter.getTime() + 1.5 * 60 * 60 * 1000), // +1.5 horas
+            amount: 90.0,
+            status: ReservationStatus.PENDING,
+            createdByChatbot: true,
+            userId: mariaUser.id,
+            fieldId: secondField.id,
+          },
+        ];
+
+        const createdReservations = [];
+        try {
+          for (const reservationData of reservations) {
+            const reservation = await prisma.reservation.create({
+              data: reservationData,
+            });
+            createdReservations.push(reservation);
+          }
+          console.log(`✅ Created ${createdReservations.length} reservations`);
+        } catch (error: unknown) {
+          const prismaError = error as { code?: string };
+          if (prismaError?.code === "P2021") {
+            console.log(
+              "⏭️ Tabla reservations no existe, omitiendo reservas..."
+            );
+          } else {
+            throw error;
+          }
+        }
+
+        // ================================
+        // 14. CREATE PAYMENTS
+        // ================================
+        console.log("💵 Creating payments...");
+
+        const yapeMethod = createdPaymentMethods.find((m) => m.name === "Yape");
+        const plinMethod = createdPaymentMethods.find((m) => m.name === "Plin");
+
+        if (!yapeMethod || !plinMethod || createdReservations.length < 2) {
+          console.log(
+            "⚠️ Missing payment methods or reservations, skipping payments"
+          );
+        } else {
+          const firstReservation = createdReservations[0];
+          const secondReservation = createdReservations[1];
+
+          if (!firstReservation || !secondReservation) {
+            console.log("⚠️ Reservations not found, skipping payments");
+          } else {
+            const payments = [
+              {
+                amount: 160.0,
+                status: PaymentStatus.PAID,
+                proofImages: [
+                  "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400",
+                ],
+                reservationId: firstReservation.id,
+                paymentMethodId: yapeMethod.id,
+              },
+              {
+                amount: 90.0,
+                status: PaymentStatus.PENDING,
+                proofImages: [],
+                reservationId: secondReservation.id,
+                paymentMethodId: plinMethod.id,
+              },
+            ];
+
+            try {
+              for (const paymentData of payments) {
+                await prisma.payment.create({
+                  data: paymentData,
+                });
+              }
+              console.log(`✅ Created ${payments.length} payments`);
+            } catch (error: unknown) {
+              const prismaError = error as { code?: string };
+              if (prismaError?.code === "P2021") {
+                console.log("⏭️ Tabla payments no existe, omitiendo pagos...");
+              } else {
+                throw error;
+              }
+            }
+          }
+        }
+
+        // ================================
+        // 15. CREATE NOTIFICATIONS
+        // ================================
+        console.log("🔔 Creating notifications...");
+
+        const ownerUser = createdUsers.find(
+          (u) => u.email === "owner@myapp.com"
+        );
+
+        if (ownerUser && clientUser) {
+          const notifications = [
+            {
+              title: "Nueva Reserva Pendiente",
+              message:
+                "Tienes una nueva reserva pendiente de verificación de pago",
+              type: NotificationType.PAYMENT_TO_VERIFY,
+              isRead: false,
+              userId: ownerUser.id,
+            },
+            {
+              title: "Reserva Confirmada",
+              message: "Tu reserva ha sido confirmada exitosamente",
+              type: NotificationType.RESERVATION_CONFIRMED,
+              isRead: true,
+              userId: clientUser.id,
+            },
+          ];
+
+          for (const notificationData of notifications) {
+            await prisma.notification.create({
+              data: notificationData,
+            });
+          }
+          console.log(`✅ Created ${notifications.length} notifications`);
+        } else {
+          console.log("⚠️ Missing owner or client user, skipping notifications");
+        }
+      }
+    } else {
+      console.log(
+        "⚠️ Missing users or fields, skipping reservations and related data"
+      );
+    }
+  }
+
   console.log("✅ Multitenant seed finished successfully!");
+
+  const safeCount = async (_name: string, fn: () => Promise<number>) => {
+    try {
+      return await fn();
+    } catch (error: unknown) {
+      if ((error as { code?: string })?.code === "P2021") return 0;
+      throw error;
+    }
+  };
+
+  const fieldCount = await safeCount("fields", () => prisma.field.count());
+  const reservationCount = await safeCount("reservations", () =>
+    prisma.reservation.count()
+  );
+  const paymentCount = await safeCount("payments", () =>
+    prisma.payment.count()
+  );
+  const notificationCount = await safeCount("notifications", () =>
+    prisma.notification.count()
+  );
+
   console.log(`
 📊 Summary:
 - Tenants: 2 (MyApp Platform, Demo Corporation)
 - Users: ${createdUsers.length} users across both tenants
 - Roles: 5 per tenant (super_admin, admin, moderator, user, viewer)
-- Permissions: ${createdPermissions.length} permissions (${createdPermissions.length / 2} per tenant)
+- Permissions: ${createdPermissions.length} permissions
+- Features: ${createdFeatures.length} features
+- Payment Methods: ${createdPaymentMethods.length} payment methods
+- Fields (Individual Canchas): ${fieldCount} fields with individual locations
+- Reservations: ${reservationCount} reservations
+- Payments: ${paymentCount} payments
+- Notifications: ${notificationCount} notifications
 
 🔐 Login Credentials:
 
@@ -683,11 +1456,15 @@ async function main() {
 - Moderator: moderator@myapp.com / Moderator123!@#
 - User: user@myapp.com / User123!@#
 - User: maria@myapp.com / Maria123!@#
+- Owner: owner@myapp.com / Owner123!@#
+- Owner 2: owner2@myapp.com / Owner123!@#
 - Viewer: viewer@myapp.com / Viewer123!@#
 
 🏢 Demo Corporation (Demo Tenant):
 - Admin: admin@democorp.com / DemoAdmin123!@#
 - User: user@democorp.com / DemoUser123!@#
+
+${fieldCount === 0 || reservationCount === 0 ? "⚠️ Si faltan canchas o reservas, ejecuta: npx prisma migrate dev" : ""}
   `);
 }
 

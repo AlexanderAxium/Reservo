@@ -2,7 +2,14 @@
 
 import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "@/hooks/useTranslation";
-import { Building2, ExternalLink, Shield, Users } from "lucide-react";
+import {
+  Building2,
+  ExternalLink,
+  MapPin,
+  Shield,
+  Tag,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import TenantInfo from "./TenantInfo";
 
@@ -27,6 +34,22 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
       iconColor: "text-primary",
       bgColor: "bg-primary/10",
       href: "/dashboard/users",
+    },
+    {
+      title: "Canchas",
+      description: "Gestiona todas las canchas del sistema",
+      icon: <MapPin className="h-5 w-5" />,
+      iconColor: "text-green-600",
+      bgColor: "bg-green-50",
+      href: "/dashboard/admin/fields",
+    },
+    {
+      title: "Características",
+      description: "Gestiona características disponibles para canchas",
+      icon: <Tag className="h-5 w-5" />,
+      iconColor: "text-blue-600",
+      bgColor: "bg-blue-50",
+      href: "/dashboard/admin/features",
     },
     {
       title: t("rolesPermissions"),

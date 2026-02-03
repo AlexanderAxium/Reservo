@@ -1,6 +1,6 @@
+import { TenantUncheckedUpdateInputObjectZodSchema } from "@/lib/zod/schemas/objects/TenantUncheckedUpdateInput.schema";
 import { z } from "zod";
 import { prisma } from "../../lib/db";
-import { TenantUncheckedUpdateInputObjectZodSchema } from "../../lib/zod/schemas";
 import { hasPermissionOrManage } from "../../services/rbacService";
 import { PermissionAction, PermissionResource } from "../../types/rbac";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
