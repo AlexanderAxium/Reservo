@@ -1,16 +1,13 @@
-import "dotenv/config";
+import sgMail from "@sendgrid/mail";
 
-import nodemailer from "nodemailer";
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL ?? "noreply@canchalibre.com";
+const FROM_NAME = process.env.SENDGRID_FROM_NAME ?? "CanchaLibre";
+const CATEGORY = process.env.SENDGRID_CATEGORY ?? "CanchaLibre";
 
-const transporter = nodemailer.createTransport({
-  host: process.env.NODEMAILER_SMTP,
-  port: Number(process.env.NODEMAILER_PORT) || 587,
-  secure: Number(process.env.NODEMAILER_PORT) === 465,
-  auth: {
-    user: process.env.NODEMAILER_USER,
-    pass: process.env.NODEMAILER_PASSWORD,
-  },
-});
+if (typeof SENDGRID_API_KEY === "string" && SENDGRID_API_KEY.length > 0) {
+  sgMail.setApiKey(SENDGRID_API_KEY);
+}
 
 export const sendMail = async (
   to: string,
@@ -18,12 +15,25 @@ export const sendMail = async (
   content: string
 ) => {
   const isHtml = /<([A-Za-z][A-Za-z0-9]*)\b[^>]*>(.*?)<\/\1>/.test(content);
-  return await transporter.sendMail({
-    from: process.env.NODEMAILER_USER,
+  const msg = {
     to,
+    from: { email: FROM_EMAIL, name: FROM_NAME },
     subject,
     ...(isHtml ? { html: content } : { text: content }),
-  });
+    categories: [CATEGORY],
+  };
+  if (!SENDGRID_API_KEY || SENDGRID_API_KEY.length === 0) {
+    console.warn(
+      "[mailer] SENDGRID_API_KEY no configurada, email no enviado:",
+      {
+        to,
+        subject,
+      }
+    );
+    return { messageId: "no-api-key" };
+  }
+  const [res] = await sgMail.send(msg);
+  return { messageId: res.headers["x-message-id"] };
 };
 
 export const sendVerificationEmail = async (email: string, url: string) => {
@@ -57,7 +67,7 @@ export const sendVerificationEmail = async (email: string, url: string) => {
         .logo {
           font-size: 28px;
           font-weight: bold;
-          color: #2563eb;
+          color: #059669;
           margin-bottom: 10px;
         }
         .title {
@@ -70,7 +80,7 @@ export const sendVerificationEmail = async (email: string, url: string) => {
         }
         .button {
           display: inline-block;
-          background: #2563eb;
+          background: #059669;
           color: white;
           padding: 14px 28px;
           text-decoration: none;
@@ -80,7 +90,7 @@ export const sendVerificationEmail = async (email: string, url: string) => {
           margin: 20px 0;
         }
         .button:hover {
-          background: #1d4ed8;
+          background: #047857;
         }
         .footer {
           text-align: center;
@@ -103,13 +113,13 @@ export const sendVerificationEmail = async (email: string, url: string) => {
     <body>
       <div class="container">
         <div class="header">
-          <div class="logo">🚀 Tu App</div>
+          <div class="logo">CanchaLibre</div>
           <h1 class="title">Confirma tu cuenta</h1>
         </div>
         
         <div class="content">
           <p>¡Hola! 👋</p>
-          <p>Gracias por registrarte en nuestra plataforma. Para completar tu registro y activar tu cuenta, necesitas confirmar tu dirección de email.</p>
+          <p>Gracias por registrarte en CanchaLibre. Para completar tu registro y activar tu cuenta, necesitas confirmar tu dirección de email.</p>
           
           <p>Haz clic en el botón de abajo para verificar tu cuenta:</p>
           
@@ -127,18 +137,14 @@ export const sendVerificationEmail = async (email: string, url: string) => {
         
         <div class="footer">
           <p>Si no creaste esta cuenta, puedes ignorar este email.</p>
-          <p>© 2024 Tu App. Todos los derechos reservados.</p>
+          <p>© ${new Date().getFullYear()} CanchaLibre. Todos los derechos reservados.</p>
         </div>
       </div>
     </body>
     </html>
   `;
 
-  await sendMail(
-    email,
-    "Confirma tu cuenta - Verificación de email",
-    htmlContent
-  );
+  await sendMail(email, "Confirma tu cuenta - CanchaLibre", htmlContent);
 };
 
 export const sendResetPasswordEmail = async (email: string, url: string) => {
@@ -172,7 +178,7 @@ export const sendResetPasswordEmail = async (email: string, url: string) => {
         .logo {
           font-size: 28px;
           font-weight: bold;
-          color: #dc2626;
+          color: #059669;
           margin-bottom: 10px;
         }
         .title {
@@ -185,7 +191,7 @@ export const sendResetPasswordEmail = async (email: string, url: string) => {
         }
         .button {
           display: inline-block;
-          background: #dc2626;
+          background: #059669;
           color: white;
           padding: 14px 28px;
           text-decoration: none;
@@ -195,7 +201,7 @@ export const sendResetPasswordEmail = async (email: string, url: string) => {
           margin: 20px 0;
         }
         .button:hover {
-          background: #b91c1c;
+          background: #047857;
         }
         .footer {
           text-align: center;
@@ -214,16 +220,16 @@ export const sendResetPasswordEmail = async (email: string, url: string) => {
           color: #dc2626;
         }
         .security-tips {
-          background: #f0f9ff;
-          border: 1px solid #0ea5e9;
+          background: #f0fdf4;
+          border: 1px solid #86efac;
           border-radius: 6px;
           padding: 16px;
           margin: 20px 0;
-          color: #0c4a6e;
+          color: #166534;
         }
         .security-tips h3 {
           margin-top: 0;
-          color: #0c4a6e;
+          color: #166534;
         }
         .security-tips ul {
           margin: 10px 0;
@@ -234,13 +240,13 @@ export const sendResetPasswordEmail = async (email: string, url: string) => {
     <body>
       <div class="container">
         <div class="header">
-          <div class="logo">🔐 Tu App</div>
+          <div class="logo">CanchaLibre</div>
           <h1 class="title">Restablece tu contraseña</h1>
         </div>
         
         <div class="content">
           <p>¡Hola! 👋</p>
-          <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta. Si fuiste tú quien hizo esta solicitud, haz clic en el botón de abajo para crear una nueva contraseña.</p>
+          <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en CanchaLibre. Si fuiste tú quien hizo esta solicitud, haz clic en el botón de abajo para crear una nueva contraseña.</p>
           
           <div style="text-align: center;">
             <a href="${url}" class="button">🔑 Restablecer contraseña</a>
@@ -267,16 +273,12 @@ export const sendResetPasswordEmail = async (email: string, url: string) => {
         <div class="footer">
           <p><strong>¿No solicitaste este cambio?</strong></p>
           <p>Si no fuiste tú quien solicitó restablecer la contraseña, puedes ignorar este email. Tu cuenta permanecerá segura.</p>
-          <p>© 2024 Tu App. Todos los derechos reservados.</p>
+          <p>© ${new Date().getFullYear()} CanchaLibre. Todos los derechos reservados.</p>
         </div>
       </div>
     </body>
     </html>
   `;
 
-  await sendMail(
-    email,
-    "Restablece tu contraseña - Solicitud de cambio",
-    htmlContent
-  );
+  await sendMail(email, "Restablece tu contraseña - CanchaLibre", htmlContent);
 };

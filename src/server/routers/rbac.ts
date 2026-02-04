@@ -665,15 +665,16 @@ export const rbacRouter = router({
       return await canViewDashboard(input.userId, ctx.user.tenantId);
     }),
 
-  // Get RBAC context for user
+  // Get RBAC context for user (devuelve contexto vacío si no hay sesión, tenant o userId)
   getRBACContext: publicProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ input, ctx }) => {
-      if (!ctx.user?.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "User tenant not found",
-        });
+      if (!input.userId || !ctx.user?.tenantId) {
+        return {
+          userId: input.userId || "",
+          userRoles: [],
+          permissions: [],
+        };
       }
       return await getRBACContext(input.userId, ctx.user.tenantId);
     }),

@@ -1,8 +1,10 @@
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { sendResetPasswordEmail, sendVerificationEmail } from "@/lib/mailer";
 import type { GoogleProfile } from "@/types/auth";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { createAuthMiddleware } from "better-auth/api";
 
 const requiredEnvVars = [
   "GOOGLE_CLIENT_ID",
@@ -29,8 +31,72 @@ if (!skipValidation) {
   });
 }
 
+/**
+ * Genera un username solo a partir del nombre (y dígitos del id para unicidad).
+ * El modelo User de Prisma exige username; Better Auth no lo envía por defecto.
+ * Solo se usan caracteres que provienen del nombre + hasta 4 dígitos del id.
+ */
+function generateUsernameFromName(name: string, userId: string): string {
+  const base =
+    name
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .replace(/[^a-z0-9\s]/g, "")
+      .replace(/\s+/g, "_")
+      .replace(/_+/g, "_")
+      .slice(0, 28) || "user";
+  const digits = userId.replace(/\D/g, "").slice(0, 4);
+  return digits ? `${base}_${digits}` : base;
+}
+
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
+
+  user: {
+    additionalFields: {
+      username: {
+        type: "string",
+      },
+    },
+  },
+
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path === "/sign-up/email" && ctx.body?.email && ctx.body?.name) {
+        const name = String(ctx.body.name);
+        const id = randomUUID();
+        const username = generateUsernameFromName(name, id);
+        return {
+          context: {
+            ...ctx,
+            body: { ...ctx.body, username },
+          },
+        };
+      }
+    }),
+  },
+
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          const name =
+            "name" in user && typeof user.name === "string" ? user.name : "";
+          const id =
+            "id" in user && typeof user.id === "string"
+              ? user.id
+              : randomUUID();
+          const username =
+            "username" in user && typeof user.username === "string"
+              ? user.username
+              : generateUsernameFromName(name || "user", id);
+          return { data: { ...user, username } };
+        },
+      },
+    },
+  },
 
   emailAndPassword: {
     enabled: true,
@@ -61,13 +127,18 @@ export const auth = betterAuth({
       clientId: process.env.GOOGLE_CLIENT_ID || "dummy-client-id",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "dummy-client-secret",
       mapProfileToUser: (profile: GoogleProfile) => {
+        const name =
+          profile.name ||
+          `${profile.given_name || ""} ${profile.family_name || ""}`.trim() ||
+          profile.email?.split("@")[0] ||
+          "user";
+        const sub = profile.sub ?? randomUUID();
         return {
-          name:
-            profile.name ||
-            `${profile.given_name || ""} ${profile.family_name || ""}`.trim(),
-          email: profile.email,
+          name,
+          email: profile.email ?? "",
           emailVerified: profile.email_verified,
           image: profile.picture,
+          username: generateUsernameFromName(name, sub),
         };
       },
     },
