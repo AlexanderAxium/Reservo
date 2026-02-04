@@ -259,7 +259,7 @@ export function AppSidebar() {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => router.push("/dashboard/profile")}
+                onClick={() => router.push("/dashboard/settings")}
               >
                 <User className="mr-2 h-4 w-4" />
                 <span>{tCommon("profile")}</span>

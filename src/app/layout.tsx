@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/AuthContext";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
+import { LocaleSync } from "@/components/LocaleSync";
 import { RoleBasedRedirect } from "@/components/RoleBasedRedirect";
 import { StructuredData } from "@/components/StructuredData";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -34,6 +35,7 @@ export default function RootLayout({
         >
           <AuthProvider>
             <TRPCProvider>
+              <LocaleSync />
               <RoleBasedRedirect>{children}</RoleBasedRedirect>
               <Toaster />
             </TRPCProvider>

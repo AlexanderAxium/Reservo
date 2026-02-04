@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useTranslation } from "@/hooks/useTranslation";
 import {
   Facebook,
   Instagram,
@@ -12,23 +13,7 @@ import {
   Twitter,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
-
-const platformLinks = [
-  { label: "Inicio", href: "/" },
-  { label: "Explorar canchas", href: "/canchas" },
-  { label: "Centros deportivos", href: "/canchas" },
-  { label: "Deportes", href: "/canchas" },
-  { label: "Cómo funciona", href: "/#como-funciona" },
-];
-
-const serviceLinks = [
-  { label: "Reserva canchas", href: "/canchas" },
-  { label: "Para propietarios", href: "/#para-duenos" },
-  { label: "Torneos", href: "/canchas" },
-  { label: "Comunidad", href: "/canchas" },
-  { label: "Aplicación móvil", href: "/canchas" },
-];
+import { useMemo, useState } from "react";
 
 const socialIcons = [
   { icon: Facebook, href: "#", label: "Facebook" },
@@ -38,7 +23,30 @@ const socialIcons = [
 ];
 
 export function FooterSection() {
+  const { t } = useTranslation("home");
   const [email, setEmail] = useState("");
+
+  const platformLinks = useMemo(
+    () => [
+      { label: t("footer.links.home"), href: "/" },
+      { label: t("footer.links.exploreCourts"), href: "/canchas" },
+      { label: t("footer.links.sportCenters"), href: "/canchas" },
+      { label: t("footer.links.sports"), href: "/canchas" },
+      { label: t("footer.links.howItWorks"), href: "/#como-funciona" },
+    ],
+    [t]
+  );
+
+  const serviceLinks = useMemo(
+    () => [
+      { label: t("footer.links.bookCourts"), href: "/canchas" },
+      { label: t("footer.links.forOwners"), href: "/#para-duenos" },
+      { label: t("footer.links.tournaments"), href: "/canchas" },
+      { label: t("footer.links.community"), href: "/canchas" },
+      { label: t("footer.links.mobileApp"), href: "/canchas" },
+    ],
+    [t]
+  );
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,8 +68,7 @@ export function FooterSection() {
               </span>
             </Link>
             <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-              La plataforma líder en reservas de canchas deportivas. Conectando
-              atletas con las mejores instalaciones desde 2023.
+              {t("footer.tagline")}
             </p>
             <div className="flex gap-2">
               {socialIcons.map((s) => (
@@ -81,7 +88,7 @@ export function FooterSection() {
           <div>
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 uppercase text-sm tracking-wide mb-4 flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-              Plataforma
+              {t("footer.platform")}
             </h3>
             <ul className="space-y-2">
               {platformLinks.map((l) => (
@@ -101,7 +108,7 @@ export function FooterSection() {
           <div>
             <h3 className="font-semibold text-gray-900 dark:text-gray-100 uppercase text-sm tracking-wide mb-4 flex items-center gap-2">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-              Servicios
+              {t("footer.services")}
             </h3>
             <ul className="space-y-2">
               {serviceLinks.map((l) => (
@@ -121,16 +128,15 @@ export function FooterSection() {
           <div className="space-y-6">
             <div>
               <h3 className="font-semibold text-gray-900 dark:text-gray-100 uppercase text-sm tracking-wide mb-2">
-                Mantente Informado
+                {t("footer.stayInformed")}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-                Suscríbete para recibir las últimas noticias y promociones
-                exclusivas.
+                {t("footer.subscribeDesc")}
               </p>
               <form onSubmit={handleSubscribe} className="flex gap-2">
                 <Input
                   type="email"
-                  placeholder="Email"
+                  placeholder={t("footer.emailPlaceholder")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-foreground placeholder:text-muted-foreground"
@@ -139,13 +145,13 @@ export function FooterSection() {
                   type="submit"
                   className="bg-emerald-600 hover:bg-emerald-700 rounded-md shrink-0 text-white"
                 >
-                  Suscríbete
+                  {t("footer.subscribe")}
                 </Button>
               </form>
             </div>
             <div>
               <h3 className="font-semibold text-gray-900 dark:text-gray-100 uppercase text-sm tracking-wide mb-2">
-                Contáctanos
+                {t("footer.contactUs")}
               </h3>
               <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
                 <li className="flex items-center gap-2">
@@ -168,32 +174,32 @@ export function FooterSection() {
         {/* Barra inferior */}
         <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            © 2026 CanchaLibre. Todos los derechos reservados.
+            {t("footer.copyright")}
           </p>
           <div className="flex flex-wrap justify-center gap-4 sm:gap-6 text-sm">
             <Link
               href="/legal/terms"
               className="text-gray-600 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
             >
-              Términos de Servicio
+              {t("footer.termsOfService")}
             </Link>
             <Link
               href="/legal/privacy"
               className="text-gray-600 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
             >
-              Política de Privacidad
+              {t("footer.privacyPolicy")}
             </Link>
             <Link
               href="/legal/cookies"
               className="text-gray-600 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
             >
-              Política de Cookies
+              {t("footer.cookiePolicy")}
             </Link>
             <Link
               href="/legal/complaints"
               className="text-gray-600 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
             >
-              Accesibilidad
+              {t("footer.accessibility")}
             </Link>
           </div>
         </div>

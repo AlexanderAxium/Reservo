@@ -87,31 +87,31 @@ export default function ViewerDashboard({ user }: ViewerDashboardProps) {
         description: t("viewReportsDesc"),
         icon: <FileText className="h-6 w-6" />,
         bgColor: "bg-primary",
-        href: "/reports",
+        href: "/dashboard",
       },
       {
         title: t("publicDashboard"),
         description: t("publicDashboardDesc"),
         icon: <BarChart3 className="h-6 w-6" />,
         bgColor: "bg-secondary",
-        href: "/public-dashboard",
+        href: "/dashboard",
       },
       {
         title: t("documentation"),
         description: t("documentationDesc"),
         icon: <BookOpen className="h-6 w-6" />,
         bgColor: "bg-accent",
-        href: "/docs",
+        href: "/dashboard/settings",
       },
       {
         title: t("configuration"),
         description: t("configurationDesc"),
         icon: <Settings className="h-6 w-6" />,
         bgColor: "bg-muted",
-        href: "/settings",
+        href: "/dashboard/settings",
       },
     ],
-    []
+    [t]
   );
 
   const recentActivity = useMemo(
@@ -292,7 +292,7 @@ export default function ViewerDashboard({ user }: ViewerDashboardProps) {
                   key={report.id}
                   type="button"
                   className="w-full flex items-start justify-between p-4 rounded-lg border border-border hover:bg-muted/50 hover:border-primary/20 cursor-pointer text-left transition-all"
-                  onClick={() => router.push(`/reports/${report.id}`)}
+                  onClick={() => router.push("/dashboard")}
                 >
                   <div className="flex items-start space-x-3 min-w-0 flex-1">
                     <div className="p-2 bg-primary/10 rounded-lg flex-shrink-0">

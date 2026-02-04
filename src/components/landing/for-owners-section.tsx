@@ -3,18 +3,22 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useTranslation } from "@/hooks/useTranslation";
 import { Building2, Check } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
-
-const benefits = [
-  "Aumenta tus ingresos",
-  "Estadísticas detalladas",
-  "Gestión automatizada",
-  "Soporte personalizado",
-];
+import { useMemo, useState } from "react";
 
 export function ForOwnersSection() {
+  const { t } = useTranslation("home");
+  const benefits = useMemo(
+    () => [
+      t("forOwners.benefit1"),
+      t("forOwners.benefit2"),
+      t("forOwners.benefit3"),
+      t("forOwners.benefit4"),
+    ],
+    [t]
+  );
   const [formData, setFormData] = useState({
     name: "",
     lastName: "",
@@ -58,17 +62,21 @@ export function ForOwnersSection() {
           {/* Izquierda: contenido */}
           <div className="space-y-6 text-white">
             <span className="inline-block px-4 py-1.5 rounded-full bg-emerald-500 text-white text-sm font-medium">
-              Para Dueños de Canchas
+              {t("forOwners.badge")}
             </span>
             <h2 className="text-3xl md:text-4xl font-bold leading-tight">
-              Únete a la{" "}
-              <span className="text-emerald-400">Red de Canchas</span>{" "}
-              Deportivas <span className="text-emerald-400">Más Grande</span>
+              {t("forOwners.title")}{" "}
+              <span className="text-emerald-400">
+                {t("forOwners.titleHighlight1")}
+              </span>{" "}
+              <span className="text-emerald-400">
+                {t("forOwners.titleHighlight2")}
+              </span>{" "}
+              <span className="text-emerald-400">
+                {t("forOwners.titleHighlight3")}
+              </span>
             </h2>
-            <p className="text-lg text-white/90">
-              Aumenta la visibilidad de tus instalaciones, optimiza tu ocupación
-              y gestiona tus reservas de forma sencilla.
-            </p>
+            <p className="text-lg text-white/90">{t("forOwners.subtitle")}</p>
             <ul className="space-y-3">
               {benefits.map((item) => (
                 <li key={item} className="flex items-center gap-2">
@@ -83,80 +91,86 @@ export function ForOwnersSection() {
           <div className="rounded-2xl bg-gray-800/90 backdrop-blur border border-white/10 p-6 lg:p-8">
             <h3 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
               <Building2 className="h-5 w-5 text-emerald-400" />
-              Registra tus Instalaciones
+              {t("forOwners.formTitle")}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-white/90">Nombre</Label>
+                  <Label className="text-white/90">
+                    {t("forOwners.firstName")}
+                  </Label>
                   <Input
                     value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
-                    placeholder="Tu nombre"
+                    placeholder={t("forOwners.firstNamePlaceholder")}
                     className="mt-1 bg-white/5 border-white/20 text-white placeholder:text-white/50"
                     required
                   />
                 </div>
                 <div>
-                  <Label className="text-white/90">Apellido</Label>
+                  <Label className="text-white/90">
+                    {t("forOwners.lastName")}
+                  </Label>
                   <Input
                     value={formData.lastName}
                     onChange={(e) =>
                       setFormData({ ...formData, lastName: e.target.value })
                     }
-                    placeholder="Tu apellido"
+                    placeholder={t("forOwners.lastNamePlaceholder")}
                     className="mt-1 bg-white/5 border-white/20 text-white placeholder:text-white/50"
                     required
                   />
                 </div>
               </div>
               <div>
-                <Label className="text-white/90">Correo Electrónico</Label>
+                <Label className="text-white/90">{t("forOwners.email")}</Label>
                 <Input
                   type="email"
                   value={formData.email}
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                  placeholder="correo@ejemplo.com"
+                  placeholder={t("forOwners.emailPlaceholder")}
                   className="mt-1 bg-white/5 border-white/20 text-white placeholder:text-white/50"
                   required
                 />
               </div>
               <div>
-                <Label className="text-white/90">Teléfono</Label>
+                <Label className="text-white/90">{t("forOwners.phone")}</Label>
                 <Input
                   value={formData.phone}
                   onChange={(e) =>
                     setFormData({ ...formData, phone: e.target.value })
                   }
-                  placeholder="+51 123 456 789"
+                  placeholder={t("forOwners.phonePlaceholder")}
                   className="mt-1 bg-white/5 border-white/20 text-white placeholder:text-white/50"
                 />
               </div>
               <div>
                 <Label className="text-white/90">
-                  Nombre de la Instalación
+                  {t("forOwners.facilityName")}
                 </Label>
                 <Input
                   value={formData.facilityName}
                   onChange={(e) =>
                     setFormData({ ...formData, facilityName: e.target.value })
                   }
-                  placeholder="Nombre de tu centro deportivo"
+                  placeholder={t("forOwners.facilityPlaceholder")}
                   className="mt-1 bg-white/5 border-white/20 text-white placeholder:text-white/50"
                 />
               </div>
               <div>
-                <Label className="text-white/90">Mensaje (opcional)</Label>
+                <Label className="text-white/90">
+                  {t("forOwners.message")}
+                </Label>
                 <textarea
                   value={formData.message}
                   onChange={(e) =>
                     setFormData({ ...formData, message: e.target.value })
                   }
-                  placeholder="Cuéntanos sobre tus instalaciones deportivas"
+                  placeholder={t("forOwners.messagePlaceholder")}
                   rows={3}
                   className="mt-1 w-full rounded-md border border-white/20 bg-white/5 px-3 py-2 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
@@ -167,22 +181,22 @@ export function ForOwnersSection() {
                 disabled={isSubmitting}
                 className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg"
               >
-                {isSubmitting ? "Enviando..." : "Enviar Solicitud"}
+                {isSubmitting ? t("forOwners.sending") : t("forOwners.submit")}
               </Button>
               <p className="text-xs text-white/60 text-center">
-                Al enviar este formulario, aceptas nuestros{" "}
+                {t("forOwners.termsNote")}{" "}
                 <Link
                   href="/legal/terms"
                   className="text-emerald-400 hover:underline"
                 >
-                  Términos y Condiciones
+                  {t("forOwners.terms")}
                 </Link>{" "}
-                y{" "}
+                {t("forOwners.and")}{" "}
                 <Link
                   href="/legal/privacy"
                   className="text-emerald-400 hover:underline"
                 >
-                  Política de Privacidad
+                  {t("forOwners.privacy")}
                 </Link>
                 .
               </p>

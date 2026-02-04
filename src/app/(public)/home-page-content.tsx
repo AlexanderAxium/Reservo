@@ -2,7 +2,6 @@
 
 import {
   FeaturedFieldsSection,
-  FooterSection,
   ForOwnersSection,
   HowItWorksSection,
   LandingHeroSection,
@@ -17,7 +16,6 @@ export function HomePageContent() {
       <FeaturedFieldsSection />
       <ForOwnersSection />
       <SponsorsSection />
-      <FooterSection />
     </div>
   );
 }

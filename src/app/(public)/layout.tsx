@@ -1,5 +1,5 @@
-import { Footer } from "@/components/Footer";
 import GlobalNavbar from "@/components/GlobalNavbar";
+import { FooterSection } from "@/components/landing";
 
 export default function PublicLayout({
   children,
@@ -10,7 +10,7 @@ export default function PublicLayout({
     <>
       <GlobalNavbar />
       {children}
-      <Footer />
+      <FooterSection />
     </>
   );
 }

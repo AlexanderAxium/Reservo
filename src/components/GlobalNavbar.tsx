@@ -106,7 +106,7 @@ export default function GlobalNavbar() {
                     : "text-foreground dark:text-white hover:text-emerald-400"
                 }`}
               >
-                Inicio
+                {t("home")}
               </Link>
               <Link
                 href="/canchas"
@@ -116,7 +116,7 @@ export default function GlobalNavbar() {
                     : "text-foreground dark:text-white hover:text-emerald-400"
                 }`}
               >
-                Canchas
+                {t("fields")}
               </Link>
             </div>
 
@@ -178,7 +178,7 @@ export default function GlobalNavbar() {
                           <span>{t("dashboard")}</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => router.push("/dashboard/profile")}
+                          onClick={() => router.push("/dashboard/settings")}
                         >
                           <User className="mr-2 h-4 w-4" />
                           <span>{t("profile")}</span>
@@ -250,14 +250,14 @@ export default function GlobalNavbar() {
                         onClick={() => setIsMenuOpen(false)}
                         className="rounded-lg px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
                       >
-                        Inicio
+                        {t("home")}
                       </Link>
                       <Link
                         href="/canchas"
                         onClick={() => setIsMenuOpen(false)}
                         className="rounded-lg px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
                       >
-                        Canchas
+                        {t("fields")}
                       </Link>
                     </div>
                     <div className="mb-4 flex items-center gap-2 px-2">
@@ -334,7 +334,7 @@ export default function GlobalNavbar() {
                         <button
                           type="button"
                           onClick={() => {
-                            router.push("/dashboard/profile");
+                            router.push("/dashboard/settings");
                             setIsMenuOpen(false);
                           }}
                           className="group flex items-center px-5 py-4 rounded-xl text-sm font-medium transition-all duration-200 text-gray-300 hover:text-white hover:bg-accent w-full"

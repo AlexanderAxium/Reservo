@@ -50,9 +50,9 @@ export function ReservationGuestForm({
           name="guestName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nombre completo</FormLabel>
+              <FormLabel>{t("guestName")}</FormLabel>
               <FormControl>
-                <Input placeholder="Tu nombre" {...field} />
+                <Input placeholder={t("guestNamePlaceholder")} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -63,9 +63,13 @@ export function ReservationGuestForm({
           name="guestEmail"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{t("guestEmail")}</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="tu@email.com" {...field} />
+                <Input
+                  type="email"
+                  placeholder={t("guestEmailPlaceholder")}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -91,10 +95,10 @@ export function ReservationGuestForm({
             onClick={onCancel}
             disabled={isLoading}
           >
-            Cancelar
+            {t("cancel")}
           </Button>
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Reservando..." : "Completar reserva"}
+            {isLoading ? t("reserving") : t("completeReservation")}
           </Button>
         </div>
       </form>

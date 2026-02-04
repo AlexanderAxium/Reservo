@@ -1,29 +1,28 @@
 "use client";
 
+import { useTranslation } from "@/hooks/useTranslation";
 import { Calendar, Check, Search } from "lucide-react";
 
-const steps = [
-  {
-    icon: Search,
-    title: "1. Encuentra una Cancha",
-    description:
-      "Busca canchas por deporte, ubicación o características para encontrar la perfecta para tu juego.",
-  },
-  {
-    icon: Calendar,
-    title: "2. Verifica Disponibilidad",
-    description:
-      "Revisa el horario de la cancha y encuentra un espacio disponible que se ajuste a tu agenda.",
-  },
-  {
-    icon: Check,
-    title: "3. Reserva y Juega",
-    description:
-      "Haz tu reserva, realiza el pago y disfruta de tu juego con amigos o compañeros de equipo.",
-  },
-];
-
 export function HowItWorksSection() {
+  const { t } = useTranslation("home");
+  const steps = [
+    {
+      icon: Search,
+      title: t("howItWorks.step1Title"),
+      description: t("howItWorks.step1Desc"),
+    },
+    {
+      icon: Calendar,
+      title: t("howItWorks.step2Title"),
+      description: t("howItWorks.step2Desc"),
+    },
+    {
+      icon: Check,
+      title: t("howItWorks.step3Title"),
+      description: t("howItWorks.step3Desc"),
+    },
+  ];
+
   return (
     <section
       id="como-funciona"
@@ -32,11 +31,10 @@ export function HowItWorksSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-12 md:mb-16">
           <h2 className="text-3xl md:text-4xl font-bold text-emerald-800 dark:text-emerald-300 mb-4">
-            Cómo Funciona
+            {t("howItWorks.title")}
           </h2>
           <p className="text-gray-600 dark:text-gray-300">
-            Reservar una cancha deportiva nunca ha sido tan fácil. Sigue estos
-            simples pasos y comienza a jugar.
+            {t("howItWorks.subtitle")}
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
