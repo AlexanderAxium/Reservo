@@ -101,14 +101,14 @@ export default function ViewerDashboard({ user }: ViewerDashboardProps) {
         description: t("documentationDesc"),
         icon: <BookOpen className="h-6 w-6" />,
         bgColor: "bg-accent",
-        href: "/dashboard/settings",
+        href: "/dashboard",
       },
       {
         title: t("configuration"),
         description: t("configurationDesc"),
         icon: <Settings className="h-6 w-6" />,
         bgColor: "bg-muted",
-        href: "/dashboard/settings",
+        href: "/dashboard",
       },
     ],
     [t]

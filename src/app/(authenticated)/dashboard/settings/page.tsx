@@ -13,8 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useTranslation } from "@/hooks/useTranslation";
+import { useUser } from "@/hooks/useUser";
 import { trpc } from "@/utils/trpc";
 import { Building2, Globe, Mail, Save, Settings } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -73,6 +75,17 @@ function getFieldErrorMessage(errorCode: string, fieldName: string): string {
 
 export default function SettingsPage() {
   const { t } = useTranslation("dashboard");
+  const router = useRouter();
+  const { isAdmin, isSuperAdmin, isLoading: roleLoading } = useUser();
+
+  // Solo administradores pueden acceder a configuración
+  useEffect(() => {
+    if (roleLoading) return;
+    if (!isAdmin && !isSuperAdmin) {
+      router.replace("/dashboard");
+    }
+  }, [isAdmin, isSuperAdmin, roleLoading, router]);
+
   const [formData, setFormData] = useState({
     name: "",
     displayName: "",
@@ -209,6 +222,10 @@ export default function SettingsPage() {
       setIsLoading(false);
     }
   };
+
+  if (roleLoading || (!isAdmin && !isSuperAdmin)) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">

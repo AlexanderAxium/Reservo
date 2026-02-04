@@ -10,6 +10,7 @@
   "unverified": "Sin verificar",
   "assignedRoles": "Roles asignados:",
   "noRolesAssigned": "Sin roles asignados",
+  "noRoleAssigned": "Sin rol asignado",
   "availablePermissions": "Permisos disponibles:",
   "noPermissionsAssigned": "Sin permisos asignados",
   "needAccess": "¿Necesitas acceso?",

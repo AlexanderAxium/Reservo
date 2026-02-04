@@ -147,7 +147,7 @@ export function AppSidebar() {
       ];
     }
 
-    // Viewer - acceso de solo lectura
+    // Viewer - acceso de solo lectura (sin configuración; solo admin)
     if (hasRole("viewer")) {
       return [
         ...baseItems,
@@ -156,12 +156,6 @@ export function AppSidebar() {
           href: "/dashboard/users",
           icon: Users,
           description: t("viewUsers"),
-        },
-        {
-          title: t("settings2"),
-          href: "/dashboard/settings",
-          icon: Settings,
-          description: t("viewSettings"),
         },
       ];
     }
@@ -252,7 +246,9 @@ export function AppSidebar() {
                   </p>
                   {primaryRole && (
                     <p className="text-xs leading-none text-muted-foreground capitalize mt-1">
-                      {primaryRole.replace("_", " ")}
+                      {primaryRole === "unknown"
+                        ? t("noRoleAssigned")
+                        : primaryRole.replace("_", " ")}
                     </p>
                   )}
                 </div>
@@ -264,12 +260,14 @@ export function AppSidebar() {
                 <User className="mr-2 h-4 w-4" />
                 <span>{tCommon("profile")}</span>
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => router.push("/dashboard/settings")}
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                <span>{tCommon("settings")}</span>
-              </DropdownMenuItem>
+              {(isSuperAdmin || isAdmin) && (
+                <DropdownMenuItem
+                  onClick={() => router.push("/dashboard/settings")}
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>{tCommon("settings")}</span>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleSignOut}>
                 <LogOut className="mr-2 h-4 w-4" />
@@ -373,32 +371,34 @@ export function AppSidebar() {
           isCollapsed ? "p-2 space-y-1" : "p-3 space-y-3"
         )}
       >
-        <SidebarMenu className="w-full flex flex-col">
-          <SidebarMenuItem className="w-full flex justify-center">
-            <SidebarMenuButton
-              onClick={() => router.push("/dashboard/settings")}
-              tooltip={tCommon("settings")}
-              className={cn(
-                "group/item rounded-lg text-sidebar-foreground/70 transition-all duration-200 hover:bg-accent/30 hover:text-foreground",
-                isCollapsed
-                  ? "h-9 w-full justify-center items-center px-2"
-                  : "h-9 w-full px-3"
-              )}
-            >
-              <Settings
+        {(isSuperAdmin || isAdmin) && (
+          <SidebarMenu className="w-full flex flex-col">
+            <SidebarMenuItem className="w-full flex justify-center">
+              <SidebarMenuButton
+                onClick={() => router.push("/dashboard/settings")}
+                tooltip={tCommon("settings")}
                 className={cn(
-                  "shrink-0 transition-transform duration-200 group-hover/item:scale-110",
-                  isCollapsed ? "size-4" : "size-5"
+                  "group/item rounded-lg text-sidebar-foreground/70 transition-all duration-200 hover:bg-accent/30 hover:text-foreground",
+                  isCollapsed
+                    ? "h-9 w-full justify-center items-center px-2"
+                    : "h-9 w-full px-3"
                 )}
-              />
-              {!isCollapsed && (
-                <span className="font-medium truncate">
-                  {tCommon("settings")}
-                </span>
-              )}
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+              >
+                <Settings
+                  className={cn(
+                    "shrink-0 transition-transform duration-200 group-hover/item:scale-110",
+                    isCollapsed ? "size-4" : "size-5"
+                  )}
+                />
+                {!isCollapsed && (
+                  <span className="font-medium truncate">
+                    {tCommon("settings")}
+                  </span>
+                )}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        )}
 
         {/* Promotional Card */}
         {!isCollapsed ? (

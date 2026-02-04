@@ -10,6 +10,7 @@
   "unverified": "Unverified",
   "assignedRoles": "Assigned roles:",
   "noRolesAssigned": "No roles assigned",
+  "noRoleAssigned": "No role assigned",
   "availablePermissions": "Available permissions:",
   "noPermissionsAssigned": "No permissions assigned",
   "needAccess": "Need access?",

@@ -27,6 +27,7 @@
   "privacy": "Privacy",
   "cookies": "Cookies",
   "backToHome": "Back to home",
+  "backToSignIn": "Back to sign in",
   "email": "Email",
   "password": "Password",
   "forgotPassword": "Forgot your password?",
@@ -71,5 +72,14 @@
   "yourPassword": "Your password",
   "cancel": "Cancel",
   "anonymous": "Anonymous",
-  "notAvailable": "Not available"
+  "notAvailable": "Not available",
+  "emailNotRegistered": "No account is registered with this email.",
+  "recoveryEmailSent": "If this email is registered, you will receive a recovery link.",
+  "recoveryEmailSentTitle": "Email sent",
+  "recoveryEmailSentDescription": "We have sent a recovery link to your email. Check your inbox and follow the instructions.",
+  "checkSpamFolder": "If you don't receive the email in a few minutes, check your spam folder.",
+  "sendAnotherEmail": "Send another email",
+  "forgotPasswordDescription": "Enter your email and we will send you a link to reset your password.",
+  "sending": "Sending...",
+  "sendRecoveryLink": "Send recovery link"
 }
