@@ -4,47 +4,61 @@ export async function GET() {
   const baseUrl = process.env.SITE_URL || "https://axium.com.pe";
 
   const staticPages = [
+    { url: baseUrl, changeFrequency: "weekly" as const, priority: 1.0 },
     {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 1.0,
-    },
-    {
-      url: `${baseUrl}/#servicios`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
+      url: `${baseUrl}/#como-funciona`,
+      changeFrequency: "monthly" as const,
       priority: 0.9,
     },
     {
-      url: `${baseUrl}/#como-trabajamos`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
+      url: `${baseUrl}/#canchas-destacadas`,
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/#para-duenos`,
+      changeFrequency: "monthly" as const,
       priority: 0.8,
     },
     {
-      url: `${baseUrl}/#casos-de-exito`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/#contacto`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
+      url: `${baseUrl}/#patrocinadores`,
+      changeFrequency: "monthly" as const,
       priority: 0.7,
     },
     {
+      url: `${baseUrl}/canchas`,
+      changeFrequency: "weekly" as const,
+      priority: 0.95,
+    },
+    {
       url: `${baseUrl}/signin`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
+      changeFrequency: "monthly" as const,
       priority: 0.5,
     },
     {
       url: `${baseUrl}/signup`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
+      changeFrequency: "monthly" as const,
       priority: 0.5,
+    },
+    {
+      url: `${baseUrl}/legal/terms`,
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
+    },
+    {
+      url: `${baseUrl}/legal/privacy`,
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
+    },
+    {
+      url: `${baseUrl}/legal/cookies`,
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
+    },
+    {
+      url: `${baseUrl}/legal/complaints`,
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
     },
   ];
 
@@ -55,7 +69,7 @@ export async function GET() {
       (page) => `
   <url>
     <loc>${page.url}</loc>
-    <lastmod>${page.lastModified.toISOString()}</lastmod>
+    <lastmod>${new Date().toISOString()}</lastmod>
     <changefreq>${page.changeFrequency}</changefreq>
     <priority>${page.priority}</priority>
   </url>`
