@@ -4,13 +4,19 @@ import { useEffect, useMemo, useState } from "react";
 
 import commonEn from "@/locales/en/common.json";
 import dashboardEn from "@/locales/en/dashboard.json";
+import fieldsEn from "@/locales/en/fields.json";
+import homeEn from "@/locales/en/home.json";
 import landingEn from "@/locales/en/landing.json";
 // Import translations statically - Next.js will handle bundling
 import commonEs from "@/locales/es/common.json";
 import dashboardEs from "@/locales/es/dashboard.json";
+import fieldsEs from "@/locales/es/fields.json";
+import homeEs from "@/locales/es/home.json";
 import landingEs from "@/locales/es/landing.json";
 import commonPt from "@/locales/pt/common.json";
 import dashboardPt from "@/locales/pt/dashboard.json";
+import fieldsPt from "@/locales/pt/fields.json";
+import homePt from "@/locales/pt/home.json";
 import landingPt from "@/locales/pt/landing.json";
 
 // Type for translations
@@ -25,16 +31,22 @@ const translationsRegistry: Record<
     common: commonEs as TranslationRecord,
     landing: landingEs as TranslationRecord,
     dashboard: dashboardEs as TranslationRecord,
+    fields: fieldsEs as TranslationRecord,
+    home: homeEs as TranslationRecord,
   },
   en: {
     common: commonEn as TranslationRecord,
     landing: landingEn as TranslationRecord,
     dashboard: dashboardEn as TranslationRecord,
+    fields: fieldsEn as TranslationRecord,
+    home: homeEn as TranslationRecord,
   },
   pt: {
     common: commonPt as TranslationRecord,
     landing: landingPt as TranslationRecord,
     dashboard: dashboardPt as TranslationRecord,
+    fields: fieldsPt as TranslationRecord,
+    home: homePt as TranslationRecord,
   },
 };
 
@@ -52,19 +64,15 @@ export function useTranslation(namespace = "common") {
   // Estado reactivo para el locale
   const [locale, setLocaleState] = useState<string>("es");
 
-  // Inicializar locale desde localStorage o navegador
+  // Inicializar locale desde localStorage. Por defecto: español.
   useEffect(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("locale");
       if (stored && ["es", "en", "pt"].includes(stored)) {
         setLocaleState(stored);
-      } else {
-        const browserLang = navigator.language.split("-")[0];
-        if (browserLang && ["es", "en", "pt"].includes(browserLang)) {
-          setLocaleState(browserLang);
-          localStorage.setItem("locale", browserLang);
-        }
       }
+      // Si no hay preferencia guardada, se mantiene "es" (español por defecto)
+      // No usamos el idioma del navegador para respetar el idioma por defecto de la app
 
       // Escuchar cambios de locale desde otros componentes
       const handleLocaleChange = (e: CustomEvent<string>) => {

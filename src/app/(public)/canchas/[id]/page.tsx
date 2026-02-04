@@ -25,11 +25,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useTranslation } from "@/hooks/useTranslation";
 import { FeatureIcon } from "@/lib/feature-icons";
 import { formatPrice } from "@/lib/utils";
 import { trpc } from "@/utils/trpc";
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
+import type { Locale } from "date-fns";
+import { enUS } from "date-fns/locale";
 import { es } from "date-fns/locale";
+import { ptBR } from "date-fns/locale";
 import {
   Building2,
   Calendar,
@@ -56,22 +60,10 @@ const WEEKDAY_TO_ENUM: Record<number, string> = {
   0: "SUNDAY",
 };
 
-const _DAY_LABELS: Record<string, string> = {
-  MONDAY: "Lunes",
-  TUESDAY: "Martes",
-  WEDNESDAY: "Miércoles",
-  THURSDAY: "Jueves",
-  FRIDAY: "Viernes",
-  SATURDAY: "Sábado",
-  SUNDAY: "Domingo",
-};
-
-const _SPORT_LABELS: Record<string, string> = {
-  FOOTBALL: "Fútbol",
-  TENNIS: "Tenis",
-  BASKETBALL: "Básquet",
-  VOLLEYBALL: "Vóley",
-  FUTSAL: "Futsal",
+const DATE_LOCALES: Record<string, Locale> = {
+  es,
+  en: enUS,
+  pt: ptBR,
 };
 
 function getDayEnum(date: Date): string {
@@ -80,6 +72,11 @@ function getDayEnum(date: Date): string {
 }
 
 export default function PublicFieldReservePage() {
+  const { t } = useTranslation("fields");
+  const { t: tCommon } = useTranslation("common");
+  const { locale } = useTranslation("common");
+  const dateLocale = DATE_LOCALES[locale] ?? es;
+
   const params = useParams();
   const fieldId = params.id as string;
   const { user } = useAuthContext();
@@ -136,13 +133,13 @@ export default function PublicFieldReservePage() {
 
   const createReservation = trpc.field.createReservation.useMutation({
     onSuccess: () => {
-      toast.success("Reserva registrada correctamente");
+      toast.success(t("reservationSuccess"));
       setReservationModalOpen(false);
       setSelectedDate(null);
       setSelectedSlots([]);
     },
     onError: (err) => {
-      toast.error(err.message || "No se pudo completar la reserva");
+      toast.error(err.message || t("reservationError"));
     },
   });
 
@@ -267,12 +264,12 @@ export default function PublicFieldReservePage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="container mx-auto py-12">
           {isLoading ? (
-            <p className="text-center text-muted-foreground">
-              Cargando cancha...
+            <p className="text-center text-foreground/80">
+              {t("loadingField")}
             </p>
           ) : (
-            <p className="text-center text-muted-foreground">
-              Cancha no encontrada
+            <p className="text-center text-foreground/80">
+              {t("fieldNotFound")}
             </p>
           )}
         </div>
@@ -290,16 +287,16 @@ export default function PublicFieldReservePage() {
     <div className="min-h-screen bg-background">
       {/* Breadcrumb */}
       <div className="bg-card border-b border-border">
-        <div className="container mx-auto px-4 py-3 text-sm text-muted-foreground">
+        <div className="container mx-auto px-4 py-3 text-sm text-foreground/80">
           <Link href="/" className="hover:text-teal-600 transition-colors">
-            Inicio
+            {tCommon("home")}
           </Link>
           <ChevronRight className="inline h-4 w-4 mx-1" />
           <Link
             href="/canchas"
             className="hover:text-teal-600 transition-colors"
           >
-            Canchas
+            {tCommon("fields")}
           </Link>
           <ChevronRight className="inline h-4 w-4 mx-1" />
           <span className="text-foreground">{field.name}</span>
@@ -391,7 +388,7 @@ export default function PublicFieldReservePage() {
                 <Clock className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Precio nocturno</p>
+                <p className="text-sm text-foreground/70">{t("nightPrice")}</p>
                 <p className="text-xl font-bold text-foreground">
                   S/ {formatPrice(nightPrice)}
                 </p>
@@ -423,13 +420,13 @@ export default function PublicFieldReservePage() {
               ) : (
                 <>
                   <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-1.5 text-sm text-foreground">
-                    Iluminación
+                    {t("lighting")}
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-1.5 text-sm text-foreground">
-                    Duchas
+                    {t("showers")}
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted px-3 py-1.5 text-sm text-foreground">
-                    Estacionamiento
+                    {t("parking")}
                   </span>
                 </>
               )}
@@ -440,13 +437,13 @@ export default function PublicFieldReservePage() {
           <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <h3 className="text-lg font-bold text-foreground">
-                Horarios disponibles
+                {t("availableSchedules")}
               </h3>
               <Link
                 href="/canchas"
                 className="text-sm font-medium text-teal-600 hover:text-teal-700"
               >
-                Ver todos →
+                {t("viewAll")} →
               </Link>
             </div>
             <div className="p-6 space-y-4">
@@ -471,16 +468,16 @@ export default function PublicFieldReservePage() {
                       }`}
                     >
                       <p className="font-medium text-sm capitalize">
-                        {format(day, "EEEE", { locale: es })}
+                        {format(day, "EEEE", { locale: dateLocale })}
                       </p>
                       <p
                         className={`text-lg font-semibold ${
                           isSelected ? "text-teal-600" : "text-foreground"
                         }`}
                       >
-                        {format(day, "d", { locale: es })}{" "}
+                        {format(day, "d", { locale: dateLocale })}{" "}
                         <span className="text-sm font-normal lowercase">
-                          {format(day, "MMM", { locale: es })}
+                          {format(day, "MMM", { locale: dateLocale })}
                         </span>
                       </p>
                     </button>
@@ -491,7 +488,7 @@ export default function PublicFieldReservePage() {
               {selectedDate && (
                 <>
                   <p className="font-semibold text-foreground">
-                    Selecciona hasta 2 horas consecutivas
+                    {t("selectUpTo2Hours")}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {timeSlotsForDay.map((slot) => {
@@ -518,15 +515,15 @@ export default function PublicFieldReservePage() {
                     })}
                   </div>
                   {timeSlotsForDay.length === 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      No hay horarios configurados para este día
+                    <p className="text-sm text-foreground/70">
+                      {t("noSchedulesForDay")}
                     </p>
                   )}
-                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs font-bold">
+                  <p className="flex items-center gap-2 text-sm text-foreground/70">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-foreground/70 text-xs font-bold">
                       i
                     </span>
-                    Puedes seleccionar hasta 2 horas consecutivas
+                    {t("selectUpTo2HoursTip")}
                   </p>
                 </>
               )}
@@ -538,35 +535,41 @@ export default function PublicFieldReservePage() {
         <div className="lg:col-span-1">
           <Card className="sticky top-24 rounded-xl border-border bg-card shadow-sm overflow-hidden">
             <CardHeader className="bg-teal-600 text-white rounded-t-xl">
-              <CardTitle>Reserva esta cancha</CardTitle>
+              <CardTitle>{t("reserveThisCourt")}</CardTitle>
               <CardDescription className="text-white/90">
-                Disponible para reservar ahora
+                {t("availableToReserve")}
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
               <div className="grid grid-cols-1 gap-2 rounded-lg bg-muted border border-border p-3">
                 <div className="flex justify-between text-sm text-foreground">
-                  <span className="text-muted-foreground flex items-center gap-1">
+                  <span className="text-foreground/70 flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
-                    Fecha seleccionada
+                    {t("selectedDate")}
                   </span>
                   <span>
                     {selectedDate
-                      ? format(selectedDate, "EEEE, d 'de' MMMM", {
-                          locale: es,
-                        })
-                      : "No seleccionada"}
+                      ? format(
+                          selectedDate,
+                          locale === "en"
+                            ? "EEEE, MMMM d"
+                            : "EEEE, d 'de' MMMM",
+                          {
+                            locale: dateLocale,
+                          }
+                        )
+                      : t("notSelected")}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground flex items-center gap-1">
+                  <span className="text-foreground/70 flex items-center gap-1">
                     <Clock className="h-4 w-4" />
-                    Horas seleccionadas
+                    {t("selectedHours")}
                   </span>
                   <span>
                     {selectedSlots.length > 0
                       ? `${selectedSlots[0]}${selectedSlots[1] ? ` - ${selectedSlots[1]}` : ""} (${totalHours}h)`
-                      : "No seleccionadas"}
+                      : t("notSelectedPlural")}
                   </span>
                 </div>
               </div>
@@ -575,25 +578,27 @@ export default function PublicFieldReservePage() {
                 <div className="space-y-2">
                   <p className="text-sm font-medium flex items-center gap-2 text-foreground">
                     <Building2 className="h-4 w-4" />
-                    Centro deportivo
+                    {t("sportCenter")}
                   </p>
                   <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm space-y-1 text-foreground">
                     <p>
-                      <span className="text-muted-foreground">Nombre: </span>
+                      <span className="text-foreground/70">{t("name")}: </span>
                       {field.sportCenter.name}
                     </p>
                     {field.sportCenter.district && (
                       <p>
-                        <span className="text-muted-foreground">
-                          Distrito:{" "}
+                        <span className="text-foreground/70">
+                          {t("district")}:{" "}
                         </span>
                         {field.sportCenter.district}
                       </p>
                     )}
                     {field.sportCenter._count?.fields != null && (
                       <p className="flex items-center gap-1">
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        {field.sportCenter._count.fields} canchas
+                        <Users className="h-4 w-4 text-foreground/70" />
+                        {t("fieldsCount", {
+                          count: String(field.sportCenter._count.fields),
+                        })}
                       </p>
                     )}
                   </div>
@@ -620,11 +625,11 @@ export default function PublicFieldReservePage() {
                 onClick={handleCompleteReservation}
               >
                 {createReservation.isPending
-                  ? "Procesando..."
-                  : "Completar reserva"}
+                  ? t("processing")
+                  : t("completeReservation")}
               </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                Al reservar, aceptas los términos y condiciones
+              <p className="text-xs text-foreground/70 text-center">
+                {t("termsNote")}
               </p>
             </CardContent>
           </Card>
@@ -639,10 +644,10 @@ export default function PublicFieldReservePage() {
         <DialogContent className="bg-card border-border text-foreground max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-foreground text-xl">
-              Completar Reserva
+              {t("completeReservationTitle")}
             </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Confirma los detalles de tu reserva y realiza el pago.
+            <DialogDescription className="text-foreground/70">
+              {t("confirmDetails")}
             </DialogDescription>
           </DialogHeader>
 
@@ -650,28 +655,34 @@ export default function PublicFieldReservePage() {
             {/* Resumen de la Reserva */}
             <div>
               <h3 className="font-semibold text-foreground mb-3">
-                Resumen de la Reserva
+                {t("reservationSummary")}
               </h3>
               <div className="rounded-xl border border-border bg-muted/30 dark:bg-muted/20 p-4 grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <p className="text-muted-foreground mb-0.5">Cancha</p>
+                  <p className="text-foreground/70 mb-0.5">{t("court")}</p>
                   <p className="font-medium text-foreground">{field.name}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground mb-0.5">
-                    Centro Deportivo
+                  <p className="text-foreground/70 mb-0.5">
+                    {t("sportCenter")}
                   </p>
                   <p className="font-medium text-foreground">
                     {field.sportCenter?.name ?? "—"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground mb-0.5">Fecha</p>
+                  <p className="text-foreground/70 mb-0.5">{t("date")}</p>
                   <p className="font-medium text-foreground">
                     {selectedDate
-                      ? format(selectedDate, "EEEE, d 'de' MMMM yyyy", {
-                          locale: es,
-                        })
+                      ? format(
+                          selectedDate,
+                          locale === "en"
+                            ? "EEEE, MMMM d, yyyy"
+                            : "EEEE, d 'de' MMMM yyyy",
+                          {
+                            locale: dateLocale,
+                          }
+                        )
                       : "—"}
                   </p>
                 </div>
@@ -689,12 +700,13 @@ export default function PublicFieldReservePage() {
             {!user ? (
               <div>
                 <h3 className="font-semibold text-foreground mb-3">
-                  Datos de contacto
+                  {t("contactData")}
                 </h3>
                 <ReservationGuestForm
                   onSubmit={submitGuestReservation}
                   onCancel={() => setReservationModalOpen(false)}
                   isLoading={createReservation.isPending}
+                  namespace="fields"
                 />
               </div>
             ) : (
@@ -709,9 +721,9 @@ export default function PublicFieldReservePage() {
                   <div>
                     <label
                       htmlFor="res-card-name"
-                      className="text-sm text-muted-foreground block mb-1"
+                      className="text-sm text-foreground/70 block mb-1"
                     >
-                      Nombre en la Tarjeta
+                      {t("cardName")}
                     </label>
                     <input
                       id="res-card-name"
@@ -724,9 +736,9 @@ export default function PublicFieldReservePage() {
                   <div>
                     <label
                       htmlFor="res-card-number"
-                      className="text-sm text-muted-foreground block mb-1"
+                      className="text-sm text-foreground/70 block mb-1"
                     >
-                      Número de Tarjeta
+                      {t("cardNumber")}
                     </label>
                     <input
                       id="res-card-number"
@@ -740,9 +752,9 @@ export default function PublicFieldReservePage() {
                     <div>
                       <label
                         htmlFor="res-card-expiry"
-                        className="text-sm text-muted-foreground block mb-1"
+                        className="text-sm text-foreground/70 block mb-1"
                       >
-                        Fecha de Vencimiento
+                        {t("expiryDate")}
                       </label>
                       <input
                         id="res-card-expiry"
@@ -775,18 +787,26 @@ export default function PublicFieldReservePage() {
             {/* Método de Pago (solo selección) */}
             <div>
               <h3 className="font-semibold text-foreground mb-3">
-                Método de Pago
+                {t("paymentMethod")}
               </h3>
               <div className="flex gap-3 flex-wrap">
                 {(
                   [
-                    { id: "qulqi" as const, label: "Qulqi", icon: CreditCard },
+                    {
+                      id: "qulqi" as const,
+                      labelKey: "paymentQulqi",
+                      icon: CreditCard,
+                    },
                     {
                       id: "mercadopago" as const,
-                      label: "Mercado Pago",
+                      labelKey: "paymentMercadoPago",
                       icon: Wallet,
                     },
-                    { id: "otro" as const, label: "Otro", icon: DollarSign },
+                    {
+                      id: "otro" as const,
+                      labelKey: "paymentOther",
+                      icon: DollarSign,
+                    },
                   ] as const
                 ).map((method) => (
                   <button
@@ -800,7 +820,9 @@ export default function PublicFieldReservePage() {
                     }`}
                   >
                     <method.icon className="h-6 w-6" />
-                    <span className="text-sm font-medium">{method.label}</span>
+                    <span className="text-sm font-medium">
+                      {t(method.labelKey)}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -810,17 +832,17 @@ export default function PublicFieldReservePage() {
             <div className="rounded-xl border border-border bg-muted/20 dark:bg-muted/10 p-4 space-y-2 text-sm">
               <div className="flex justify-between text-foreground">
                 <span>
-                  Alquiler de Cancha ({selectedSlots[0]}
+                  {t("courtRental")} ({selectedSlots[0]}
                   {selectedSlots[1] ? ` - ${selectedSlots[1]}` : ""})
                 </span>
                 <span>S/ {formatPrice(totalAmount)}</span>
               </div>
               <div className="flex justify-between text-foreground">
-                <span>Cargo por Servicio</span>
+                <span>{t("serviceCharge")}</span>
                 <span>S/ {formatPrice(SERVICE_CHARGE)}</span>
               </div>
               <div className="flex justify-between font-semibold text-foreground pt-2 border-t border-border">
-                <span>Total</span>
+                <span>{t("total")}</span>
                 <span className="text-emerald-600 dark:text-emerald-400">
                   S/ {formatPrice(totalWithService)}
                 </span>
@@ -836,7 +858,7 @@ export default function PublicFieldReservePage() {
                   onClick={() => setReservationModalOpen(false)}
                   disabled={createReservation.isPending}
                 >
-                  Cancelar
+                  {t("cancel")}
                 </Button>
                 <Button
                   onClick={confirmReservationAsUser}
@@ -844,16 +866,15 @@ export default function PublicFieldReservePage() {
                   className="bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
                   {createReservation.isPending
-                    ? "Procesando..."
-                    : "Confirmar Reserva"}
+                    ? t("processing")
+                    : t("confirmReservation")}
                 </Button>
               </div>
             ) : null}
           </div>
 
-          <p className="text-xs text-muted-foreground text-center pt-2 border-t border-border">
-            Al confirmar tu reserva, aceptas nuestros Términos de Servicio y
-            Política de Cancelación.
+          <p className="text-xs text-foreground/70 text-center pt-2 border-t border-border">
+            {t("termsFooter")}
           </p>
         </DialogContent>
       </Dialog>
