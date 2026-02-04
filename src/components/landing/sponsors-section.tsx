@@ -1,6 +1,7 @@
 "use client";
 
-import { Award, Dumbbell, ShieldCheck, Target, Trophy } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
+import { Dumbbell, ShieldCheck, Target, Trophy } from "lucide-react";
 
 const sponsors = [
   { name: "ProSports", icon: Target, color: "text-red-500" },
@@ -14,6 +15,7 @@ const sponsors = [
 ];
 
 export function SponsorsSection() {
+  const { t } = useTranslation("home");
   return (
     <section
       id="patrocinadores"
@@ -22,10 +24,10 @@ export function SponsorsSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-emerald-800 dark:text-emerald-300 mb-4">
-            Nuestros Patrocinadores
+            {t("sponsors.title")}
           </h2>
           <p className="text-gray-600 dark:text-gray-300">
-            Empresas líderes que confían en nosotros
+            {t("sponsors.subtitle")}
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-6 md:gap-8">

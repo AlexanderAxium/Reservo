@@ -10,18 +10,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTranslation } from "@/hooks/useTranslation";
 import { ArrowRight, Calendar, MapPin, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-const SPORTS = [
-  { value: "FOOTBALL", label: "Fútbol" },
-  { value: "TENNIS", label: "Tenis" },
-  { value: "BASKETBALL", label: "Básquet" },
-  { value: "VOLLEYBALL", label: "Vóley" },
-  { value: "FUTSAL", label: "Futsal" },
-];
+const SPORT_KEYS: Record<string, string> = {
+  FOOTBALL: "football",
+  TENNIS: "tennis",
+  BASKETBALL: "basketball",
+  VOLLEYBALL: "volleyball",
+  FUTSAL: "futsal",
+};
 
 const DISTRICTS = [
   "Lima",
@@ -37,8 +38,16 @@ const DISTRICTS = [
 ];
 
 export function LandingHeroSection() {
+  const { t } = useTranslation("home");
   const router = useRouter();
   const [sport, setSport] = useState<string>("");
+  const sports = useMemo(
+    () =>
+      (
+        ["FOOTBALL", "TENNIS", "BASKETBALL", "VOLLEYBALL", "FUTSAL"] as const
+      ).map((value) => ({ value, label: t(`sports.${SPORT_KEYS[value]}`) })),
+    [t]
+  );
   const [district, setDistrict] = useState<string>("");
   const [date, setDate] = useState<string>("");
 
@@ -65,16 +74,20 @@ export function LandingHeroSection() {
           {/* Izquierda: contenido */}
           <div className="space-y-6 text-white">
             <span className="inline-block px-4 py-1.5 rounded-full bg-emerald-500/90 text-white text-sm font-medium">
-              La plataforma #1 para reservas deportivas
+              {t("hero.badge")}
             </span>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight">
-              Encuentra y reserva{" "}
-              <span className="text-emerald-400">canchas</span>{" "}
-              <span className="text-emerald-400">deportivas</span> en segundos
+              {t("hero.title")}{" "}
+              <span className="text-emerald-400">
+                {t("hero.titleHighlight1")}
+              </span>{" "}
+              <span className="text-emerald-400">
+                {t("hero.titleHighlight2")}
+              </span>{" "}
+              {t("hero.titleEnd")}
             </h1>
             <p className="text-lg text-white/90 max-w-xl">
-              Conectamos deportistas con las mejores instalaciones deportivas.
-              Fútbol, tenis, básquetbol y más.
+              {t("hero.subtitle")}
             </p>
             <div className="flex flex-wrap gap-4">
               <Button
@@ -86,7 +99,7 @@ export function LandingHeroSection() {
                   href="/canchas"
                   className="inline-flex items-center gap-2"
                 >
-                  Buscar Canchas <ArrowRight className="h-4 w-4" />
+                  {t("hero.searchCourts")} <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
               <Button
@@ -95,7 +108,7 @@ export function LandingHeroSection() {
                 size="lg"
                 className="border-2 border-white bg-white/15 text-white hover:bg-white/25 hover:border-white rounded-lg px-6 font-medium shadow-lg"
               >
-                <Link href="/signup">Registrar mi Cancha</Link>
+                <Link href="/signup">{t("hero.registerCourt")}</Link>
               </Button>
             </div>
           </div>
@@ -104,19 +117,17 @@ export function LandingHeroSection() {
           <div className="rounded-2xl bg-gray-900/80 backdrop-blur border border-white/10 p-6 lg:p-8">
             <h2 className="text-xl font-semibold text-white mb-6 flex items-center gap-2">
               <Search className="h-5 w-5 text-emerald-400" />
-              Encuentra tu cancha ideal
+              {t("hero.findIdealCourt")}
             </h2>
             <form onSubmit={handleSearch} className="space-y-5">
               <div>
-                <Label className="text-white/90">
-                  ¿Qué deporte quieres jugar?
-                </Label>
+                <Label className="text-white/90">{t("hero.whatSport")}</Label>
                 <Select value={sport} onValueChange={setSport}>
                   <SelectTrigger className="mt-1.5 bg-white/5 border-white/20 text-white placeholder:text-white/50">
-                    <SelectValue placeholder="Selecciona un deporte" />
+                    <SelectValue placeholder={t("hero.selectSport")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {SPORTS.map((s) => (
+                    {sports.map((s) => (
                       <SelectItem key={s.value} value={s.value}>
                         {s.label}
                       </SelectItem>
@@ -125,11 +136,11 @@ export function LandingHeroSection() {
                 </Select>
               </div>
               <div>
-                <Label className="text-white/90">¿Dónde quieres jugar?</Label>
+                <Label className="text-white/90">{t("hero.wherePlay")}</Label>
                 <Select value={district} onValueChange={setDistrict}>
                   <SelectTrigger className="mt-1.5 bg-white/5 border-white/20 text-white placeholder:text-white/50">
                     <MapPin className="h-4 w-4 mr-2 text-white/60" />
-                    <SelectValue placeholder="Selecciona un distrito" />
+                    <SelectValue placeholder={t("hero.selectDistrict")} />
                   </SelectTrigger>
                   <SelectContent>
                     {DISTRICTS.map((d) => (
@@ -141,7 +152,7 @@ export function LandingHeroSection() {
                 </Select>
               </div>
               <div>
-                <Label className="text-white/90">¿Cuándo quieres jugar?</Label>
+                <Label className="text-white/90">{t("hero.whenPlay")}</Label>
                 <div className="relative mt-1.5">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60" />
                   <Input
@@ -158,7 +169,7 @@ export function LandingHeroSection() {
                 className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg"
               >
                 <Search className="h-4 w-4 mr-2" />
-                Buscar Disponibilidad
+                {t("hero.searchAvailability")}
               </Button>
             </form>
           </div>
