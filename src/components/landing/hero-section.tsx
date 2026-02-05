@@ -157,6 +157,7 @@ export function LandingHeroSection() {
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/60" />
                   <Input
                     type="date"
+                    min={new Date().toISOString().slice(0, 10)}
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
                     className="pl-10 bg-white/5 border-white/20 text-white placeholder:text-white/50"

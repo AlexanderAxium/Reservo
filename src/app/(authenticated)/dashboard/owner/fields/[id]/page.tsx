@@ -525,6 +525,7 @@ export default function OwnerFieldDetailPage() {
         <ReservationCalendar
           fieldId={fieldId}
           schedules={field.schedules || []}
+          fieldHref={(id) => `/dashboard/owner/fields/${id}`}
           reservations={
             field.reservations?.map((r) => ({
               id: r.id,
@@ -538,6 +539,10 @@ export default function OwnerFieldDetailPage() {
                   : new Date(r.endDate as string).toISOString(),
               status: r.status,
               amount: Number(r.amount),
+              clientName:
+                (r as { user?: { name: string | null } }).user?.name ??
+                (r as { guestName: string | null }).guestName ??
+                "Invitado",
             })) || []
           }
         />

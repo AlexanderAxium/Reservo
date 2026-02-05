@@ -207,6 +207,7 @@ export function ManualReservationModal({
                       <FormControl>
                         <Input
                           type="datetime-local"
+                          min={new Date().toISOString().slice(0, 16)}
                           className="bg-background border-border text-foreground"
                           {...field}
                         />
@@ -224,6 +225,7 @@ export function ManualReservationModal({
                       <FormControl>
                         <Input
                           type="datetime-local"
+                          min={new Date().toISOString().slice(0, 16)}
                           className="bg-background border-border text-foreground"
                           {...field}
                         />

@@ -478,12 +478,13 @@ export const fieldRouter = router({
           },
           reservations: {
             include: {
-              payments: true, // Incluir todos los pagos para calcular ingresos
+              payments: true,
+              user: { select: { name: true } },
             },
             orderBy: {
               startDate: "desc",
             },
-            take: 100, // Limitar para no sobrecargar
+            take: 100,
           },
         },
       });
