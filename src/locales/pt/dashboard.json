@@ -10,6 +10,7 @@
   "unverified": "Não verificada",
   "assignedRoles": "Funções atribuídas:",
   "noRolesAssigned": "Sem funções atribuídas",
+  "noRoleAssigned": "Sem função atribuída",
   "availablePermissions": "Permissões disponíveis:",
   "noPermissionsAssigned": "Sem permissões atribuídas",
   "needAccess": "Precisa de acesso?",

@@ -34,7 +34,7 @@ export default function GlobalNavbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, isAuthenticated, signOut } = useAuthContext();
-  const { primaryRole } = useUser();
+  const { primaryRole, isAdmin, isSuperAdmin } = useUser();
   const router = useRouter();
   const { t } = useTranslation("common");
 
@@ -183,12 +183,14 @@ export default function GlobalNavbar() {
                           <User className="mr-2 h-4 w-4" />
                           <span>{t("profile")}</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => router.push("/dashboard/settings")}
-                        >
-                          <Settings className="mr-2 h-4 w-4" />
-                          <span>{t("settings")}</span>
-                        </DropdownMenuItem>
+                        {(isSuperAdmin || isAdmin) && (
+                          <DropdownMenuItem
+                            onClick={() => router.push("/dashboard/settings")}
+                          >
+                            <Settings className="mr-2 h-4 w-4" />
+                            <span>{t("settings")}</span>
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={handleSignOut}>
                           <LogOut className="mr-2 h-4 w-4" />
@@ -198,7 +200,17 @@ export default function GlobalNavbar() {
                     </DropdownMenu>
                   </div>
                 ) : (
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/signup"
+                      className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                        isScrolled
+                          ? "text-foreground hover:text-emerald-600 hover:bg-muted/80"
+                          : "text-foreground dark:text-white hover:text-emerald-400 hover:bg-white/10"
+                      }`}
+                    >
+                      {t("signUp")}
+                    </Link>
                     <button
                       type="button"
                       onClick={handleSignIn}
@@ -310,25 +322,26 @@ export default function GlobalNavbar() {
                           </div>
                         </button>
 
-                        {/* Settings Link */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            router.push("/dashboard/settings");
-                            setIsMenuOpen(false);
-                          }}
-                          className="group flex items-center px-5 py-4 rounded-xl text-sm font-medium transition-all duration-200 text-gray-300 hover:text-white hover:bg-accent w-full"
-                        >
-                          <Settings className="mr-3 h-5 w-5 text-gray-400 group-hover:text-white" />
-                          <div className="flex-1 text-left">
-                            <div className="font-medium text-white">
-                              {t("settings")}
+                        {(isSuperAdmin || isAdmin) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              router.push("/dashboard/settings");
+                              setIsMenuOpen(false);
+                            }}
+                            className="group flex items-center px-5 py-4 rounded-xl text-sm font-medium transition-all duration-200 text-gray-300 hover:text-white hover:bg-accent w-full"
+                          >
+                            <Settings className="mr-3 h-5 w-5 text-gray-400 group-hover:text-white" />
+                            <div className="flex-1 text-left">
+                              <div className="font-medium text-white">
+                                {t("settings")}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {t("accountSettings")}
+                              </div>
                             </div>
-                            <div className="text-xs text-gray-400">
-                              {t("accountSettings")}
-                            </div>
-                          </div>
-                        </button>
+                          </button>
+                        )}
 
                         {/* Profile Link */}
                         <button

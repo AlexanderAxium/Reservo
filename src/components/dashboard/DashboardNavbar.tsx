@@ -31,7 +31,7 @@ import React from "react";
 
 export function DashboardNavbar() {
   const { user, signOut } = useAuthContext();
-  const { primaryRole } = useUser();
+  const { primaryRole, isAdmin, isSuperAdmin } = useUser();
   const router = useRouter();
   const pathname = usePathname();
   const { t } = useTranslation("common");
@@ -147,7 +147,9 @@ export function DashboardNavbar() {
                 </p>
                 {primaryRole && (
                   <p className="text-xs leading-none text-muted-foreground capitalize mt-1">
-                    {primaryRole.replace("_", " ")}
+                    {primaryRole === "unknown"
+                      ? tDashboard("noRoleAssigned")
+                      : primaryRole.replace("_", " ")}
                   </p>
                 )}
               </div>
@@ -159,12 +161,14 @@ export function DashboardNavbar() {
               <User className="mr-2 h-4 w-4" />
               <span>{t("profile")}</span>
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => router.push("/dashboard/settings")}
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              <span>{t("settings")}</span>
-            </DropdownMenuItem>
+            {(isSuperAdmin || isAdmin) && (
+              <DropdownMenuItem
+                onClick={() => router.push("/dashboard/settings")}
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                <span>{t("settings")}</span>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut}>
               <LogOut className="mr-2 h-4 w-4" />

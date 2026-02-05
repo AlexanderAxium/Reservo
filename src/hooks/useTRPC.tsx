@@ -15,18 +15,29 @@ export const TRPCProvider = ({ children }: { children: React.ReactNode }) => {
     return trpc.createClient({
       links: [
         httpBatchLink({
-          url: "/api/trpc",
+          url:
+            typeof window !== "undefined"
+              ? `${window.location.origin}/api/trpc`
+              : "/api/trpc",
+          fetch(url, options) {
+            return fetch(url, {
+              ...options,
+              credentials: "include",
+            });
+          },
           headers() {
-            // Get token from localStorage
-            const token = localStorage.getItem("auth_token");
+            const token =
+              typeof window !== "undefined"
+                ? localStorage.getItem("auth_token")
+                : null;
             return {
-              authorization: token ? `Bearer ${token}` : "",
+              ...(token ? { authorization: `Bearer ${token}` } : {}),
             };
           },
         }),
       ],
     });
-  }, []); // No dependencies needed
+  }, []);
 
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>

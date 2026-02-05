@@ -27,6 +27,7 @@
   "privacy": "Privacidade",
   "cookies": "Cookies",
   "backToHome": "Voltar ao início",
+  "backToSignIn": "Voltar ao login",
   "email": "Email",
   "password": "Senha",
   "forgotPassword": "Esqueceu sua senha?",
@@ -71,5 +72,14 @@
   "yourPassword": "Sua senha",
   "cancel": "Cancelar",
   "anonymous": "Anônimo",
-  "notAvailable": "Não disponível"
+  "notAvailable": "Não disponível",
+  "emailNotRegistered": "Nenhuma conta está registrada com este email.",
+  "recoveryEmailSent": "Se este email estiver registrado, você receberá um link de recuperação.",
+  "recoveryEmailSentTitle": "Email enviado",
+  "recoveryEmailSentDescription": "Enviamos um link de recuperação para seu email. Verifique sua caixa de entrada e siga as instruções.",
+  "checkSpamFolder": "Se não receber o email em alguns minutos, verifique sua pasta de spam.",
+  "sendAnotherEmail": "Enviar outro email",
+  "forgotPasswordDescription": "Digite seu email e enviaremos um link para redefinir sua senha.",
+  "sending": "Enviando...",
+  "sendRecoveryLink": "Enviar link de recuperação"
 }

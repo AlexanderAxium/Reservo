@@ -1,11 +1,14 @@
 "use client";
 
+import { useUser } from "@/hooks/useUser";
 import { trpc } from "@/utils/trpc";
 import { Building2, Calendar, Globe, Mail, MapPin, Phone } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function TenantInfo() {
   const router = useRouter();
+  const { isAdmin, isSuperAdmin } = useUser();
+  const canAccessSettings = isAdmin || isSuperAdmin;
 
   // Fetch tenant information
   const { data: tenant, isLoading } = trpc.companyInfo.get.useQuery();
@@ -61,13 +64,15 @@ export default function TenantInfo() {
           <p className="text-sm text-muted-foreground mb-4">
             No se encontró información de la empresa
           </p>
-          <button
-            type="button"
-            onClick={() => router.push("/dashboard/settings")}
-            className="text-sm text-primary hover:text-primary/80 font-medium bg-primary/10 hover:bg-primary/20 px-3 py-2 rounded-md transition-colors"
-          >
-            Configurar información
-          </button>
+          {canAccessSettings && (
+            <button
+              type="button"
+              onClick={() => router.push("/dashboard/settings")}
+              className="text-sm text-primary hover:text-primary/80 font-medium bg-primary/10 hover:bg-primary/20 px-3 py-2 rounded-md transition-colors"
+            >
+              Configurar información
+            </button>
+          )}
         </div>
       </div>
     );
@@ -89,13 +94,15 @@ export default function TenantInfo() {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => router.push("/dashboard/settings")}
-          className="text-sm text-primary hover:text-primary/80 font-medium bg-primary/10 hover:bg-primary/20 px-3 py-2 rounded-md transition-colors"
-        >
-          Editar
-        </button>
+        {canAccessSettings && (
+          <button
+            type="button"
+            onClick={() => router.push("/dashboard/settings")}
+            className="text-sm text-primary hover:text-primary/80 font-medium bg-primary/10 hover:bg-primary/20 px-3 py-2 rounded-md transition-colors"
+          >
+            Editar
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
