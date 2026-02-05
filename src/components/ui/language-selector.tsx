@@ -36,15 +36,15 @@ export function LanguageSelector({
           className={`h-8 px-2 transition-colors gap-1.5 ${
             isTransparent
               ? "hover:bg-white/10 text-white hover:text-white border border-white/30"
-              : "hover:bg-accent/50 text-gray-900 dark:text-gray-100 hover:text-gray-900 dark:hover:text-gray-100 border border-gray-300 dark:border-gray-600"
+              : "bg-emerald-50 dark:bg-emerald-950/50 text-gray-900 dark:text-gray-100 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800"
           }`}
         >
           <span className="text-base leading-none">{currentLanguage.flag}</span>
-          <span className="text-xs font-medium hidden sm:inline-block">
+          <span className="text-xs font-medium hidden sm:inline-block text-gray-900 dark:text-gray-100">
             {currentLanguage.name}
           </span>
           <ChevronDown
-            className={`h-3.5 w-3.5 ${isTransparent ? "text-white" : "text-foreground"}`}
+            className={`h-3.5 w-3.5 ${isTransparent ? "text-white" : "text-gray-900 dark:text-gray-100"}`}
           />
           <span className="sr-only">Seleccionar idioma</span>
         </Button>

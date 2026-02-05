@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuthContext } from "@/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -10,7 +11,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { useTranslation } from "@/hooks/useTranslation";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -26,21 +29,36 @@ interface ReservationGuestFormProps {
   onSubmit: (data: GuestFormData) => void;
   onCancel: () => void;
   isLoading?: boolean;
+  namespace?: "common" | "fields";
 }
 
 export function ReservationGuestForm({
   onSubmit,
   onCancel,
   isLoading = false,
+  namespace = "common",
 }: ReservationGuestFormProps) {
+  const { t } = useTranslation(namespace);
+  const { user } = useAuthContext();
+
   const form = useForm<GuestFormData>({
     resolver: zodResolver(guestFormSchema),
     defaultValues: {
-      guestName: "",
-      guestEmail: "",
-      guestPhone: "",
+      guestName: user?.name ?? "",
+      guestEmail: user?.email ?? "",
+      guestPhone: user?.phone ?? "",
     },
   });
+
+  useEffect(() => {
+    if (user) {
+      form.reset({
+        guestName: user.name ?? "",
+        guestEmail: user.email ?? "",
+        guestPhone: user.phone ?? "",
+      });
+    }
+  }, [user, form]);
 
   return (
     <Form {...form}>
@@ -80,9 +98,9 @@ export function ReservationGuestForm({
           name="guestPhone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Teléfono</FormLabel>
+              <FormLabel>{t("guestPhone")}</FormLabel>
               <FormControl>
-                <Input placeholder="Ej: 999 888 777" {...field} />
+                <Input placeholder={t("guestPhonePlaceholder")} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

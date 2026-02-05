@@ -74,6 +74,7 @@
   "guestEmailPlaceholder": "seu@email.com",
   "guestPhone": "Telefone",
   "guestPhonePlaceholder": "Ex: 999 888 777",
+  "reservationUnderYourAccount": "A reserva será feita com os dados da sua conta.",
   "reserving": "Reservando...",
   "nameRequired": "O nome é obrigatório",
   "emailInvalid": "Email inválido",

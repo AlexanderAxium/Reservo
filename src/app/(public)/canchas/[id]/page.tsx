@@ -29,7 +29,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { FeatureIcon } from "@/lib/feature-icons";
 import { formatPrice } from "@/lib/utils";
 import { trpc } from "@/utils/trpc";
-import { addDays, format, parseISO, startOfWeek } from "date-fns";
+import { addDays, format, parseISO, startOfDay, startOfWeek } from "date-fns";
 import type { Locale } from "date-fns";
 import { enUS } from "date-fns/locale";
 import { es } from "date-fns/locale";
@@ -94,10 +94,10 @@ export default function PublicFieldReservePage() {
     { enabled: !!fieldId }
   );
 
-  const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+  const todayStart = startOfDay(new Date());
   const weekDays = useMemo(
-    () => Array.from({ length: 14 }, (_, i) => addDays(weekStart, i)),
-    [weekStart]
+    () => Array.from({ length: 14 }, (_, i) => addDays(todayStart, i)),
+    [todayStart]
   );
 
   const rangeStart = selectedDate
@@ -109,7 +109,7 @@ export default function PublicFieldReservePage() {
         0,
         0
       )
-    : weekStart;
+    : todayStart;
   const rangeEnd = selectedDate
     ? new Date(
         selectedDate.getFullYear(),
@@ -119,7 +119,7 @@ export default function PublicFieldReservePage() {
         59,
         59
       )
-    : addDays(weekStart, 13);
+    : addDays(todayStart, 13);
 
   const { data: reservationsInRange } =
     trpc.field.getReservationsForRange.useQuery(
@@ -710,74 +710,111 @@ export default function PublicFieldReservePage() {
                 />
               </div>
             ) : (
-              <div>
-                <h3 className="font-semibold text-foreground mb-3">
-                  Detalles del Pago
-                </h3>
-                <p className="text-xs text-muted-foreground mb-3">
-                  (Solo visualización por ahora; el pago no está implementado.)
-                </p>
-                <div className="space-y-3">
-                  <div>
-                    <label
-                      htmlFor="res-card-name"
-                      className="text-sm text-foreground/70 block mb-1"
-                    >
-                      {t("cardName")}
-                    </label>
-                    <input
-                      id="res-card-name"
-                      type="text"
-                      placeholder="Juan Pérez"
-                      readOnly
-                      className="w-full rounded-lg border border-border bg-muted/50 dark:bg-gray-800 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
-                    />
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold text-foreground mb-3">
+                    {t("contactData")}
+                  </h3>
+                  <div className="rounded-xl border border-border bg-muted/30 dark:bg-muted/20 p-4 grid grid-cols-1 gap-3 text-sm">
+                    <div>
+                      <p className="text-foreground/70 mb-0.5">
+                        {t("guestName")}
+                      </p>
+                      <p className="font-medium text-foreground">
+                        {user.name ?? "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-foreground/70 mb-0.5">
+                        {t("guestEmail")}
+                      </p>
+                      <p className="font-medium text-foreground">
+                        {user.email ?? "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-foreground/70 mb-0.5">
+                        {t("guestPhone")}
+                      </p>
+                      <p className="font-medium text-foreground">
+                        {user.phone ?? "—"}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <label
-                      htmlFor="res-card-number"
-                      className="text-sm text-foreground/70 block mb-1"
-                    >
-                      {t("cardNumber")}
-                    </label>
-                    <input
-                      id="res-card-number"
-                      type="text"
-                      placeholder="4111 1111 1111 1111"
-                      readOnly
-                      className="w-full rounded-lg border border-border bg-muted/50 dark:bg-gray-800 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {t("reservationUnderYourAccount")}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground mb-3">
+                    {t("paymentDetails")}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    (Solo visualización por ahora; el pago no está
+                    implementado.)
+                  </p>
+                  <div className="space-y-3">
                     <div>
                       <label
-                        htmlFor="res-card-expiry"
+                        htmlFor="res-card-name"
                         className="text-sm text-foreground/70 block mb-1"
                       >
-                        {t("expiryDate")}
+                        {t("cardName")}
                       </label>
                       <input
-                        id="res-card-expiry"
+                        id="res-card-name"
                         type="text"
-                        placeholder="MM/AA"
+                        placeholder="Juan Pérez"
                         readOnly
                         className="w-full rounded-lg border border-border bg-muted/50 dark:bg-gray-800 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
                       />
                     </div>
                     <div>
                       <label
-                        htmlFor="res-card-cvv"
-                        className="text-sm text-muted-foreground block mb-1"
+                        htmlFor="res-card-number"
+                        className="text-sm text-foreground/70 block mb-1"
                       >
-                        CVV
+                        {t("cardNumber")}
                       </label>
                       <input
-                        id="res-card-cvv"
+                        id="res-card-number"
                         type="text"
-                        placeholder="123"
+                        placeholder="4111 1111 1111 1111"
                         readOnly
                         className="w-full rounded-lg border border-border bg-muted/50 dark:bg-gray-800 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
                       />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label
+                          htmlFor="res-card-expiry"
+                          className="text-sm text-foreground/70 block mb-1"
+                        >
+                          {t("expiryDate")}
+                        </label>
+                        <input
+                          id="res-card-expiry"
+                          type="text"
+                          placeholder="MM/AA"
+                          readOnly
+                          className="w-full rounded-lg border border-border bg-muted/50 dark:bg-gray-800 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor="res-card-cvv"
+                          className="text-sm text-muted-foreground block mb-1"
+                        >
+                          CVV
+                        </label>
+                        <input
+                          id="res-card-cvv"
+                          type="text"
+                          placeholder="123"
+                          readOnly
+                          className="w-full rounded-lg border border-border bg-muted/50 dark:bg-gray-800 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

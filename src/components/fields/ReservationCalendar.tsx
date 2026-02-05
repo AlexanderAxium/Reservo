@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
+import { ReservationDetailModal } from "@/components/reservation/ReservationDetailModal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -45,6 +45,8 @@ interface Reservation {
   endDate: string;
   status: "PENDING" | "CONFIRMED" | "CANCELLED" | "COMPLETED" | "NO_SHOW";
   amount: number;
+  /** Nombre del cliente (usuario o invitado) para el preview en la celda */
+  clientName?: string;
 }
 
 interface Schedule {
@@ -57,15 +59,21 @@ interface ReservationCalendarProps {
   fieldId: string;
   schedules?: Schedule[];
   reservations?: Reservation[];
+  /** Ruta base para enlaces al detalle del campo (owner o admin) */
+  fieldHref: (fieldId: string) => string;
 }
 
 export function ReservationCalendar({
   fieldId: _fieldId,
   schedules = [],
   reservations = [],
+  fieldHref,
 }: ReservationCalendarProps) {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedReservationId, setSelectedReservationId] = useState<
+    string | null
+  >(null);
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Lunes
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -205,10 +213,10 @@ export function ReservationCalendar({
                 placeholder="Buscar reservas..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 pr-3 py-1.5 text-sm border rounded-md w-48"
+                className="pl-8 pr-3 py-1.5 text-sm border border-border rounded-md w-48 bg-background text-foreground placeholder:text-muted-foreground"
               />
             </div>
-            <select className="px-3 py-1.5 text-sm border rounded-md">
+            <select className="px-3 py-1.5 text-sm border border-border rounded-md bg-background text-foreground">
               <option>Todos</option>
             </select>
           </div>
@@ -238,9 +246,11 @@ export function ReservationCalendar({
         </div>
 
         {/* Calendario */}
-        <div className="border rounded-lg overflow-hidden">
-          <div className="grid grid-cols-8 border-b bg-muted/50">
-            <div className="p-2 font-medium text-sm border-r">Hora</div>
+        <div className="border border-border rounded-lg overflow-hidden">
+          <div className="grid grid-cols-8 border-b border-border bg-muted/40 dark:bg-muted/30">
+            <div className="p-2 font-medium text-sm text-foreground border-r border-border">
+              Hora
+            </div>
             {weekDays.map((day) => {
               const dayEnum = getDayEnum(day);
               const schedule = schedulesByDay.get(dayEnum);
@@ -250,19 +260,21 @@ export function ReservationCalendar({
               return (
                 <div
                   key={format(day, "yyyy-MM-dd")}
-                  className={`p-2 text-center border-r last:border-r-0 ${
-                    isToday ? "bg-green-50" : ""
+                  className={`p-2 text-center border-r border-border last:border-r-0 ${
+                    isToday
+                      ? "bg-slate-200/70 dark:bg-slate-600/50"
+                      : "bg-transparent"
                   }`}
                 >
-                  <div className="font-medium text-sm">
+                  <div className="font-medium text-sm text-foreground">
                     {dayLabels[dayEnum] || dayEnum} {format(day, "d")}
                   </div>
                   {schedule ? (
-                    <div className="text-xs text-green-600 mt-1">
+                    <div className="text-xs text-muted-foreground mt-1">
                       {schedule.startHour} - {schedule.endHour}
                     </div>
                   ) : (
-                    <div className="text-xs text-red-600 mt-1">Cerrado</div>
+                    <div className="text-xs text-destructive mt-1">Cerrado</div>
                   )}
                 </div>
               );
@@ -273,9 +285,9 @@ export function ReservationCalendar({
             {timeSlots.map((time) => (
               <div
                 key={time}
-                className="grid grid-cols-8 border-b last:border-b-0"
+                className="grid grid-cols-8 border-b border-border last:border-b-0"
               >
-                <div className="p-2 text-sm text-muted-foreground border-r bg-muted/30">
+                <div className="p-2 text-sm text-muted-foreground border-r border-border bg-muted/20 dark:bg-muted/10">
                   {time}
                 </div>
                 {weekDays.map((day) => {
@@ -289,28 +301,43 @@ export function ReservationCalendar({
                   return (
                     <div
                       key={format(day, "yyyy-MM-dd")}
-                      className={`p-1 border-r last:border-r-0 min-h-[40px] ${
+                      className={`p-1 border-r border-border last:border-r-0 min-h-[40px] ${
                         isAvailable
-                          ? "bg-white hover:bg-green-50 cursor-pointer"
-                          : "bg-gray-100"
+                          ? "bg-slate-50/80 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                          : "bg-muted/30 dark:bg-muted/20"
                       }`}
                     >
                       {slotReservations.map((reservation) => {
                         const start = parseISO(reservation.startDate);
                         const end = parseISO(reservation.endDate);
+                        const label = reservation.clientName
+                          ? `${reservation.clientName} · ${format(start, "HH:mm")}-${format(end, "HH:mm")}`
+                          : `${format(start, "HH:mm")} - ${format(end, "HH:mm")}`;
+                        const namePart = reservation.clientName
+                          ? `${(reservation.clientName as string).slice(0, 14)}${(reservation.clientName as string).length > 14 ? "…" : ""}`
+                          : null;
+                        const shortLabel = namePart
+                          ? `${namePart} ${format(start, "HH:mm")}`
+                          : `${format(start, "HH:mm")}-${format(end, "HH:mm")}`;
                         return (
-                          <div
+                          <button
+                            type="button"
                             key={reservation.id}
-                            className={`${getStatusColor(
+                            onClick={() =>
+                              setSelectedReservationId(reservation.id)
+                            }
+                            className={`w-full text-left ${getStatusColor(
                               reservation.status
-                            )} text-white text-xs p-1 rounded mb-1`}
-                            title={`${getStatusLabel(reservation.status)} - ${format(
-                              start,
-                              "HH:mm"
-                            )}-${format(end, "HH:mm")}`}
+                            )} text-white text-xs p-1.5 rounded mb-1 hover:opacity-90 transition-opacity truncate`}
+                            title={label}
                           >
-                            {format(start, "HH:mm")} - {format(end, "HH:mm")}
-                          </div>
+                            <span className="block truncate font-medium">
+                              {shortLabel}
+                            </span>
+                            <span className="block truncate opacity-90 text-[10px]">
+                              {getStatusLabel(reservation.status)}
+                            </span>
+                          </button>
                         );
                       })}
                     </div>
@@ -321,8 +348,15 @@ export function ReservationCalendar({
           </div>
         </div>
 
+        <ReservationDetailModal
+          reservationId={selectedReservationId}
+          onClose={() => setSelectedReservationId(null)}
+          fieldHref={fieldHref}
+          onStatusUpdated={() => setSelectedReservationId(null)}
+        />
+
         {/* Leyenda */}
-        <div className="mt-4 flex items-center gap-4 flex-wrap">
+        <div className="mt-4 flex items-center gap-4 flex-wrap text-foreground">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-green-500" />
             <span className="text-sm">Confirmada</span>
@@ -342,19 +376,17 @@ export function ReservationCalendar({
         </div>
 
         {/* Consejos */}
-        <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="mt-4 p-4 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border">
           <div className="flex items-start gap-2">
-            <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-white text-xs">✓</span>
+            <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span className="text-primary-foreground text-xs">✓</span>
             </div>
             <div>
-              <h4 className="font-medium text-blue-900 mb-2">
+              <h4 className="font-medium text-foreground mb-2">
                 Consejos para reservar
               </h4>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>
-                  • Haz clic en un horario disponible para crear una reserva
-                </li>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• Haz clic en una reserva para ver el detalle completo</li>
                 <li>
                   • Solo puedes reservar dentro de los horarios de atención
                   configurados

@@ -79,7 +79,7 @@ export default function GlobalNavbar() {
         className={`fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 lg:px-8 py-3 transition-all duration-300 ${
           isScrolled
             ? "backdrop-blur-md bg-white/95 dark:bg-gray-900/95 border-b border-gray-200 dark:border-gray-800 shadow-sm"
-            : "bg-white/80 dark:bg-transparent border-b border-gray-200/50 dark:border-transparent backdrop-blur-md"
+            : "bg-slate-100/95 dark:bg-transparent border-b border-slate-200/80 dark:border-transparent backdrop-blur-md"
         }`}
       >
         <div className="max-w-7xl mx-auto">
@@ -102,8 +102,8 @@ export default function GlobalNavbar() {
                 href="/"
                 className={`text-sm font-medium transition-colors ${
                   isScrolled
-                    ? "text-foreground hover:text-emerald-600"
-                    : "text-foreground dark:text-white hover:text-emerald-400"
+                    ? "text-gray-900 dark:text-foreground hover:text-emerald-600"
+                    : "text-slate-800 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400"
                 }`}
               >
                 {t("home")}
@@ -112,8 +112,8 @@ export default function GlobalNavbar() {
                 href="/canchas"
                 className={`text-sm font-medium transition-colors ${
                   isScrolled
-                    ? "text-foreground hover:text-emerald-600"
-                    : "text-foreground dark:text-white hover:text-emerald-400"
+                    ? "text-gray-900 dark:text-foreground hover:text-emerald-600"
+                    : "text-slate-800 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400"
                 }`}
               >
                 {t("fields")}
@@ -131,8 +131,8 @@ export default function GlobalNavbar() {
                     <span
                       className={`font-medium text-sm transition-colors ${
                         isScrolled
-                          ? "text-foreground"
-                          : "text-foreground dark:text-white"
+                          ? "text-gray-900 dark:text-foreground"
+                          : "text-slate-800 dark:text-white"
                       }`}
                     >
                       {user?.name || t("user")}
@@ -205,8 +205,8 @@ export default function GlobalNavbar() {
                       href="/signup"
                       className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                         isScrolled
-                          ? "text-foreground hover:text-emerald-600 hover:bg-muted/80"
-                          : "text-foreground dark:text-white hover:text-emerald-400 hover:bg-white/10"
+                          ? "text-gray-900 dark:text-foreground hover:text-emerald-600 hover:bg-muted/80"
+                          : "text-slate-800 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-white/10 dark:hover:bg-white/10"
                       }`}
                     >
                       {t("signUp")}
@@ -236,7 +236,7 @@ export default function GlobalNavbar() {
                     className={`inline-flex items-center justify-center p-2 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-inset ${
                       isScrolled
                         ? "text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:ring-gray-400"
-                        : "text-white/90 hover:text-white hover:bg-white/10 focus:ring-white/50"
+                        : "text-slate-700 dark:text-white/90 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/80 dark:hover:bg-white/10 focus:ring-slate-400 dark:focus:ring-white/50"
                     }`}
                   >
                     <span className="sr-only">{t("openMenu")}</span>

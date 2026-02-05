@@ -111,29 +111,36 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div
+      className="min-h-screen flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8 relative bg-cover bg-center bg-no-repeat"
+      style={{
+        backgroundImage:
+          "url(https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=1920)",
+      }}
+    >
+      <div className="absolute inset-0 bg-black/50 dark:bg-black/65" />
+      <div className="max-w-md w-full space-y-8 relative z-10">
         {/* Header */}
         <div className="text-center">
           <Link
             href="/"
-            className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-8 transition-colors"
+            className="inline-flex items-center text-white hover:text-emerald-300 mb-8 transition-colors drop-shadow-sm"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             {t("backToHome")}
           </Link>
 
-          <div className="mx-auto h-16 w-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
-            <span className="text-white font-bold text-2xl">M</span>
+          <div className="mx-auto h-16 w-16 bg-emerald-500 dark:bg-emerald-600 rounded-xl flex items-center justify-center shadow-lg">
+            <span className="text-white font-bold text-2xl">CL</span>
           </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            {t("welcomeTo")} MyApp
+          <h2 className="mt-6 text-3xl font-bold text-white drop-shadow-md">
+            {t("welcomeTo")} Cancha Libre
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-white/90">
             {t("noAccount")}{" "}
             <Link
               href="/signup"
-              className="font-medium text-blue-600 hover:text-blue-500"
+              className="font-medium text-emerald-300 hover:text-emerald-200"
             >
               {t("registerHere")}
             </Link>
@@ -141,7 +148,7 @@ export default function SignInPage() {
         </div>
 
         {/* Form */}
-        <div className="bg-white py-8 px-6 shadow-lg rounded-lg">
+        <div className="bg-white dark:bg-gray-800/95 backdrop-blur-sm py-8 px-6 shadow-xl rounded-xl border border-gray-200 dark:border-gray-700">
           <Form {...form}>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <Controller
@@ -150,13 +157,15 @@ export default function SignInPage() {
                 rules={{ required: t("emailRequired") }}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("email")}</FormLabel>
+                    <FormLabel className="text-gray-900 dark:text-gray-100 font-medium">
+                      {t("email")}
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="email"
                         placeholder="tu@email.com"
                         {...field}
-                        className="w-full"
+                        className="w-full bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
                       />
                     </FormControl>
                     <FormMessage />
@@ -170,18 +179,20 @@ export default function SignInPage() {
                 rules={{ required: t("passwordRequired") }}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("password")}</FormLabel>
+                    <FormLabel className="text-gray-900 dark:text-gray-100 font-medium">
+                      {t("password")}
+                    </FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input
                           type={showPassword ? "text" : "password"}
                           placeholder={t("yourPassword") || "Tu contraseña"}
                           {...field}
-                          className="w-full pr-10"
+                          className="w-full pr-10 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
                         />
                         <button
                           type="button"
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                           onClick={() => setShowPassword(!showPassword)}
                         >
                           {showPassword ? (
@@ -201,7 +212,7 @@ export default function SignInPage() {
                 <div className="text-sm">
                   <Link
                     href="/forgot-password"
-                    className="font-medium text-blue-600 hover:text-blue-500"
+                    className="font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300"
                   >
                     {t("forgotPassword")}
                   </Link>
@@ -211,7 +222,7 @@ export default function SignInPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white py-2 px-4 rounded-lg font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? t("signingIn") : t("signInButton")}
               </button>
@@ -222,10 +233,10 @@ export default function SignInPage() {
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
+                <div className="w-full border-t border-gray-300 dark:border-gray-600" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
+                <span className="px-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400">
                   {t("continueWith")}
                 </span>
               </div>
@@ -236,7 +247,7 @@ export default function SignInPage() {
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={loading}
-                className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <GoogleIcon className="w-5 h-5 mr-2" />
                 {loading ? t("redirecting") : "Google"}
