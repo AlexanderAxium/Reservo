@@ -209,19 +209,21 @@ export function OwnerMetricsCharts({ metrics }: OwnerMetricsChartsProps) {
         <p className="text-xs text-muted-foreground mb-4">
           Porcentaje de reservas por cancha para identificar las más usadas
         </p>
-        <div className="h-[300px] w-full max-w-md mx-auto">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
+        <div className="h-[340px] w-full max-w-2xl mx-auto flex flex-col sm:flex-row items-center gap-4">
+          <ResponsiveContainer
+            width="100%"
+            height={280}
+            className="min-h-[240px]"
+          >
+            <PieChart margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
               <Pie
                 data={pieData}
                 dataKey="value"
                 nameKey="name"
                 cx="50%"
                 cy="50%"
-                outerRadius={100}
-                label={({ name, percent }) =>
-                  `${name}: ${(percent * 100).toFixed(0)}%`
-                }
+                outerRadius={80}
+                label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
                 labelLine={{ stroke: gridColor }}
               >
                 {pieData.map((entry, index) => (
@@ -241,6 +243,30 @@ export function OwnerMetricsCharts({ metrics }: OwnerMetricsChartsProps) {
                   `${value} reservas`,
                   name,
                 ]}
+              />
+              <Legend
+                layout="vertical"
+                verticalAlign="middle"
+                align="right"
+                wrapperStyle={{ paddingLeft: "16px" }}
+                formatter={(value, entry) => {
+                  const payload = entry?.payload as
+                    | { value?: number; percent?: number }
+                    | undefined;
+                  const total = pieData.reduce((s, d) => s + d.value, 0);
+                  const pct =
+                    payload?.value != null && total > 0
+                      ? ((payload.value / total) * 100).toFixed(0)
+                      : "0";
+                  return (
+                    <span
+                      style={{ color: textColor }}
+                      className="text-xs block py-0.5 break-words max-w-full"
+                    >
+                      {value}: {pct}%
+                    </span>
+                  );
+                }}
               />
             </PieChart>
           </ResponsiveContainer>

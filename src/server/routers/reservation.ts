@@ -433,14 +433,153 @@ export const reservationRouter = router({
       return reservation;
     }),
 
-  /** Crear reserva manual (admin o owner de la cancha). */
+  /** Slots disponibles de 1h para una cancha en una fecha (excluye horas ya ocupadas). */
+  getAvailableSlots: protectedProcedure
+    .input(
+      z.object({
+        fieldId: IdSchema,
+        date: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/, "Formato fecha: YYYY-MM-DD"),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      if (!ctx.user?.id || !ctx.user.tenantId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario no autenticado",
+        });
+      }
+
+      const field = await prisma.field.findUnique({
+        where: { id: input.fieldId },
+        select: {
+          id: true,
+          ownerId: true,
+          owner: { select: { tenantId: true } },
+          schedules: {
+            select: { day: true, startHour: true, endHour: true },
+          },
+        },
+      });
+
+      if (!field) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Cancha no encontrada",
+        });
+      }
+
+      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
+      const isOwnerOfField = field.ownerId === ctx.user.id;
+      const sameTenant = field.owner.tenantId === ctx.user.tenantId;
+      if (!userIsAdmin && !isOwnerOfField) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "No tienes permiso para ver disponibilidad de esta cancha",
+        });
+      }
+      if (userIsAdmin && !sameTenant) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "La cancha no pertenece a tu tenant",
+        });
+      }
+
+      const date = new Date(`${input.date}T12:00:00`);
+      const dayOfWeek = date.getDay();
+      const weekDayMap = [
+        "SUNDAY",
+        "MONDAY",
+        "TUESDAY",
+        "WEDNESDAY",
+        "THURSDAY",
+        "FRIDAY",
+        "SATURDAY",
+      ] as const;
+      const weekDay = weekDayMap[dayOfWeek] ?? "SUNDAY";
+
+      const schedule = field.schedules.find((s) => s.day === weekDay);
+      const startHour = schedule?.startHour ?? "08:00";
+      const endHour = schedule?.endHour ?? "22:00";
+
+      const [startH, startM] = startHour.split(":").map(Number);
+      const [endH, endM] = endHour.split(":").map(Number);
+      const dayStart = new Date(date);
+      dayStart.setHours(startH, startM ?? 0, 0, 0);
+      const dayEnd = new Date(date);
+      dayEnd.setHours(endH, endM ?? 0, 0, 0);
+
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      if (date < todayStart) {
+        return [];
+      }
+      const now = new Date();
+      if (
+        date.getFullYear() === now.getFullYear() &&
+        date.getMonth() === now.getMonth() &&
+        date.getDate() === now.getDate()
+      ) {
+        if (dayStart < now) {
+          dayStart.setTime(now.getTime());
+          dayStart.setMinutes(Math.ceil(now.getMinutes() / 30) * 30, 0, 0);
+        }
+      }
+
+      const reservations = await prisma.reservation.findMany({
+        where: {
+          fieldId: input.fieldId,
+          status: { not: "CANCELLED" },
+          OR: [
+            {
+              startDate: { lt: dayEnd },
+              endDate: { gt: dayStart },
+            },
+          ],
+        },
+        select: { startDate: true, endDate: true },
+      });
+
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const slotDurationMs = 60 * 60 * 1000;
+      const slots: {
+        startLocal: string;
+        endLocal: string;
+        label: string;
+        available: boolean;
+      }[] = [];
+      let slotStart = new Date(dayStart);
+
+      while (slotStart.getTime() + slotDurationMs <= dayEnd.getTime()) {
+        const slotEnd = new Date(slotStart.getTime() + slotDurationMs);
+        const overlaps = reservations.some(
+          (r) =>
+            slotEnd.getTime() > new Date(r.startDate).getTime() &&
+            slotStart.getTime() < new Date(r.endDate).getTime()
+        );
+        const startStr = `${input.date}T${pad(slotStart.getHours())}:${pad(slotStart.getMinutes())}`;
+        const endStr = `${input.date}T${pad(slotEnd.getHours())}:${pad(slotEnd.getMinutes())}`;
+        slots.push({
+          startLocal: startStr,
+          endLocal: endStr,
+          label: `${pad(slotStart.getHours())}:${pad(slotStart.getMinutes())} - ${pad(slotEnd.getHours())}:${pad(slotEnd.getMinutes())}`,
+          available: !overlaps,
+        });
+        slotStart = new Date(slotStart.getTime() + slotDurationMs);
+      }
+
+      return slots;
+    }),
+
+  /** Crear reserva manual (admin o owner de la cancha). Monto se calcula automáticamente: precio cancha × horas (1 o 2). */
   createManual: protectedProcedure
     .input(
       z.object({
         fieldId: IdSchema,
         startDate: z.string().datetime(),
         endDate: z.string().datetime(),
-        amount: z.number().positive(),
+        amount: z.number().nonnegative().optional(),
         userId: IdSchema.optional(),
         guestName: z.string().min(1).optional(),
         guestEmail: z.string().email().optional(),
@@ -459,6 +598,7 @@ export const reservationRouter = router({
         where: { id: input.fieldId },
         select: {
           id: true,
+          price: true,
           ownerId: true,
           owner: { select: { tenantId: true } },
         },
@@ -512,6 +652,14 @@ export const reservationRouter = router({
         });
       }
 
+      const durationMs = endDate.getTime() - startDate.getTime();
+      const durationHours = Math.max(
+        0.5,
+        Math.round((durationMs / (60 * 60 * 1000)) * 100) / 100
+      );
+      const pricePerHour = Number(field.price);
+      const amount = Math.round(pricePerHour * durationHours * 100) / 100;
+
       const overlapping = await prisma.reservation.count({
         where: {
           fieldId: input.fieldId,
@@ -536,7 +684,7 @@ export const reservationRouter = router({
           fieldId: input.fieldId,
           startDate,
           endDate,
-          amount: new Prisma.Decimal(input.amount),
+          amount: new Prisma.Decimal(amount),
           status: "PENDING",
           userId: input.userId ?? null,
           guestName: isGuest ? (input.guestName?.trim() ?? null) : null,

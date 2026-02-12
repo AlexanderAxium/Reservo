@@ -171,7 +171,11 @@ export default function OwnerReservationsPage() {
   const pagination = data?.pagination;
 
   const ownerFields =
-    fieldsData?.data?.map((f) => ({ id: f.id, name: f.name })) ?? [];
+    fieldsData?.data?.map((f) => ({
+      id: f.id,
+      name: f.name,
+      price: Number(f.price),
+    })) ?? [];
 
   return (
     <ProtectedRoute>
