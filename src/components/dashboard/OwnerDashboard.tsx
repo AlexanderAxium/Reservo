@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  OwnerNextReservations,
+  OwnerPendingAlerts,
+  OwnerQuickActions,
+} from "@/components/dashboard/owner";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -10,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { formatPrice } from "@/lib/utils";
 import { trpc } from "@/utils/trpc";
-import { Calendar, DollarSign, MapPin, Users } from "lucide-react";
+import { BarChart3, Calendar, DollarSign, MapPin } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
 
@@ -25,19 +30,17 @@ interface OwnerDashboardProps {
 }
 
 export default function OwnerDashboard({ user }: OwnerDashboardProps) {
-  // Obtener todas las canchas del owner
   const { data: fieldsData, isLoading: fieldsLoading } =
     trpc.field.getAll.useQuery(
-      {
-        page: 1,
-        limit: 100,
-      },
-      {
-        enabled: !!user?.id,
-      }
+      { page: 1, limit: 100 },
+      { enabled: !!user?.id }
     );
 
-  // Calcular estadísticas
+  const { data: ownerStats } = trpc.reservation.getOwnerStats.useQuery(
+    undefined,
+    { enabled: !!user?.id }
+  );
+
   const stats = useMemo(() => {
     if (!fieldsData?.data) {
       return {
@@ -45,12 +48,10 @@ export default function OwnerDashboard({ user }: OwnerDashboardProps) {
         availableFields: 0,
         unavailableFields: 0,
         totalReservations: 0,
-        // Estos se calcularán cuando tengamos el router de reservations
         monthlyReservations: 0,
         monthlyRevenue: 0,
       };
     }
-
     const fields = fieldsData.data;
     const totalFields = fields.length;
     const availableFields = fields.filter((f) => f.available).length;
@@ -59,16 +60,15 @@ export default function OwnerDashboard({ user }: OwnerDashboardProps) {
       (sum, field) => sum + (field._count?.reservations || 0),
       0
     );
-
     return {
       totalFields,
       availableFields,
       unavailableFields,
       totalReservations,
-      monthlyReservations: 0, // TODO: Calcular cuando tengamos reservations router
-      monthlyRevenue: 0, // TODO: Calcular cuando tengamos payments router
+      monthlyReservations: ownerStats?.monthlyReservations ?? 0,
+      monthlyRevenue: ownerStats?.monthlyRevenue ?? 0,
     };
-  }, [fieldsData]);
+  }, [fieldsData, ownerStats]);
 
   const ownerSections = [
     {
@@ -89,6 +89,14 @@ export default function OwnerDashboard({ user }: OwnerDashboardProps) {
       href: "/dashboard/owner/reservations",
       count: stats.totalReservations,
       badge: stats.totalReservations > 0 ? "Nuevas" : undefined,
+    },
+    {
+      title: "Métricas e ingresos",
+      description: "Ingresos y reservas por cancha",
+      icon: <BarChart3 className="h-5 w-5" />,
+      iconColor: "text-emerald-600 dark:text-emerald-400",
+      bgColor: "bg-emerald-500/10",
+      href: "/dashboard/owner/metrics",
     },
   ];
 
@@ -140,6 +148,9 @@ export default function OwnerDashboard({ user }: OwnerDashboardProps) {
           </span>
         </div>
       </div>
+
+      {/* Aviso de reservas pendientes */}
+      <OwnerPendingAlerts />
 
       {/* Estadísticas Rápidas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -209,7 +220,7 @@ export default function OwnerDashboard({ user }: OwnerDashboardProps) {
       </div>
 
       {/* Secciones Principales */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {ownerSections.map((section) => (
           <Link
             key={section.href}
@@ -254,6 +265,12 @@ export default function OwnerDashboard({ user }: OwnerDashboardProps) {
             </div>
           </Link>
         ))}
+      </div>
+
+      {/* Acciones rápidas + Próximas reservas */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <OwnerQuickActions />
+        <OwnerNextReservations />
       </div>
 
       {/* Canchas Recientes */}

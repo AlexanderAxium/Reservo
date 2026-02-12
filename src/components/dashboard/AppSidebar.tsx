@@ -31,6 +31,7 @@ import { useUser } from "@/hooks/useUser";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/utils/trpc";
 import {
+  BarChart3,
   Calendar,
   ChevronDown,
   LayoutDashboard,
@@ -143,6 +144,12 @@ export function AppSidebar() {
           href: "/dashboard/owner/reservations",
           icon: Calendar,
           description: "Gestiona las reservas de tus canchas",
+        },
+        {
+          title: "Métricas e ingresos",
+          href: "/dashboard/owner/metrics",
+          icon: BarChart3,
+          description: "Ingresos y reservas por cancha",
         },
       ];
     }

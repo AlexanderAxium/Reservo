@@ -9,13 +9,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useUser } from "@/hooks/useUser";
 import { trpc } from "@/utils/trpc";
-import { Building2, Globe, Mail, Save, Settings } from "lucide-react";
+import { Building2, Globe, Mail, Plus, Save, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -619,6 +628,158 @@ export default function SettingsPage() {
           </Button>
         </div>
       </form>
+
+      {/* Empresas (solo Super Admin) */}
+      {isSuperAdmin && <TenantsSection />}
     </div>
+  );
+}
+
+function TenantsSection() {
+  const utils = trpc.useUtils();
+  const { data: tenants, isLoading } = trpc.tenant.list.useQuery();
+  const createTenant = trpc.tenant.create.useMutation({
+    onSuccess: () => {
+      utils.tenant.list.invalidate();
+      toast.success("Empresa creada correctamente");
+      setOpen(false);
+      setNewName("");
+      setNewDisplayName("");
+      setNewEmail("");
+    },
+    onError: (e) => toast.error(e.message || "Error al crear empresa"),
+  });
+  const [open, setOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newDisplayName, setNewDisplayName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+
+  const handleCreate = () => {
+    if (!newName.trim() || !newDisplayName.trim()) {
+      toast.error("Nombre y nombre para mostrar son obligatorios");
+      return;
+    }
+    createTenant.mutate({
+      name: newName.trim(),
+      displayName: newDisplayName.trim(),
+      email: newEmail.trim() || undefined,
+    });
+  };
+
+  return (
+    <Card className="bg-card rounded-xl border border-border">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <Building2 className="h-5 w-5 text-primary" />
+          </div>
+          <span>Empresas</span>
+        </CardTitle>
+        <CardDescription>
+          Lista de empresas (tenants). Solo Super Admin puede crear nuevas. Para
+          usar otra empresa, cierra sesión e inicia sesión con un usuario de esa
+          empresa (ej. admin@democorp.com para Demo Corporation). Documentación:{" "}
+          <code className="text-xs bg-muted px-1 rounded">
+            docs/EMPRESAS-TENANTS.md
+          </code>
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Cargando empresas...</p>
+        ) : (
+          <div className="rounded-md border border-border">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="text-left p-3 font-medium">Nombre</th>
+                  <th className="text-left p-3 font-medium">
+                    Nombre para mostrar
+                  </th>
+                  <th className="text-left p-3 font-medium">Email</th>
+                  <th className="text-left p-3 font-medium">Usuarios</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tenants?.map((t) => (
+                  <tr key={t.id} className="border-b border-border">
+                    <td className="p-3">{t.name}</td>
+                    <td className="p-3">{t.displayName}</td>
+                    <td className="p-3">{t.email ?? "—"}</td>
+                    <td className="p-3">{t._count.users}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button type="button" variant="outline">
+              <Plus className="h-4 w-4 mr-2" />
+              Crear empresa
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Nueva empresa</DialogTitle>
+              <DialogDescription>
+                Crea una nueva empresa (tenant). Se crearán roles y permisos por
+                defecto. Luego podrás crear usuarios y asignarlos a esta
+                empresa.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="new-tenant-name">Nombre (interno)</Label>
+                <Input
+                  id="new-tenant-name"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="mi_empresa"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="new-tenant-displayName">
+                  Nombre para mostrar
+                </Label>
+                <Input
+                  id="new-tenant-displayName"
+                  value={newDisplayName}
+                  onChange={(e) => setNewDisplayName(e.target.value)}
+                  placeholder="Mi Empresa S.A.C."
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="new-tenant-email">Email (opcional)</Label>
+                <Input
+                  id="new-tenant-email"
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="info@miempresa.com"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleCreate}
+                disabled={createTenant.isPending}
+              >
+                {createTenant.isPending ? "Creando..." : "Crear empresa"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
   );
 }

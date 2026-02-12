@@ -103,7 +103,7 @@ export function ManualReservationModal({
   onSuccess,
 }: ManualReservationModalProps) {
   const utils = trpc.useUtils();
-  const { data: usersData } = trpc.user.getAll.useQuery(
+  const { data: usersData } = trpc.user.getClients.useQuery(
     { limit: 200 },
     { enabled: open }
   );
