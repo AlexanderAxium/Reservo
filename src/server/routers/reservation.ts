@@ -89,6 +89,189 @@ export const reservationRouter = router({
       return createPaginatedResponse(reservations, total, page, limit);
     }),
 
+  /** Estadísticas del mes para el owner (reservas e ingresos). */
+  getOwnerStats: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.user?.id || !ctx.user.tenantId) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Usuario no autenticado",
+      });
+    }
+    const isOwner = await hasRole(ctx.user.id, "owner", ctx.user.tenantId);
+    if (!isOwner) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Solo los dueños de canchas pueden ver estas estadísticas",
+      });
+    }
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999
+    );
+    const where = {
+      field: { ownerId: ctx.user.id },
+      startDate: { gte: startOfMonth, lte: endOfMonth },
+    };
+    const [monthlyReservations, revenueResult] = await Promise.all([
+      prisma.reservation.count({ where }),
+      prisma.reservation.aggregate({
+        where: {
+          ...where,
+          status: { in: ["CONFIRMED", "COMPLETED"] },
+        },
+        _sum: { amount: true },
+      }),
+    ]);
+    const monthlyRevenue = Number(revenueResult._sum.amount ?? 0);
+    return { monthlyReservations, monthlyRevenue };
+  }),
+
+  /** Próximas reservas del owner (hoy en adelante, orden por fecha). */
+  getUpcomingForOwner: protectedProcedure
+    .input(z.object({ limit: z.number().min(1).max(20).optional() }).optional())
+    .query(async ({ input, ctx }) => {
+      if (!ctx.user?.id || !ctx.user.tenantId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario no autenticado",
+        });
+      }
+      const isOwner = await hasRole(ctx.user.id, "owner", ctx.user.tenantId);
+      if (!isOwner) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Solo los dueños de canchas pueden ver sus reservas",
+        });
+      }
+      const limit = input?.limit ?? 5;
+      const reservations = await prisma.reservation.findMany({
+        where: {
+          field: { ownerId: ctx.user.id },
+          startDate: { gte: new Date() },
+          status: { notIn: ["CANCELLED"] },
+        },
+        include: {
+          field: { select: { id: true, name: true, sport: true } },
+          user: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: { startDate: "asc" },
+        take: limit,
+      });
+      return reservations;
+    }),
+
+  /** Cantidad de reservas pendientes de confirmar (owner). */
+  getOwnerPendingCount: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.user?.id || !ctx.user.tenantId) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Usuario no autenticado",
+      });
+    }
+    const isOwner = await hasRole(ctx.user.id, "owner", ctx.user.tenantId);
+    if (!isOwner) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Solo los dueños de canchas pueden ver este dato",
+      });
+    }
+    return prisma.reservation.count({
+      where: {
+        field: { ownerId: ctx.user.id },
+        status: "PENDING",
+      },
+    });
+  }),
+
+  /** Ingresos y cantidad de reservas por cancha (solo CONFIRMED/COMPLETED). Incluye total y mes actual. */
+  getOwnerRevenueByField: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.user?.id || !ctx.user.tenantId) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Usuario no autenticado",
+      });
+    }
+    const isOwner = await hasRole(ctx.user.id, "owner", ctx.user.tenantId);
+    if (!isOwner) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Solo los dueños de canchas pueden ver estas métricas",
+      });
+    }
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999
+    );
+
+    const [fields, totalByField, monthlyByField] = await Promise.all([
+      prisma.field.findMany({
+        where: { ownerId: ctx.user.id },
+        select: { id: true, name: true, sport: true },
+        orderBy: { name: "asc" },
+      }),
+      prisma.reservation.groupBy({
+        by: ["fieldId"],
+        where: {
+          field: { ownerId: ctx.user.id },
+          status: { in: ["CONFIRMED", "COMPLETED"] },
+        },
+        _sum: { amount: true },
+        _count: true,
+      }),
+      prisma.reservation.groupBy({
+        by: ["fieldId"],
+        where: {
+          field: { ownerId: ctx.user.id },
+          status: { in: ["CONFIRMED", "COMPLETED"] },
+          startDate: { gte: startOfMonth, lte: endOfMonth },
+        },
+        _sum: { amount: true },
+        _count: true,
+      }),
+    ]);
+
+    const totalMap = new Map(
+      totalByField.map((r) => [
+        r.fieldId,
+        { revenue: Number(r._sum.amount ?? 0), count: r._count },
+      ])
+    );
+    const monthlyMap = new Map(
+      monthlyByField.map((r) => [
+        r.fieldId,
+        { revenue: Number(r._sum.amount ?? 0), count: r._count },
+      ])
+    );
+
+    return fields.map((field) => {
+      const total = totalMap.get(field.id) ?? { revenue: 0, count: 0 };
+      const monthly = monthlyMap.get(field.id) ?? { revenue: 0, count: 0 };
+      return {
+        fieldId: field.id,
+        fieldName: field.name,
+        sport: field.sport,
+        totalRevenue: total.revenue,
+        totalReservations: total.count,
+        monthlyRevenue: monthly.revenue,
+        monthlyReservations: monthly.count,
+      };
+    });
+  }),
+
   /** Lista todas las reservas del tenant (admin / super admin) */
   listForAdmin: protectedProcedure
     .input(
