@@ -1,0 +1,120 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { trpc } from "@/hooks/useTRPC";
+import { useUser } from "@/hooks/useUser";
+import { ArrowLeft, Send } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
+
+export default function InviteStaffPage() {
+  const router = useRouter();
+  const { isTenantAdmin } = useUser();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+
+  const inviteStaff = trpc.user.inviteStaff.useMutation({
+    onSuccess: () => {
+      toast.success("Invitación enviada correctamente");
+      router.push("/dashboard/staff");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Error al enviar invitación");
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !email.trim()) {
+      toast.error("Completa todos los campos");
+      return;
+    }
+    inviteStaff.mutate({ name: name.trim(), email: email.trim() });
+  };
+
+  if (!isTenantAdmin) {
+    return (
+      <div className="p-6">
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">
+            No tienes permisos para acceder a esta sección
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Link href="/dashboard/staff">
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Volver
+          </Button>
+        </Link>
+        <div className="flex-1">
+          <h1 className="text-2xl font-semibold text-foreground">
+            Invitar Personal
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Envía una invitación por email
+          </p>
+        </div>
+      </div>
+
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle>Datos del nuevo miembro</CardTitle>
+          <CardDescription>
+            Se enviará un email con instrucciones para completar el registro
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="name">Nombre completo</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Juan Pérez"
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="juan@ejemplo.com"
+                required
+              />
+            </div>
+            <Button
+              type="submit"
+              disabled={inviteStaff.isPending}
+              className="w-full"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {inviteStaff.isPending ? "Enviando..." : "Enviar Invitación"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

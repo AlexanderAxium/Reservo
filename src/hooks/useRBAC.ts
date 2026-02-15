@@ -24,20 +24,49 @@ export function useRBAC() {
   const userRoles = rbacContext?.userRoles || [];
   const userPermissions = rbacContext?.permissions || [];
 
-  // Calculate specific permissions from roles and permissions
-  const isAdmin = useMemo(() => {
+  // New role flags
+  const isSysAdmin = useMemo(() => {
     if (!userRoles.length) return false;
     return userRoles.some(
-      (role) => ["super_admin", "admin"].includes(role.name) && role.isActive
+      (role) =>
+        (role.name === "sys_admin" || role.name === "super_admin") &&
+        role.isActive
     );
   }, [userRoles]);
 
-  const isSuperAdmin = useMemo(() => {
+  const isTenantAdmin = useMemo(() => {
     if (!userRoles.length) return false;
     return userRoles.some(
-      (role) => role.name === "super_admin" && role.isActive
+      (role) =>
+        (role.name === "tenant_admin" || role.name === "admin") && role.isActive
     );
   }, [userRoles]);
+
+  const isTenantStaff = useMemo(() => {
+    if (!userRoles.length) return false;
+    return userRoles.some(
+      (role) => role.name === "tenant_staff" && role.isActive
+    );
+  }, [userRoles]);
+
+  const isClient = useMemo(() => {
+    if (!userRoles.length) return false;
+    return userRoles.some(
+      (role) =>
+        (role.name === "client" || role.name === "user") && role.isActive
+    );
+  }, [userRoles]);
+
+  const isTenantMember = useMemo(() => {
+    return isTenantAdmin || isTenantStaff;
+  }, [isTenantAdmin, isTenantStaff]);
+
+  // Backward compatibility
+  const isAdmin = useMemo(() => {
+    return isSysAdmin || isTenantAdmin;
+  }, [isSysAdmin, isTenantAdmin]);
+
+  const isSuperAdmin = isSysAdmin;
 
   const canManageUsers = useMemo(() => {
     if (!userPermissions.length) return false;
@@ -148,7 +177,14 @@ export function useRBAC() {
     userRoles,
     userPermissions,
 
-    // Status checks
+    // New role flags
+    isSysAdmin,
+    isTenantAdmin,
+    isTenantStaff,
+    isClient,
+    isTenantMember,
+
+    // Backward compatibility
     isAdmin,
     isSuperAdmin,
     canManageUsers,

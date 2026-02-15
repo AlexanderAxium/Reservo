@@ -6,11 +6,10 @@ import { trpc } from "@/utils/trpc";
 import { useEffect, useState } from "react";
 
 export type UserRole =
-  | "admin"
-  | "user"
-  | "owner"
-  | "viewer"
-  | "super_admin"
+  | "sys_admin"
+  | "tenant_admin"
+  | "tenant_staff"
+  | "client"
   | "unknown";
 
 export function useUser() {
@@ -40,40 +39,39 @@ export function useUser() {
       return;
     }
 
-    // Priority order: super_admin > admin > owner > user > viewer
+    // Priority order: sys_admin > tenant_admin > tenant_staff > client
     const roleHierarchy: Record<string, UserRole> = {
-      super_admin: "super_admin",
-      admin: "admin",
-      owner: "owner",
-      user: "user",
-      viewer: "viewer",
+      sys_admin: "sys_admin",
+      tenant_admin: "tenant_admin",
+      tenant_staff: "tenant_staff",
+      client: "client",
+      // Backward compatibility mappings
+      super_admin: "sys_admin",
+      admin: "tenant_admin",
+      owner: "tenant_admin",
+      user: "client",
+      viewer: "client",
     };
 
     // Find the highest priority role
-    let highestRole: UserRole = "viewer"; // Start with lowest priority
+    let highestRole: UserRole = "client";
+    const priorityOrder: UserRole[] = [
+      "sys_admin",
+      "tenant_admin",
+      "tenant_staff",
+      "client",
+    ];
 
     for (const userRole of userRoles) {
       if (userRole.isActive && roleHierarchy[userRole.name]) {
         const mappedRole = roleHierarchy[userRole.name];
-
-        // Set role based on priority
-        if (mappedRole === "super_admin") {
-          highestRole = "super_admin";
-          break; // Super admin has highest priority
+        if (!mappedRole) continue;
+        const currentIdx = priorityOrder.indexOf(highestRole);
+        const newIdx = priorityOrder.indexOf(mappedRole);
+        if (newIdx < currentIdx) {
+          highestRole = mappedRole;
         }
-        if (mappedRole === "admin") {
-          highestRole = "admin";
-        } else if (mappedRole === "owner") {
-          if (highestRole === "viewer" || highestRole === "user") {
-            highestRole = "owner";
-          }
-        } else if (mappedRole === "user") {
-          if (highestRole === "viewer") {
-            highestRole = "user";
-          }
-        } else if (mappedRole === "viewer" && highestRole === "user") {
-          // Keep user role as it has higher priority than viewer
-        }
+        if (highestRole === "sys_admin") break;
       }
     }
 
@@ -93,12 +91,18 @@ export function useUser() {
     userRoles,
     userPermissions,
 
-    // Role utilities
-    isUser: primaryRole === "user",
-    isOwner: primaryRole === "owner",
-    isAdmin: ["admin", "super_admin"].includes(primaryRole),
-    isSuperAdmin: primaryRole === "super_admin",
-    isViewer: primaryRole === "viewer",
+    // New role flags
+    isSysAdmin: primaryRole === "sys_admin",
+    isTenantAdmin: primaryRole === "tenant_admin",
+    isTenantStaff: primaryRole === "tenant_staff",
+    isClient: primaryRole === "client",
+
+    // Backward compatibility aliases
+    isAdmin: ["sys_admin", "tenant_admin"].includes(primaryRole),
+    isSuperAdmin: primaryRole === "sys_admin",
+    isOwner: primaryRole === "tenant_admin",
+    isUser: primaryRole === "client",
+    isViewer: primaryRole === "client",
 
     // RBAC utilities
     hasRole,

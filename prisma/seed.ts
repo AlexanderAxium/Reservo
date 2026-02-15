@@ -125,6 +125,12 @@ async function main() {
       id: "tenant-default-001",
       name: "MyApp",
       displayName: "My Application Platform",
+      slug: "my-app",
+      plan: "PROFESSIONAL",
+      maxFields: 50,
+      maxUsers: 100,
+      isVerified: true,
+      verifiedAt: new Date(),
       description:
         "Una plataforma moderna y escalable para gestión de usuarios y contenido",
       email: "info@myapp.com",
@@ -158,6 +164,12 @@ async function main() {
       id: "tenant-demo-002",
       name: "DemoCorp",
       displayName: "Demo Corporation",
+      slug: "demo-corp",
+      plan: "BASIC",
+      maxFields: 10,
+      maxUsers: 25,
+      isVerified: true,
+      verifiedAt: new Date(),
       description: "Empresa de demostración para pruebas",
       email: "info@democorp.com",
       phone: "+1 (555) 999-8888",
@@ -279,6 +291,36 @@ async function main() {
     { action: PermissionAction.READ, resource: PermissionResource.REVIEW },
     { action: PermissionAction.UPDATE, resource: PermissionResource.REVIEW },
     { action: PermissionAction.DELETE, resource: PermissionResource.REVIEW },
+
+    // Tenant permissions
+    { action: PermissionAction.CREATE, resource: PermissionResource.TENANT },
+    { action: PermissionAction.READ, resource: PermissionResource.TENANT },
+    { action: PermissionAction.UPDATE, resource: PermissionResource.TENANT },
+    { action: PermissionAction.DELETE, resource: PermissionResource.TENANT },
+    { action: PermissionAction.MANAGE, resource: PermissionResource.TENANT },
+
+    // Staff permissions
+    { action: PermissionAction.CREATE, resource: PermissionResource.STAFF },
+    { action: PermissionAction.READ, resource: PermissionResource.STAFF },
+    { action: PermissionAction.UPDATE, resource: PermissionResource.STAFF },
+    { action: PermissionAction.DELETE, resource: PermissionResource.STAFF },
+    { action: PermissionAction.MANAGE, resource: PermissionResource.STAFF },
+
+    // Metrics permissions
+    { action: PermissionAction.READ, resource: PermissionResource.METRICS },
+    { action: PermissionAction.MANAGE, resource: PermissionResource.METRICS },
+
+    // Settings permissions
+    { action: PermissionAction.READ, resource: PermissionResource.SETTINGS },
+    { action: PermissionAction.UPDATE, resource: PermissionResource.SETTINGS },
+    { action: PermissionAction.MANAGE, resource: PermissionResource.SETTINGS },
+
+    // Payment permissions
+    { action: PermissionAction.CREATE, resource: PermissionResource.PAYMENT },
+    { action: PermissionAction.READ, resource: PermissionResource.PAYMENT },
+    { action: PermissionAction.UPDATE, resource: PermissionResource.PAYMENT },
+    { action: PermissionAction.DELETE, resource: PermissionResource.PAYMENT },
+    { action: PermissionAction.MANAGE, resource: PermissionResource.PAYMENT },
   ];
 
   // Create permissions for each tenant
@@ -302,58 +344,40 @@ async function main() {
 
   for (const tenant of [defaultTenant, demoTenant]) {
     const tenantRoles = {
-      superAdmin: await prisma.role.create({
+      sysAdmin: await prisma.role.create({
         data: {
-          name: "super_admin",
-          displayName: "Super Admin",
-          description: "Full system access with all permissions",
+          name: "sys_admin",
+          displayName: "System Administrator",
+          description: "Full system access including tenant management",
           isSystem: true,
           tenantId: tenant.id,
         },
       }),
-      admin: await prisma.role.create({
+      tenantAdmin: await prisma.role.create({
         data: {
-          name: "admin",
-          displayName: "Admin",
+          name: "tenant_admin",
+          displayName: "Tenant Administrator",
           description:
-            "Administrative access to manage users and system settings",
+            "Full access within tenant: fields, reservations, payments, staff, metrics",
           isSystem: true,
           tenantId: tenant.id,
         },
       }),
-      moderator: await prisma.role.create({
+      tenantStaff: await prisma.role.create({
         data: {
-          name: "moderator",
-          displayName: "Moderator",
-          description: "User management and basic system monitoring",
-          isSystem: true,
-          tenantId: tenant.id,
-        },
-      }),
-      user: await prisma.role.create({
-        data: {
-          name: "user",
-          displayName: "User",
-          description: "Standard user with basic access",
-          isSystem: true,
-          tenantId: tenant.id,
-        },
-      }),
-      owner: await prisma.role.create({
-        data: {
-          name: "owner",
-          displayName: "Owner",
+          name: "tenant_staff",
+          displayName: "Tenant Staff",
           description:
-            "Dueño de canchas deportivas con acceso a gestión de campos y reservas",
+            "Limited access: read fields, manage reservations, verify payments",
           isSystem: true,
           tenantId: tenant.id,
         },
       }),
-      viewer: await prisma.role.create({
+      client: await prisma.role.create({
         data: {
-          name: "viewer",
-          displayName: "Viewer",
-          description: "Read-only access to basic features",
+          name: "client",
+          displayName: "Client",
+          description: "Client access: view and create own reservations",
           isSystem: true,
           tenantId: tenant.id,
         },
@@ -369,96 +393,119 @@ async function main() {
       (p) => p.tenantId === tenant.id
     );
 
-    // Super Admin gets all permissions for this tenant
+    // System Admin gets all permissions (including TENANT management)
     for (const permission of tenantPermissions) {
       await prisma.rolePermission.create({
         data: {
-          roleId: tenantRoles.superAdmin.id,
+          roleId: tenantRoles.sysAdmin.id,
           permissionId: permission.id,
         },
       });
     }
 
-    // Admin gets most permissions except role management
-    const adminPermissions = tenantPermissions.filter(
+    // Tenant Admin gets: MANAGE on FIELD, SPORT_CENTER, STAFF, SETTINGS, METRICS
+    // CREATE/READ/UPDATE/DELETE on RESERVATION, PAYMENT, USER; READ on DASHBOARD
+    const tenantAdminPermissions = tenantPermissions.filter(
       (p) =>
-        p.resource !== PermissionResource.ROLE ||
-        p.action !== PermissionAction.MANAGE
-    );
-    for (const permission of adminPermissions) {
-      await prisma.rolePermission.create({
-        data: {
-          roleId: tenantRoles.admin.id,
-          permissionId: permission.id,
-        },
-      });
-    }
-
-    // Moderator gets user read and basic dashboard
-    const moderatorPermissions = tenantPermissions.filter(
-      (p) =>
-        (p.resource === PermissionResource.USER &&
-          (p.action === PermissionAction.READ ||
-            p.action === PermissionAction.UPDATE)) ||
-        p.resource === PermissionResource.DASHBOARD
-    );
-    for (const permission of moderatorPermissions) {
-      await prisma.rolePermission.create({
-        data: {
-          roleId: tenantRoles.moderator.id,
-          permissionId: permission.id,
-        },
-      });
-    }
-
-    // User gets dashboard access
-    const standardUserPermissions = tenantPermissions.filter(
-      (p) => p.resource === PermissionResource.DASHBOARD
-    );
-    for (const permission of standardUserPermissions) {
-      await prisma.rolePermission.create({
-        data: {
-          roleId: tenantRoles.user.id,
-          permissionId: permission.id,
-        },
-      });
-    }
-
-    // Owner gets FIELD and RESERVATION permissions
-    const ownerPermissions = tenantPermissions.filter(
-      (p) =>
-        (p.resource === PermissionResource.FIELD &&
-          (p.action === PermissionAction.CREATE ||
-            p.action === PermissionAction.READ ||
-            p.action === PermissionAction.UPDATE ||
-            p.action === PermissionAction.DELETE ||
-            p.action === PermissionAction.MANAGE)) ||
-        (p.resource === PermissionResource.RESERVATION &&
-          (p.action === PermissionAction.READ ||
-            p.action === PermissionAction.UPDATE ||
-            p.action === PermissionAction.MANAGE)) ||
+        // MANAGE permissions
+        ((
+          [
+            PermissionResource.FIELD,
+            PermissionResource.SPORT_CENTER,
+            PermissionResource.STAFF,
+            PermissionResource.SETTINGS,
+            PermissionResource.METRICS,
+          ] as PermissionResource[]
+        ).includes(p.resource) &&
+          p.action === PermissionAction.MANAGE) ||
+        // Full CRUD on RESERVATION, PAYMENT, USER
+        ((
+          [
+            PermissionResource.RESERVATION,
+            PermissionResource.PAYMENT,
+            PermissionResource.USER,
+          ] as PermissionResource[]
+        ).includes(p.resource) &&
+          (
+            [
+              PermissionAction.CREATE,
+              PermissionAction.READ,
+              PermissionAction.UPDATE,
+              PermissionAction.DELETE,
+            ] as PermissionAction[]
+          ).includes(p.action)) ||
+        // READ on DASHBOARD
         (p.resource === PermissionResource.DASHBOARD &&
           p.action === PermissionAction.READ)
     );
-    for (const permission of ownerPermissions) {
+    for (const permission of tenantAdminPermissions) {
       await prisma.rolePermission.create({
         data: {
-          roleId: tenantRoles.owner.id,
+          roleId: tenantRoles.tenantAdmin.id,
           permissionId: permission.id,
         },
       });
     }
 
-    // Viewer gets only dashboard read
-    const viewerPermissions = tenantPermissions.filter(
+    // Tenant Staff gets: READ on FIELD, SPORT_CENTER, DASHBOARD, METRICS, USER
+    // CREATE/READ/UPDATE on RESERVATION; READ/UPDATE on PAYMENT
+    const tenantStaffPermissions = tenantPermissions.filter(
       (p) =>
-        p.resource === PermissionResource.DASHBOARD &&
-        p.action === PermissionAction.READ
+        // READ permissions on multiple resources
+        ((
+          [
+            PermissionResource.FIELD,
+            PermissionResource.SPORT_CENTER,
+            PermissionResource.DASHBOARD,
+            PermissionResource.METRICS,
+            PermissionResource.USER,
+          ] as PermissionResource[]
+        ).includes(p.resource) &&
+          p.action === PermissionAction.READ) ||
+        // CREATE/READ/UPDATE on RESERVATION
+        (p.resource === PermissionResource.RESERVATION &&
+          (
+            [
+              PermissionAction.CREATE,
+              PermissionAction.READ,
+              PermissionAction.UPDATE,
+            ] as PermissionAction[]
+          ).includes(p.action)) ||
+        // READ/UPDATE on PAYMENT (verify only)
+        (p.resource === PermissionResource.PAYMENT &&
+          (
+            [
+              PermissionAction.READ,
+              PermissionAction.UPDATE,
+            ] as PermissionAction[]
+          ).includes(p.action))
     );
-    for (const permission of viewerPermissions) {
+    for (const permission of tenantStaffPermissions) {
       await prisma.rolePermission.create({
         data: {
-          roleId: tenantRoles.viewer.id,
+          roleId: tenantRoles.tenantStaff.id,
+          permissionId: permission.id,
+        },
+      });
+    }
+
+    // Client gets: READ on DASHBOARD; READ/CREATE on RESERVATION
+    const clientPermissions = tenantPermissions.filter(
+      (p) =>
+        (p.resource === PermissionResource.DASHBOARD &&
+          p.action === PermissionAction.READ) ||
+        (p.resource === PermissionResource.RESERVATION &&
+          (
+            [
+              PermissionAction.READ,
+              PermissionAction.CREATE,
+            ] as PermissionAction[]
+          ).includes(p.action))
+    );
+    for (const permission of clientPermissions) {
+      await prisma.rolePermission.create({
+        data: {
+          roleId: tenantRoles.client.id,
           permissionId: permission.id,
         },
       });
@@ -536,56 +583,37 @@ async function main() {
   // 5. USER CREATION (ALL ROLES)
   // ================================
   const users = [
-    // Default tenant users
+    // System Administrator (no tenant)
     {
-      name: "Super Admin",
-      email: "superadmin@myapp.com",
-      password: "SuperAdmin123!@#",
-      phone: "+1 (555) 000-0001",
+      name: "System Administrator",
+      email: "sys_admin@reservo.com",
+      password: "SysAdmin123!@#",
+      phone: "+1 (555) 000-0000",
       language: "EN" as const,
-      tenantId: defaultTenant.id,
-      roleName: "super_admin",
-      username: "superadmin",
+      tenantId: defaultTenant.id, // System admin needs a tenant for role assignment
+      roleName: "sys_admin",
+      username: "sysadmin",
     },
+    // Default tenant (my-app) users
     {
-      name: "Admin User",
-      email: "admin@myapp.com",
+      name: "Tenant Admin - Cancha 1",
+      email: "admin@cancha1.com",
       password: "Admin123!@#",
-      phone: "+1 (555) 000-0002",
-      language: "EN" as const,
-      tenantId: defaultTenant.id,
-      roleName: "admin",
-      username: "admin",
-    },
-    {
-      name: "Moderator User",
-      email: "moderator@myapp.com",
-      password: "Moderator123!@#",
-      phone: "+1 (555) 000-0003",
+      phone: "+1 (555) 111-0001",
       language: "ES" as const,
       tenantId: defaultTenant.id,
-      roleName: "moderator",
-      username: "moderator",
+      roleName: "tenant_admin",
+      username: "admincancha1",
     },
     {
-      name: "John Doe",
-      email: "user@myapp.com",
-      password: "User123!@#",
-      phone: "+1 (555) 987-6543",
-      language: "EN" as const,
-      tenantId: defaultTenant.id,
-      roleName: "user",
-      username: "johndoe",
-    },
-    {
-      name: "Maria Rodriguez",
-      email: "maria@myapp.com",
-      password: "Maria123!@#",
-      phone: "+1 (555) 123-4567",
+      name: "Staff Member - Cancha 1",
+      email: "staff@cancha1.com",
+      password: "Staff123!@#",
+      phone: "+1 (555) 111-0002",
       language: "ES" as const,
       tenantId: defaultTenant.id,
-      roleName: "user",
-      username: "mariarodriguez",
+      roleName: "tenant_staff",
+      username: "staffcancha1",
     },
     {
       name: "Carlos Sport Owner",
@@ -594,7 +622,7 @@ async function main() {
       phone: "+1 (555) 111-2222",
       language: "ES" as const,
       tenantId: defaultTenant.id,
-      roleName: "owner",
+      roleName: "tenant_admin",
       username: "carlosowner",
     },
     {
@@ -604,39 +632,59 @@ async function main() {
       phone: "+1 (555) 111-2223",
       language: "ES" as const,
       tenantId: defaultTenant.id,
-      roleName: "owner",
+      roleName: "tenant_admin",
       username: "mariacancha",
     },
     {
-      name: "Viewer User",
-      email: "viewer@myapp.com",
-      password: "Viewer123!@#",
-      phone: "+1 (555) 000-0004",
+      name: "Client User",
+      email: "cliente@test.com",
+      password: "Cliente123!@#",
+      phone: "+1 (555) 222-0001",
+      language: "ES" as const,
+      tenantId: defaultTenant.id,
+      roleName: "client",
+      username: "cliente",
+    },
+    {
+      name: "John Doe",
+      email: "user@myapp.com",
+      password: "User123!@#",
+      phone: "+1 (555) 987-6543",
       language: "EN" as const,
       tenantId: defaultTenant.id,
-      roleName: "viewer",
-      username: "viewer",
+      roleName: "client",
+      username: "johndoe",
+    },
+    {
+      name: "Maria Rodriguez",
+      email: "maria@myapp.com",
+      password: "Maria123!@#",
+      phone: "+1 (555) 123-4567",
+      language: "ES" as const,
+      tenantId: defaultTenant.id,
+      roleName: "client",
+      username: "mariarodriguez",
     },
     // Demo tenant users
     {
-      name: "Demo Admin",
-      email: "admin@democorp.com",
-      password: "DemoAdmin123!@#",
-      phone: "+1 (555) 999-0001",
-      language: "EN" as const,
+      name: "Tenant Admin - Cancha 2",
+      email: "admin@cancha2.com",
+      password: "Admin123!@#",
+      phone: "+1 (555) 222-0001",
+      language: "ES" as const,
       tenantId: demoTenant.id,
-      roleName: "admin",
-      username: "demoadmin",
+      roleName: "tenant_admin",
+      username: "admincancha2",
     },
     {
-      name: "Demo User",
+      name: "Demo Client",
       email: "user@democorp.com",
       password: "DemoUser123!@#",
       phone: "+1 (555) 999-0002",
       language: "EN" as const,
       tenantId: demoTenant.id,
-      roleName: "user",
-      username: "demouser",
+      roleName: "client",
+      username: "democlient",
     },
   ];
 
@@ -742,12 +790,10 @@ async function main() {
 
       // Map role names to the correct keys in tenantRoles object
       const roleNameMap: Record<string, keyof typeof tenantRoles> = {
-        super_admin: "superAdmin",
-        admin: "admin",
-        moderator: "moderator",
-        user: "user",
-        owner: "owner",
-        viewer: "viewer",
+        sys_admin: "sysAdmin",
+        tenant_admin: "tenantAdmin",
+        tenant_staff: "tenantStaff",
+        client: "client",
       };
 
       const roleKey = roleNameMap[userData.roleName];
@@ -972,6 +1018,7 @@ async function main() {
         phone: "+51 987 654 321",
         email: "cancha1@reservo.com",
         ownerId: ownerUser.id,
+        tenantId: defaultTenant.id,
       },
       {
         name: "Cancha de Futsal - Miraflores",
@@ -992,6 +1039,7 @@ async function main() {
         phone: "+51 987 654 322",
         email: "cancha2@reservo.com",
         ownerId: ownerUser2.id,
+        tenantId: defaultTenant.id,
       },
       {
         name: "Cancha de Fútbol - La Molina",
@@ -1010,6 +1058,7 @@ async function main() {
         phone: "+51 987 654 323",
         email: "cancha3@reservo.com",
         ownerId: ownerUser.id,
+        tenantId: defaultTenant.id,
       },
       {
         name: "Cancha de Tenis - Surco",
@@ -1030,6 +1079,7 @@ async function main() {
         phone: "+51 987 654 324",
         email: "cancha4@reservo.com",
         ownerId: ownerUser2.id,
+        tenantId: defaultTenant.id,
       },
       {
         name: "Cancha de Básquet - San Borja",
@@ -1048,6 +1098,7 @@ async function main() {
         phone: "+51 987 654 325",
         email: "cancha5@reservo.com",
         ownerId: ownerUser.id,
+        tenantId: defaultTenant.id,
       },
       {
         name: "Cancha de Fútbol - Barranco",
@@ -1068,6 +1119,7 @@ async function main() {
         phone: "+51 987 654 326",
         email: "cancha6@reservo.com",
         ownerId: ownerUser2.id,
+        tenantId: defaultTenant.id,
       },
       {
         name: "Cancha de Vóley - Chorrillos",
@@ -1086,6 +1138,7 @@ async function main() {
         phone: "+51 987 654 327",
         email: "cancha7@reservo.com",
         ownerId: ownerUser.id,
+        tenantId: defaultTenant.id,
       },
       {
         name: "Cancha de Futsal - Jesús María",
@@ -1106,6 +1159,7 @@ async function main() {
         phone: "+51 987 654 328",
         email: "cancha8@reservo.com",
         ownerId: ownerUser2.id,
+        tenantId: defaultTenant.id,
       },
     ];
 
@@ -1437,9 +1491,9 @@ async function main() {
 
   console.log(`
 📊 Summary:
-- Tenants: 2 (MyApp Platform, Demo Corporation)
+- Tenants: 2 (MyApp Platform [my-app], Demo Corporation [demo-corp])
 - Users: ${createdUsers.length} users across both tenants
-- Roles: 5 per tenant (super_admin, admin, moderator, user, viewer)
+- Roles: 4 per tenant (sys_admin, tenant_admin, tenant_staff, client)
 - Permissions: ${createdPermissions.length} permissions
 - Features: ${createdFeatures.length} features
 - Payment Methods: ${createdPaymentMethods.length} payment methods
@@ -1450,19 +1504,21 @@ async function main() {
 
 🔐 Login Credentials:
 
-🏢 MyApp Platform (Default Tenant):
-- Super Admin: superadmin@myapp.com / SuperAdmin123!@#
-- Admin: admin@myapp.com / Admin123!@#
-- Moderator: moderator@myapp.com / Moderator123!@#
-- User: user@myapp.com / User123!@#
-- User: maria@myapp.com / Maria123!@#
+🔧 System Level:
+- System Admin: sys_admin@reservo.com / SysAdmin123!@#
+
+🏢 MyApp Platform (Tenant: my-app):
+- Tenant Admin: admin@cancha1.com / Admin123!@#
+- Tenant Staff: staff@cancha1.com / Staff123!@#
 - Owner: owner@myapp.com / Owner123!@#
 - Owner 2: owner2@myapp.com / Owner123!@#
-- Viewer: viewer@myapp.com / Viewer123!@#
+- Client: cliente@test.com / Cliente123!@#
+- Client: user@myapp.com / User123!@#
+- Client: maria@myapp.com / Maria123!@#
 
-🏢 Demo Corporation (Demo Tenant):
-- Admin: admin@democorp.com / DemoAdmin123!@#
-- User: user@democorp.com / DemoUser123!@#
+🏢 Demo Corporation (Tenant: demo-corp):
+- Tenant Admin: admin@cancha2.com / Admin123!@#
+- Client: user@democorp.com / DemoUser123!@#
 
 ${fieldCount === 0 || reservationCount === 0 ? "⚠️ Si faltan canchas o reservas, ejecuta: npx prisma migrate dev" : ""}
   `);

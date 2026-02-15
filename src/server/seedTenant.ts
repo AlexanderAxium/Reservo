@@ -119,6 +119,17 @@ export async function seedTenantRolesAndPermissions(
   const ownerRole = roles[4];
   const viewerRole = roles[5];
 
+  if (
+    !superAdminRole ||
+    !adminRole ||
+    !moderatorRole ||
+    !userRole ||
+    !ownerRole ||
+    !viewerRole
+  ) {
+    throw new Error("Missing required roles");
+  }
+
   for (const perm of permissions) {
     await prisma.rolePermission.create({
       data: { roleId: superAdminRole.id, permissionId: perm.id },

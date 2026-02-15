@@ -555,17 +555,71 @@ export async function getPermissionByActionAndResource(
 }
 
 /**
- * Check if user is super admin
+ * Check if user is SYS_ADMIN (global system administrator)
+ */
+export async function isSysAdmin(
+  userId: string,
+  tenantId: string
+): Promise<boolean> {
+  return await hasRole(userId, DEFAULT_ROLES.SYS_ADMIN, tenantId);
+}
+
+/**
+ * Check if user is TENANT_ADMIN (tenant administrator)
+ */
+export async function isTenantAdmin(
+  userId: string,
+  tenantId: string
+): Promise<boolean> {
+  return await hasRole(userId, DEFAULT_ROLES.TENANT_ADMIN, tenantId);
+}
+
+/**
+ * Check if user is TENANT_STAFF (tenant staff member)
+ */
+export async function isTenantStaff(
+  userId: string,
+  tenantId: string
+): Promise<boolean> {
+  return await hasRole(userId, DEFAULT_ROLES.TENANT_STAFF, tenantId);
+}
+
+/**
+ * Check if user is CLIENT (regular customer)
+ */
+export async function isClient(
+  userId: string,
+  tenantId: string
+): Promise<boolean> {
+  return await hasRole(userId, DEFAULT_ROLES.CLIENT, tenantId);
+}
+
+/**
+ * Check if user is a tenant member (TENANT_ADMIN or TENANT_STAFF)
+ */
+export async function isTenantMember(
+  userId: string,
+  tenantId: string
+): Promise<boolean> {
+  return await hasAnyRole(
+    userId,
+    [DEFAULT_ROLES.TENANT_ADMIN, DEFAULT_ROLES.TENANT_STAFF],
+    tenantId
+  );
+}
+
+/**
+ * @deprecated Use isSysAdmin instead
  */
 export async function isSuperAdmin(
   userId: string,
   tenantId: string
 ): Promise<boolean> {
-  return await hasRole(userId, DEFAULT_ROLES.SUPER_ADMIN, tenantId);
+  return await isSysAdmin(userId, tenantId);
 }
 
 /**
- * Check if user is admin
+ * @deprecated Use isTenantAdmin instead
  */
 export async function isAdmin(
   userId: string,
@@ -573,7 +627,7 @@ export async function isAdmin(
 ): Promise<boolean> {
   return await hasAnyRole(
     userId,
-    [DEFAULT_ROLES.SUPER_ADMIN, DEFAULT_ROLES.ADMIN],
+    [DEFAULT_ROLES.SYS_ADMIN, DEFAULT_ROLES.TENANT_ADMIN],
     tenantId
   );
 }

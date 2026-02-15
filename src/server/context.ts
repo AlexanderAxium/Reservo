@@ -8,6 +8,8 @@ export interface Context {
     email: string;
     name: string;
     tenantId: string | null;
+    roles: string[];
+    primaryRole: string;
   };
   tenant?: {
     id: string;
@@ -30,7 +32,7 @@ export const createContext = async (opts: {
       return {};
     }
 
-    // Get user with tenant information
+    // Get user with tenant information and roles
     const userWithTenant = await prisma.user.findUnique({
       where: { id: session.user.id },
       include: {
@@ -41,6 +43,19 @@ export const createContext = async (opts: {
             displayName: true,
           },
         },
+        userRoles: {
+          where: {
+            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+          },
+          include: {
+            role: {
+              select: {
+                name: true,
+                isActive: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -48,12 +63,29 @@ export const createContext = async (opts: {
       return {};
     }
 
+    // Extract active role names
+    const roles = userWithTenant.userRoles
+      .filter((ur) => ur.role.isActive)
+      .map((ur) => ur.role.name);
+
+    // Determine primary role (highest priority)
+    const rolePriority = [
+      "sys_admin",
+      "tenant_admin",
+      "tenant_staff",
+      "client",
+    ];
+    const primaryRole =
+      rolePriority.find((role) => roles.includes(role)) || "client";
+
     return {
       user: {
         id: userWithTenant.id,
         email: userWithTenant.email,
         name: userWithTenant.name,
         tenantId: userWithTenant.tenantId,
+        roles,
+        primaryRole,
       },
       tenant: userWithTenant.tenant
         ? {

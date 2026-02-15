@@ -11,11 +11,17 @@ import {
 } from "../../lib/pagination";
 import {
   hasPermissionOrManage,
-  hasRole,
-  isAdmin,
+  isSysAdmin,
+  isTenantAdmin,
 } from "../../services/rbacService";
 import { PermissionAction, PermissionResource } from "../../types/rbac";
-import { protectedProcedure, publicProcedure, router } from "../trpc";
+import {
+  protectedProcedure,
+  publicProcedure,
+  router,
+  tenantAdminProcedure,
+  tenantStaffProcedure,
+} from "../trpc";
 
 // IDs en este proyecto pueden ser UUID o CUID (ej: "cmkye...").
 // Usamos un schema único para evitar errores de "Invalid uuid".
@@ -99,18 +105,10 @@ function toDecimal(value: number | undefined): Prisma.Decimal | undefined {
 }
 
 export const fieldRouter = router({
-  // Crear una nueva cancha
-  create: protectedProcedure
+  // Crear una nueva cancha (solo TENANT_ADMIN)
+  create: tenantAdminProcedure
     .input(createFieldSchema)
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user?.id) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario no autenticado",
-        });
-      }
-
-      // Verificar que el usuario tenga el rol owner o sea admin
       if (!ctx.user.tenantId) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
@@ -118,44 +116,11 @@ export const fieldRouter = router({
         });
       }
 
-      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
-      const userIsOwner = await hasRole(
-        ctx.user.id,
-        "owner",
-        ctx.user.tenantId
-      );
+      // Determinar el ownerId: admin puede especificar uno, sino usa el suyo
+      const ownerId = input.ownerId || ctx.user.id;
 
-      if (!userIsAdmin && !userIsOwner) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message:
-            "Solo usuarios con rol 'owner' o administradores pueden crear canchas. Contacta a un administrador para obtener el rol de owner.",
-        });
-      }
-
-      // Si no es admin, verificar permisos específicos
-      if (!userIsAdmin) {
-        const canCreate = await hasPermissionOrManage(
-          ctx.user.id,
-          PermissionAction.CREATE,
-          PermissionResource.FIELD,
-          ctx.user.tenantId
-        );
-
-        if (!canCreate) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "No tienes permisos para crear canchas",
-          });
-        }
-      }
-
-      // Determinar el ownerId: admin puede especificar uno, owner usa el suyo
-      const ownerId =
-        userIsAdmin && input.ownerId ? input.ownerId : ctx.user.id;
-
-      // Si admin especificó un ownerId, verificar que existe y pertenece al mismo tenant
-      if (userIsAdmin && input.ownerId) {
+      // Si se especificó un ownerId diferente, verificar que existe y pertenece al mismo tenant
+      if (input.ownerId && input.ownerId !== ctx.user.id) {
         const ownerUser = await prisma.user.findUnique({
           where: { id: input.ownerId },
         });
@@ -175,10 +140,11 @@ export const fieldRouter = router({
         }
       }
 
-      // Verificar que el sportCenter existe si se proporciona
+      // Verificar que el sportCenter existe y pertenece al mismo tenant si se proporciona
       if (input.sportCenterId) {
         const sportCenter = await prisma.sportCenter.findUnique({
           where: { id: input.sportCenterId },
+          select: { id: true, tenantId: true },
         });
 
         if (!sportCenter) {
@@ -188,11 +154,10 @@ export const fieldRouter = router({
           });
         }
 
-        // Verificar que el sportCenter pertenece al mismo owner (o admin puede asignarlo)
-        if (!userIsAdmin && sportCenter.ownerId !== ctx.user.id) {
+        if (sportCenter.tenantId !== ctx.user.tenantId) {
           throw new TRPCError({
             code: "FORBIDDEN",
-            message: "El centro deportivo no te pertenece",
+            message: "El centro deportivo no pertenece al mismo tenant",
           });
         }
       }
@@ -241,9 +206,8 @@ export const fieldRouter = router({
             description: input.description,
             phone: input.phone,
             email: input.email || null,
-            owner: {
-              connect: { id: ownerId },
-            },
+            tenantId: ctx.user.tenantId,
+            ownerId: ownerId,
             ...(input.sportCenterId && {
               sportCenter: {
                 connect: { id: input.sportCenterId },
@@ -301,49 +265,24 @@ export const fieldRouter = router({
       return fieldWithRelations;
     }),
 
-  // Obtener todas las canchas (owner ve solo las suyas, admin ve todas)
-  getAll: protectedProcedure
+  // Obtener todas las canchas del tenant (tenant staff ve todas, sys admin ve todas de todos los tenants)
+  getAll: tenantStaffProcedure
     .input(
       paginationInputSchema
         .extend({
           sport: SportEnum.optional(),
           available: z.boolean().optional(),
           search: z.string().optional(),
-          ownerId: z.union([IdSchema, z.literal("")]).optional(), // UUID/CUID o vacío
+          ownerId: z.union([IdSchema, z.literal("")]).optional(),
         })
         .optional()
     )
     .query(async ({ input, ctx }) => {
-      if (!ctx.user?.id || !ctx.user.tenantId) {
+      if (!ctx.user.tenantId) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "Usuario no autenticado",
+          message: "Usuario sin tenant asignado",
         });
-      }
-
-      // Verificar si es admin
-      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
-      const userIsOwner = await hasRole(
-        ctx.user.id,
-        "owner",
-        ctx.user.tenantId
-      );
-
-      // Verificar permisos para leer canchas
-      if (!userIsAdmin) {
-        const canRead = await hasPermissionOrManage(
-          ctx.user.id,
-          PermissionAction.READ,
-          PermissionResource.FIELD,
-          ctx.user.tenantId
-        );
-
-        if (!canRead && !userIsOwner) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "No tienes permisos para ver canchas",
-          });
-        }
       }
 
       const {
@@ -371,20 +310,12 @@ export const fieldRouter = router({
         updatedAt: "updatedAt",
       });
 
-      // Construir filtros
-      // Admin puede ver todas las canchas del tenant o filtrar por ownerId
-      // Owner solo ve sus propias canchas
+      // SYS_ADMIN puede ver canchas de todos los tenants, otros ven solo su tenant
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+
       const whereClause: Prisma.FieldWhereInput = {
-        ...(userIsAdmin
-          ? ownerId && ownerId !== ""
-            ? { ownerId } // Admin puede filtrar por owner específico
-            : {
-                // Admin ve todas las canchas del tenant (filtro por owner.tenantId)
-                owner: {
-                  tenantId: ctx.user.tenantId,
-                },
-              }
-          : { ownerId: ctx.user.id }), // Owner solo ve sus canchas
+        ...(!isSys && { tenantId: ctx.user.tenantId }), // Non-sys admins filter by tenant
+        ...(ownerId && ownerId !== "" && { ownerId }), // Optional owner filter
         ...searchFilter,
         ...(sport && { sport }),
         ...(available !== undefined && { available }),
@@ -431,14 +362,14 @@ export const fieldRouter = router({
       return createPaginatedResponse(fields, total, page, limit);
     }),
 
-  // Obtener una cancha por ID
-  getById: protectedProcedure
+  // Obtener una cancha por ID (tenant staff pueden ver canchas de su tenant)
+  getById: tenantStaffProcedure
     .input(z.object({ id: IdSchema }))
     .query(async ({ input, ctx }) => {
-      if (!ctx.user?.id || !ctx.user.tenantId) {
+      if (!ctx.user.tenantId) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "Usuario no autenticado",
+          message: "Usuario sin tenant asignado",
         });
       }
 
@@ -496,50 +427,33 @@ export const fieldRouter = router({
         });
       }
 
-      // Verificar multi-tenant: la cancha debe pertenecer al mismo tenant
-      if (field.owner.tenantId !== ctx.user.tenantId) {
+      // SYS_ADMIN puede ver todas las canchas, otros solo las de su tenant
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      if (!isSys && field.tenantId !== ctx.user.tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permisos para ver esta cancha",
         });
       }
 
-      // Verificar permisos: admin puede ver cualquier cancha del tenant, owner solo las suyas
-      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
-
-      if (!userIsAdmin && field.ownerId !== ctx.user.id) {
-        const canRead = await hasPermissionOrManage(
-          ctx.user.id,
-          PermissionAction.READ,
-          PermissionResource.FIELD,
-          ctx.user.tenantId
-        );
-
-        if (!canRead) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "No tienes permisos para ver esta cancha",
-          });
-        }
-      }
-
       return field;
     }),
 
-  // Actualizar una cancha
-  update: protectedProcedure
+  // Actualizar una cancha (solo TENANT_ADMIN)
+  update: tenantAdminProcedure
     .input(updateFieldSchema)
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user?.id) {
+      if (!ctx.user.tenantId) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "Usuario no autenticado",
+          message: "Usuario sin tenant asignado",
         });
       }
 
       // Verificar que la cancha existe
       const existingField = await prisma.field.findUnique({
         where: { id: input.id },
+        select: { id: true, tenantId: true, ownerId: true },
       });
 
       if (!existingField) {
@@ -549,34 +463,17 @@ export const fieldRouter = router({
         });
       }
 
-      // Verificar permisos: admin puede actualizar cualquier cancha, owner solo las suyas
-      if (!ctx.user.tenantId) {
+      // SYS_ADMIN puede actualizar cualquier cancha, TENANT_ADMIN solo las de su tenant
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      if (!isSys && existingField.tenantId !== ctx.user.tenantId) {
         throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
+          code: "FORBIDDEN",
+          message: "No tienes permisos para actualizar esta cancha",
         });
       }
 
-      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
-
-      if (!userIsAdmin && existingField.ownerId !== ctx.user.id) {
-        const canUpdate = await hasPermissionOrManage(
-          ctx.user.id,
-          PermissionAction.UPDATE,
-          PermissionResource.FIELD,
-          ctx.user.tenantId
-        );
-
-        if (!canUpdate) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "No tienes permisos para actualizar esta cancha",
-          });
-        }
-      }
-
-      // Si admin está cambiando el owner, verificar que el nuevo owner existe
-      if (input.ownerId && userIsAdmin) {
+      // Si se está cambiando el owner, verificar que el nuevo owner existe y pertenece al tenant
+      if (input.ownerId) {
         const newOwner = await prisma.user.findUnique({
           where: { id: input.ownerId },
         });
@@ -588,8 +485,7 @@ export const fieldRouter = router({
           });
         }
 
-        // Verificar que el nuevo owner pertenece al mismo tenant
-        if (newOwner.tenantId !== ctx.user.tenantId) {
+        if (!isSys && newOwner.tenantId !== ctx.user.tenantId) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "El usuario propietario no pertenece al mismo tenant",
@@ -597,10 +493,11 @@ export const fieldRouter = router({
         }
       }
 
-      // Verificar que el sportCenter existe si se proporciona
+      // Verificar que el sportCenter existe y pertenece al tenant si se proporciona
       if (input.sportCenterId) {
         const sportCenter = await prisma.sportCenter.findUnique({
           where: { id: input.sportCenterId },
+          select: { id: true, tenantId: true },
         });
 
         if (!sportCenter) {
@@ -610,11 +507,10 @@ export const fieldRouter = router({
           });
         }
 
-        // Solo verificar ownership si no es admin
-        if (!userIsAdmin && sportCenter.ownerId !== ctx.user.id) {
+        if (!isSys && sportCenter.tenantId !== ctx.user.tenantId) {
           throw new TRPCError({
             code: "FORBIDDEN",
-            message: "El centro deportivo no te pertenece",
+            message: "El centro deportivo no pertenece al mismo tenant",
           });
         }
       }
@@ -655,8 +551,8 @@ export const fieldRouter = router({
         }
       }
 
-      // Solo admin puede cambiar el owner
-      if (input.ownerId !== undefined && userIsAdmin) {
+      // Solo TENANT_ADMIN puede cambiar el owner
+      if (input.ownerId !== undefined) {
         updateData.owner = {
           connect: { id: input.ownerId },
         };
@@ -744,20 +640,21 @@ export const fieldRouter = router({
       return fieldWithRelations;
     }),
 
-  // Eliminar una cancha
-  delete: protectedProcedure
+  // Eliminar una cancha (solo TENANT_ADMIN)
+  delete: tenantAdminProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user?.id) {
+      if (!ctx.user.tenantId) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "Usuario no autenticado",
+          message: "Usuario sin tenant asignado",
         });
       }
 
       // Verificar que la cancha existe
       const existingField = await prisma.field.findUnique({
         where: { id: input.id },
+        select: { id: true, tenantId: true },
       });
 
       if (!existingField) {
@@ -767,30 +664,13 @@ export const fieldRouter = router({
         });
       }
 
-      // Verificar permisos: admin puede eliminar cualquier cancha, owner solo las suyas
-      if (!ctx.user.tenantId) {
+      // SYS_ADMIN puede eliminar cualquier cancha, TENANT_ADMIN solo las de su tenant
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      if (!isSys && existingField.tenantId !== ctx.user.tenantId) {
         throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
+          code: "FORBIDDEN",
+          message: "No tienes permisos para eliminar esta cancha",
         });
-      }
-
-      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
-
-      if (!userIsAdmin && existingField.ownerId !== ctx.user.id) {
-        const canDelete = await hasPermissionOrManage(
-          ctx.user.id,
-          PermissionAction.DELETE,
-          PermissionResource.FIELD,
-          ctx.user.tenantId
-        );
-
-        if (!canDelete) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "No tienes permisos para eliminar esta cancha",
-          });
-        }
       }
 
       // Verificar si hay reservas activas
@@ -818,8 +698,8 @@ export const fieldRouter = router({
       return { success: true, message: "Cancha eliminada correctamente" };
     }),
 
-  // Actualizar disponibilidad de una cancha
-  updateAvailability: protectedProcedure
+  // Actualizar disponibilidad de una cancha (TENANT_ADMIN)
+  updateAvailability: tenantAdminProcedure
     .input(
       z.object({
         id: z.string().uuid(),
@@ -827,16 +707,16 @@ export const fieldRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user?.id) {
+      if (!ctx.user.tenantId) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "Usuario no autenticado",
+          message: "Usuario sin tenant asignado",
         });
       }
 
-      // Verificar que la cancha existe
       const existingField = await prisma.field.findUnique({
         where: { id: input.id },
+        select: { id: true, tenantId: true },
       });
 
       if (!existingField) {
@@ -846,33 +726,15 @@ export const fieldRouter = router({
         });
       }
 
-      // Verificar permisos: admin puede actualizar cualquier cancha, owner solo las suyas
-      if (!ctx.user.tenantId) {
+      // SYS_ADMIN puede actualizar cualquier cancha, TENANT_ADMIN solo las de su tenant
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      if (!isSys && existingField.tenantId !== ctx.user.tenantId) {
         throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
+          code: "FORBIDDEN",
+          message: "No tienes permisos para actualizar esta cancha",
         });
       }
 
-      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
-
-      if (!userIsAdmin && existingField.ownerId !== ctx.user.id) {
-        const canUpdate = await hasPermissionOrManage(
-          ctx.user.id,
-          PermissionAction.UPDATE,
-          PermissionResource.FIELD,
-          ctx.user.tenantId
-        );
-
-        if (!canUpdate) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "No tienes permisos para actualizar esta cancha",
-          });
-        }
-      }
-
-      // Actualizar disponibilidad
       const updatedField = await prisma.field.update({
         where: { id: input.id },
         data: { available: input.available },
@@ -886,23 +748,22 @@ export const fieldRouter = router({
       return updatedField;
     }),
 
-  // Obtener horarios de una cancha
-  getSchedules: protectedProcedure
+  // Obtener horarios de una cancha (TENANT_STAFF o superior)
+  getSchedules: tenantStaffProcedure
     .input(z.object({ fieldId: IdSchema }))
     .query(async ({ input, ctx }) => {
-      if (!ctx.user?.id) {
+      if (!ctx.user.tenantId) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "Usuario no autenticado",
+          message: "Usuario sin tenant asignado",
         });
       }
 
-      // Verificar que la cancha existe y pertenece al owner
       const field = await prisma.field.findUnique({
         where: { id: input.fieldId },
         select: {
           id: true,
-          ownerId: true,
+          tenantId: true,
         },
       });
 
@@ -913,32 +774,15 @@ export const fieldRouter = router({
         });
       }
 
-      // Verificar permisos
-      if (field.ownerId !== ctx.user.id) {
-        if (ctx.user.tenantId) {
-          const canRead = await hasPermissionOrManage(
-            ctx.user.id,
-            PermissionAction.READ,
-            PermissionResource.FIELD,
-            ctx.user.tenantId
-          );
-
-          if (!canRead) {
-            throw new TRPCError({
-              code: "FORBIDDEN",
-              message:
-                "No tienes permisos para ver los horarios de esta cancha",
-            });
-          }
-        } else {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "No tienes permisos para ver los horarios de esta cancha",
-          });
-        }
+      // SYS_ADMIN puede ver horarios de cualquier cancha, otros solo las de su tenant
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      if (!isSys && field.tenantId !== ctx.user.tenantId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "No tienes permisos para ver los horarios de esta cancha",
+        });
       }
 
-      // Obtener horarios
       const schedules = await prisma.schedule.findMany({
         where: { fieldId: input.fieldId },
         orderBy: {
@@ -949,8 +793,8 @@ export const fieldRouter = router({
       return schedules;
     }),
 
-  // Actualizar horarios de una cancha (bulk update)
-  updateSchedules: protectedProcedure
+  // Actualizar horarios de una cancha (bulk update) - TENANT_ADMIN
+  updateSchedules: tenantAdminProcedure
     .input(
       z.object({
         fieldId: IdSchema,
@@ -982,19 +826,18 @@ export const fieldRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user?.id) {
+      if (!ctx.user.tenantId) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "Usuario no autenticado",
+          message: "Usuario sin tenant asignado",
         });
       }
 
-      // Verificar que la cancha existe y pertenece al owner
       const field = await prisma.field.findUnique({
         where: { id: input.fieldId },
         select: {
           id: true,
-          ownerId: true,
+          tenantId: true,
         },
       });
 
@@ -1005,31 +848,14 @@ export const fieldRouter = router({
         });
       }
 
-      // Verificar permisos: admin puede actualizar cualquier cancha, owner solo las suyas
-      if (!ctx.user.tenantId) {
+      // SYS_ADMIN puede actualizar cualquier cancha, TENANT_ADMIN solo las de su tenant
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      if (!isSys && field.tenantId !== ctx.user.tenantId) {
         throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
+          code: "FORBIDDEN",
+          message:
+            "No tienes permisos para actualizar los horarios de esta cancha",
         });
-      }
-
-      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
-
-      if (!userIsAdmin && field.ownerId !== ctx.user.id) {
-        const canUpdate = await hasPermissionOrManage(
-          ctx.user.id,
-          PermissionAction.UPDATE,
-          PermissionResource.FIELD,
-          ctx.user.tenantId
-        );
-
-        if (!canUpdate) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message:
-              "No tienes permisos para actualizar los horarios de esta cancha",
-          });
-        }
       }
 
       // Validar que las horas de inicio sean menores que las de fin
@@ -1088,8 +914,8 @@ export const fieldRouter = router({
       return updatedSchedules;
     }),
 
-  // Crear un horario individual
-  createSchedule: protectedProcedure
+  // Crear un horario individual (TENANT_ADMIN)
+  createSchedule: tenantAdminProcedure
     .input(
       z.object({
         fieldId: IdSchema,
@@ -1117,16 +943,16 @@ export const fieldRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user?.id || !ctx.user.tenantId) {
+      if (!ctx.user.tenantId) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "Usuario no autenticado",
+          message: "Usuario sin tenant asignado",
         });
       }
 
       const field = await prisma.field.findUnique({
         where: { id: input.fieldId },
-        select: { id: true, ownerId: true },
+        select: { id: true, tenantId: true },
       });
 
       if (!field) {
@@ -1136,25 +962,17 @@ export const fieldRouter = router({
         });
       }
 
-      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!userIsAdmin && field.ownerId !== ctx.user.id) {
-        const canUpdate = await hasPermissionOrManage(
-          ctx.user.id,
-          PermissionAction.UPDATE,
-          PermissionResource.FIELD,
-          ctx.user.tenantId
-        );
-        if (!canUpdate) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "No tienes permisos para crear horarios en esta cancha",
-          });
-        }
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      if (!isSys && field.tenantId !== ctx.user.tenantId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "No tienes permisos para crear horarios en esta cancha",
+        });
       }
 
       // Validar horas
-      const [startH, startM] = input.startHour.split(":").map(Number);
-      const [endH, endM] = input.endHour.split(":").map(Number);
+      const [startH = 0, startM = 0] = input.startHour.split(":").map(Number);
+      const [endH = 0, endM = 0] = input.endHour.split(":").map(Number);
       const startTime = startH * 60 + startM;
       const endTime = endH * 60 + endM;
 
@@ -1195,8 +1013,8 @@ export const fieldRouter = router({
       return schedule;
     }),
 
-  // Actualizar un horario individual
-  updateSchedule: protectedProcedure
+  // Actualizar un horario individual (TENANT_ADMIN)
+  updateSchedule: tenantAdminProcedure
     .input(
       z.object({
         scheduleId: IdSchema,
@@ -1217,10 +1035,10 @@ export const fieldRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user?.id || !ctx.user.tenantId) {
+      if (!ctx.user.tenantId) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "Usuario no autenticado",
+          message: "Usuario sin tenant asignado",
         });
       }
 
@@ -1228,7 +1046,7 @@ export const fieldRouter = router({
         where: { id: input.scheduleId },
         include: {
           field: {
-            select: { id: true, ownerId: true },
+            select: { id: true, tenantId: true },
           },
         },
       });
@@ -1240,28 +1058,20 @@ export const fieldRouter = router({
         });
       }
 
-      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!userIsAdmin && schedule.field.ownerId !== ctx.user.id) {
-        const canUpdate = await hasPermissionOrManage(
-          ctx.user.id,
-          PermissionAction.UPDATE,
-          PermissionResource.FIELD,
-          ctx.user.tenantId
-        );
-        if (!canUpdate) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "No tienes permisos para actualizar este horario",
-          });
-        }
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      if (!isSys && schedule.field.tenantId !== ctx.user.tenantId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "No tienes permisos para actualizar este horario",
+        });
       }
 
       const startHour = input.startHour || schedule.startHour;
       const endHour = input.endHour || schedule.endHour;
 
       // Validar horas
-      const [startH, startM] = startHour.split(":").map(Number);
-      const [endH, endM] = endHour.split(":").map(Number);
+      const [startH = 0, startM = 0] = startHour.split(":").map(Number);
+      const [endH = 0, endM = 0] = endHour.split(":").map(Number);
       const startTime = startH * 60 + startM;
       const endTime = endH * 60 + endM;
 
@@ -1283,14 +1093,14 @@ export const fieldRouter = router({
       return updated;
     }),
 
-  // Eliminar un horario individual
-  deleteSchedule: protectedProcedure
+  // Eliminar un horario individual (TENANT_ADMIN)
+  deleteSchedule: tenantAdminProcedure
     .input(z.object({ scheduleId: IdSchema }))
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user?.id || !ctx.user.tenantId) {
+      if (!ctx.user.tenantId) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "Usuario no autenticado",
+          message: "Usuario sin tenant asignado",
         });
       }
 
@@ -1298,7 +1108,7 @@ export const fieldRouter = router({
         where: { id: input.scheduleId },
         include: {
           field: {
-            select: { id: true, ownerId: true },
+            select: { id: true, tenantId: true },
           },
         },
       });
@@ -1310,20 +1120,12 @@ export const fieldRouter = router({
         });
       }
 
-      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!userIsAdmin && schedule.field.ownerId !== ctx.user.id) {
-        const canDelete = await hasPermissionOrManage(
-          ctx.user.id,
-          PermissionAction.DELETE,
-          PermissionResource.FIELD,
-          ctx.user.tenantId
-        );
-        if (!canDelete) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "No tienes permisos para eliminar este horario",
-          });
-        }
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      if (!isSys && schedule.field.tenantId !== ctx.user.tenantId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "No tienes permisos para eliminar este horario",
+        });
       }
 
       await prisma.schedule.delete({

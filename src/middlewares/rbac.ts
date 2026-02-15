@@ -49,17 +49,45 @@ export function requireAnyRole(roleNames: string[]) {
 }
 
 /**
- * Require admin access
+ * Require system admin access (SYS_ADMIN)
  */
-export function requireAdmin() {
-  return requireAnyRole(["super_admin", "admin"]);
+export function requireSysAdmin() {
+  return requireRole("sys_admin");
 }
 
 /**
- * Require super admin access
+ * Require tenant admin access (TENANT_ADMIN)
+ */
+export function requireTenantAdmin() {
+  return requireAnyRole(["sys_admin", "tenant_admin"]);
+}
+
+/**
+ * Require tenant staff access (TENANT_STAFF or higher)
+ */
+export function requireTenantStaff() {
+  return requireAnyRole(["sys_admin", "tenant_admin", "tenant_staff"]);
+}
+
+/**
+ * Require tenant member access (TENANT_ADMIN or TENANT_STAFF)
+ */
+export function requireTenantMember() {
+  return requireAnyRole(["sys_admin", "tenant_admin", "tenant_staff"]);
+}
+
+/**
+ * @deprecated Use requireTenantAdmin instead
+ */
+export function requireAdmin() {
+  return requireTenantAdmin();
+}
+
+/**
+ * @deprecated Use requireSysAdmin instead
  */
 export function requireSuperAdmin() {
-  return requireRole("super_admin");
+  return requireSysAdmin();
 }
 
 /**
