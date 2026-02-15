@@ -167,6 +167,7 @@ export default function AdminReservationsPage() {
   const uniqueFields = (fieldsData?.data ?? []).map((f) => ({
     id: f.id,
     name: f.name,
+    price: Number(f.price),
   }));
 
   return (

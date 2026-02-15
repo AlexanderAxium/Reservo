@@ -31,6 +31,7 @@ import { useUser } from "@/hooks/useUser";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/utils/trpc";
 import {
+  BarChart3,
   Calendar,
   ChevronDown,
   LayoutDashboard,
@@ -144,6 +145,12 @@ export function AppSidebar() {
           icon: Calendar,
           description: "Gestiona las reservas de tus canchas",
         },
+        {
+          title: "Métricas e ingresos",
+          href: "/dashboard/owner/metrics",
+          icon: BarChart3,
+          description: "Ingresos y reservas por cancha",
+        },
       ];
     }
 
@@ -255,7 +262,7 @@ export function AppSidebar() {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => router.push("/dashboard/settings")}
+                onClick={() => router.push("/dashboard/profile")}
               >
                 <User className="mr-2 h-4 w-4" />
                 <span>{tCommon("profile")}</span>

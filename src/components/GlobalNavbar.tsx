@@ -178,7 +178,7 @@ export default function GlobalNavbar() {
                           <span>{t("dashboard")}</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => router.push("/dashboard/settings")}
+                          onClick={() => router.push("/dashboard/profile")}
                         >
                           <User className="mr-2 h-4 w-4" />
                           <span>{t("profile")}</span>
@@ -347,7 +347,7 @@ export default function GlobalNavbar() {
                         <button
                           type="button"
                           onClick={() => {
-                            router.push("/dashboard/settings");
+                            router.push("/dashboard/profile");
                             setIsMenuOpen(false);
                           }}
                           className="group flex items-center px-5 py-4 rounded-xl text-sm font-medium transition-all duration-200 text-gray-300 hover:text-white hover:bg-accent w-full"

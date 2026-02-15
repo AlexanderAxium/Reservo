@@ -4,6 +4,7 @@ import { featureRouter } from "./feature";
 import { fieldRouter } from "./field";
 import { rbacRouter } from "./rbac";
 import { reservationRouter } from "./reservation";
+import { tenantRouter } from "./tenant";
 import { translationRouter } from "./translation";
 import { userRouter } from "./user";
 
@@ -15,6 +16,7 @@ export const appRouter = router({
   field: fieldRouter,
   feature: featureRouter,
   reservation: reservationRouter,
+  tenant: tenantRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -77,6 +77,54 @@ export const userRouter = router({
       return createPaginatedResponse(users, total, page, limit);
     }),
 
+  /** Lista solo usuarios con rol "user" (clientes) para reservas manuales, etc. */
+  getClients: protectedProcedure
+    .input(paginationInputSchema.optional())
+    .query(async ({ input, ctx }) => {
+      if (!ctx.user?.tenantId) {
+        throw new Error("User tenant not found");
+      }
+
+      const {
+        page = 1,
+        limit = 200,
+        search,
+        sortBy,
+        sortOrder = "asc",
+      } = input || {};
+      const offset = calculateOffset(page, limit);
+      const searchFilter = createSearchFilter(search, ["email", "name"]);
+      const orderBy = createSortOrder(sortBy, sortOrder);
+
+      const whereClause = {
+        ...searchFilter,
+        tenantId: ctx.user.tenantId,
+        userRoles: {
+          some: {
+            role: { name: "user" },
+            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+          },
+        },
+      };
+
+      const [users, total] = await Promise.all([
+        prisma.user.findMany({
+          where: whereClause,
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+          orderBy,
+          skip: offset,
+          take: limit,
+        }),
+        prisma.user.count({ where: whereClause }),
+      ]);
+
+      return createPaginatedResponse(users, total, page, limit);
+    }),
+
   getById: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {

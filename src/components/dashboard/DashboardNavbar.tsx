@@ -155,9 +155,7 @@ export function DashboardNavbar() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => router.push("/dashboard/settings")}
-            >
+            <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
               <User className="mr-2 h-4 w-4" />
               <span>{t("profile")}</span>
             </DropdownMenuItem>

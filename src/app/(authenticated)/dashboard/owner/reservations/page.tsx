@@ -38,7 +38,8 @@ import {
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -94,7 +95,16 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+const VALID_STATUSES = [
+  "PENDING",
+  "CONFIRMED",
+  "CANCELLED",
+  "COMPLETED",
+  "NO_SHOW",
+] as const;
+
 export default function OwnerReservationsPage() {
+  const searchParams = useSearchParams();
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(
     undefined
@@ -106,6 +116,28 @@ export default function OwnerReservationsPage() {
     null
   );
   const [manualModalOpen, setManualModalOpen] = useState(false);
+
+  // Sincronizar filtro y modal con la URL (?status=PENDING, ?openManual=1)
+  useEffect(() => {
+    const status = searchParams.get("status");
+    if (
+      status &&
+      VALID_STATUSES.includes(
+        status as
+          | "PENDING"
+          | "CONFIRMED"
+          | "CANCELLED"
+          | "COMPLETED"
+          | "NO_SHOW"
+      )
+    ) {
+      setStatusFilter(status);
+    }
+    const openManual = searchParams.get("openManual");
+    if (openManual === "1") {
+      setManualModalOpen(true);
+    }
+  }, [searchParams]);
 
   const utils = trpc.useUtils();
   const { data, isLoading } = trpc.reservation.listForOwner.useQuery({
@@ -139,7 +171,11 @@ export default function OwnerReservationsPage() {
   const pagination = data?.pagination;
 
   const ownerFields =
-    fieldsData?.data?.map((f) => ({ id: f.id, name: f.name })) ?? [];
+    fieldsData?.data?.map((f) => ({
+      id: f.id,
+      name: f.name,
+      price: Number(f.price),
+    })) ?? [];
 
   return (
     <ProtectedRoute>
