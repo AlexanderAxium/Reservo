@@ -198,6 +198,8 @@ export const userRouter = router({
             email: true,
             name: true,
             phone: true,
+            createdAt: true,
+            _count: { select: { reservations: true } },
           },
           orderBy,
           skip: offset,

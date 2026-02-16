@@ -12,6 +12,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { trpc } from "@/hooks/useTRPC";
 import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 
 type Client = {
   id: string;
@@ -21,7 +22,7 @@ type Client = {
   _count: {
     reservations: number;
   };
-  createdAt: Date;
+  createdAt: string;
 };
 
 export default function ClientsPage() {
@@ -52,7 +53,7 @@ export default function ClientsPage() {
       key: "phone",
       title: "Teléfono",
       width: "140px",
-      render: (value) => value || "-",
+      render: (value) => (value != null && value !== "" ? String(value) : "-"),
     },
     {
       key: "_count",
@@ -66,7 +67,7 @@ export default function ClientsPage() {
       key: "createdAt",
       title: "Registrado",
       width: "130px",
-      render: (value) =>
+      render: (value): ReactNode =>
         new Date(value as Date).toLocaleDateString("es-PE", {
           day: "2-digit",
           month: "short",

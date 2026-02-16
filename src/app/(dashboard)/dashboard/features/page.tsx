@@ -21,7 +21,7 @@ type Feature = {
   description?: string | null;
   icon?: string | null;
   isActive: boolean;
-  createdAt: Date;
+  createdAt: string;
 };
 
 export default function FeaturesPage() {
@@ -114,7 +114,7 @@ export default function FeaturesPage() {
       key: "description",
       title: "Descripción",
       width: "300px",
-      render: (value) => value || "-",
+      render: (value) => (value != null && value !== "" ? String(value) : "-"),
     },
     {
       key: "isActive",
