@@ -2,50 +2,9 @@
 
 @variant dark (&:where(.dark *));
 
-/* Gilroy Font Family */
-@font-face {
-  font-family: "Gilroy";
-  src: url("/gilroy/Gilroy-Regular.ttf") format("truetype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Gilroy";
-  src: url("/gilroy/Gilroy-Medium.ttf") format("truetype");
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Gilroy";
-  src: url("/gilroy/Gilroy-SemiBold.ttf") format("truetype");
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Gilroy";
-  src: url("/gilroy/Gilroy-Bold.ttf") format("truetype");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "GuarujaTitle";
-  src: url("/gilroy/GuarujaTitle.ttf") format("truetype");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
 @theme {
-  --font-family-sans: "Gilroy", "sans-serif";
-  --font-family-heading: "GuarujaTitle", "sans-serif";
+  --font-family-sans: "Quicksand", sans-serif;
+  --font-family-heading: "Quicksand", sans-serif;
 
   /* Colors for light mode */
   --color-background: #f8fafb;
@@ -54,19 +13,19 @@
   --color-card-foreground: hsl(240 10% 3.9%);
   --color-popover: hsl(0 0% 100%);
   --color-popover-foreground: hsl(240 10% 3.9%);
-  --color-primary: #060C20;
+  --color-primary: #060c20;
   --color-primary-foreground: hsl(0 0% 98%);
-  --color-secondary: #0072CF;
+  --color-secondary: #0072cf;
   --color-secondary-foreground: hsl(0 0% 98%);
   --color-muted: hsl(240 4.8% 95.9%);
   --color-muted-foreground: hsl(240 3.8% 46.1%);
-  --color-accent: #7ECFC3;
+  --color-accent: #7ecfc3;
   --color-accent-foreground: hsl(0 0% 98%);
   --color-destructive: hsl(0 84.2% 60.2%);
   --color-destructive-foreground: hsl(0 0% 98%);
   --color-border: hsl(140 15.9% 92%);
   --color-input: hsl(240 5.9% 90%);
-  --color-ring: #0072CF;
+  --color-ring: #0072cf;
 
   /* Sidebar colors for light mode */
   --sidebar: hsl(0 0% 100%);
@@ -77,6 +36,15 @@
   --sidebar-accent-foreground: hsl(215, 40%, 20%);
   --sidebar-border: hsl(240 5.9% 85%);
   --sidebar-ring: hsl(215, 40%, 42%);
+  /* Map for Tailwind bg-sidebar, text-sidebar-foreground, etc. */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 
   --radius: 0.6rem;
 }
@@ -112,6 +80,14 @@
   --sidebar-accent-foreground: hsl(0 0% 98%);
   --sidebar-border: hsl(220, 12%, 10%);
   --sidebar-ring: hsl(210, 50%, 58%);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 }
 
 /* Global styles */
@@ -120,8 +96,13 @@
     border-color: var(--color-border);
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-family-heading);
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Quicksand", sans-serif;
   }
 }
 
@@ -176,17 +157,14 @@ body {
   /* Typography classes */
   .text-heading-1 {
     @apply text-3xl sm:text-4xl md:text-5xl leading-tight;
-    font-family: var(--font-family-heading);
   }
 
   .text-heading-2 {
     @apply text-2xl sm:text-3xl md:text-4xl leading-tight;
-    font-family: var(--font-family-heading);
   }
 
   .text-heading-3 {
     @apply text-xl sm:text-2xl leading-tight;
-    font-family: var(--font-family-heading);
   }
 
   .text-body-large {
@@ -204,7 +182,6 @@ body {
   .text-label {
     @apply text-sm font-medium;
   }
-
 }
 
 @layer utilities {

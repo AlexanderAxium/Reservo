@@ -22,7 +22,7 @@ export function OwnerPendingAlerts() {
         {pendingCount === 1 ? "reserva pendiente" : "reservas pendientes"} de
         confirmar.{" "}
         <Link
-          href="/dashboard/owner/reservations?status=PENDING"
+          href="/dashboard/reservations?status=PENDING"
           className="font-medium text-primary underline underline-offset-2 hover:no-underline"
         >
           Ver y gestionar

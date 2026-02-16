@@ -421,6 +421,7 @@ model SportCenter {
 model Field {
   id            String   @id @default(uuid())
   name          String
+  slug          String   @unique
   sport         Sport
   price         Decimal  @db.Decimal(10, 2)
   available     Boolean  @default(true)
@@ -461,6 +462,7 @@ model Field {
   reservations  Reservation[]
   fieldFeatures FieldFeature[]
 
+  @@index([slug])
   @@index([ownerId])
   @@index([sportCenterId])
   @@index([tenantId])

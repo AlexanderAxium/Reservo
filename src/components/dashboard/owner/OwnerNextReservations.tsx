@@ -45,7 +45,7 @@ export function OwnerNextReservations() {
         </CardHeader>
         <CardContent>
           <Link
-            href="/dashboard/owner/reservations"
+            href="/dashboard/reservations"
             className="text-sm text-primary hover:underline"
           >
             Ver todas las reservas
@@ -85,7 +85,7 @@ export function OwnerNextReservations() {
           ))}
         </ul>
         <Link
-          href="/dashboard/owner/reservations"
+          href="/dashboard/reservations"
           className="mt-3 block text-center text-sm text-primary hover:underline"
         >
           Ver todas las reservas

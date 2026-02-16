@@ -12,6 +12,7 @@ import {
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { hashPassword } from "better-auth/crypto";
+import { generateUniqueSlug } from "../src/lib/utils/slug";
 
 const prisma = new PrismaClient();
 
@@ -119,12 +120,12 @@ async function main() {
   // ================================
   console.log("🏢 Creating tenants...");
 
-  // Create default tenant
+  // Create default tenant (más info para demo)
   const defaultTenant = await prisma.tenant.create({
     data: {
       id: "tenant-default-001",
       name: "MyApp",
-      displayName: "My Application Platform",
+      displayName: "Reservo - Canchas Lima",
       slug: "my-app",
       plan: "PROFESSIONAL",
       maxFields: 50,
@@ -132,12 +133,12 @@ async function main() {
       isVerified: true,
       verifiedAt: new Date(),
       description:
-        "Una plataforma moderna y escalable para gestión de usuarios y contenido",
-      email: "info@myapp.com",
-      phone: "+1 (555) 123-4567",
-      address: "123 Business Street",
-      city: "New York",
-      country: "USA",
+        "Plataforma líder en reserva de canchas deportivas en Lima. Fútbol, tenis, básquet, vóley y futsal. Césped sintético, horarios flexibles y pagos seguros.",
+      email: "reservas@reservo.com",
+      phone: "+51 1 234 5678",
+      address: "Av. Javier Prado Este 1234, San Isidro",
+      city: "Lima",
+      country: "Peru",
       website: "https://myapp.com",
       facebookUrl: "https://facebook.com/myapp",
       twitterUrl: "https://twitter.com/myapp",
@@ -147,10 +148,11 @@ async function main() {
       foundedYear: 2024,
       logoUrl: "/images/logo.png",
       faviconUrl: "/favicon.ico",
-      metaTitle: "MyApp - Plataforma de Gestión Moderna",
+      metaTitle: "Reservo - Reserva de canchas deportivas en Lima",
       metaDescription:
-        "Gestiona usuarios, contenido y configura tu plataforma de manera eficiente",
-      metaKeywords: "gestión, usuarios, plataforma, moderno, escalable",
+        "Reserva canchas de fútbol, tenis, básquet y más. Precios por hora, confirmación al instante y múltiples sedes en Lima.",
+      metaKeywords:
+        "reserva canchas, fútbol Lima, tenis, básquet, vóley, futsal, deportes",
       termsUrl: "/terms",
       privacyUrl: "/privacy",
       cookiesUrl: "/cookies",
@@ -158,7 +160,7 @@ async function main() {
     },
   });
 
-  // Create demo tenant
+  // Create demo tenant (más info)
   const demoTenant = await prisma.tenant.create({
     data: {
       id: "tenant-demo-002",
@@ -170,7 +172,8 @@ async function main() {
       maxUsers: 25,
       isVerified: true,
       verifiedAt: new Date(),
-      description: "Empresa de demostración para pruebas",
+      description:
+        "Tenant de demostración con canchas, reservas y pagos de ejemplo para pruebas y desarrollo.",
       email: "info@democorp.com",
       phone: "+1 (555) 999-8888",
       address: "456 Demo Avenue",
@@ -181,7 +184,8 @@ async function main() {
       logoUrl: "/images/demo-logo.png",
       faviconUrl: "/favicon-demo.ico",
       metaTitle: "DemoCorp - Empresa de Demostración",
-      metaDescription: "Plataforma de demostración para pruebas y desarrollo",
+      metaDescription:
+        "Plataforma de demostración para pruebas y desarrollo. Incluye datos de ejemplo.",
       metaKeywords: "demo, pruebas, desarrollo, corporación",
     },
   });
@@ -989,18 +993,330 @@ async function main() {
   console.log(`✅ Created ${createdPaymentMethods.length} payment methods`);
 
   // ================================
-  // 8. CREATE FIELDS (Canchas Individuales)
+  // 8. CREATE SPORT CENTERS & FIELDS (lugares reales de Perú)
   // ================================
-  console.log("⚽ Creating individual fields...");
+  console.log("🏟️ Creating sport centers and fields...");
 
   // Get owner users
   const ownerUser = createdUsers.find((u) => u.email === "owner@myapp.com");
   const ownerUser2 = createdUsers.find((u) => u.email === "owner2@myapp.com");
   if (!ownerUser || !ownerUser2) {
-    console.log("⚠️ Owner users not found, skipping fields");
+    console.log("⚠️ Owner users not found, skipping sport centers and fields");
   } else {
-    // Canchas individuales con ubicación completa (Opción 7 - Híbrida)
-    const fields = [
+    // 8a. Centros deportivos reales de Perú
+    let palacioJuventud:
+      | {
+          id: string;
+          address: string;
+          district: string | null;
+          city: string | null;
+        }
+      | undefined;
+    let videna:
+      | {
+          id: string;
+          address: string;
+          district: string | null;
+          city: string | null;
+        }
+      | undefined;
+    let mariaReicheId: string | undefined;
+
+    try {
+      const palacio = await prisma.sportCenter.create({
+        data: {
+          tenantId: defaultTenant.id,
+          name: "Palacio de la Juventud",
+          slug: "palacio-de-la-juventud",
+          address: "Av. del Aire s/n, frente a Videna",
+          city: "Lima",
+          district: "San Luis",
+          description:
+            "Complejo deportivo municipal con canchas de tenis, básquet y vóley. Instalaciones modernas, vestuarios y gradas. Ideal para torneos y práctica.",
+          phone: "+51 1 265 7890",
+          email: "contacto@palaciojuventud.gob.pe",
+          website: "https://www.munisanluis.gob.pe",
+          latitude: -12.0772,
+          longitude: -77.0524,
+          googleMapsUrl: "https://maps.google.com/?q=-12.0772,-77.0524",
+          status: SportCenterStatus.ACTIVE,
+          rating: 4.5,
+          images: [],
+          ownerId: ownerUser.id,
+        },
+      });
+      palacioJuventud = palacio;
+      console.log(
+        "   ✅ Created sport center: Palacio de la Juventud (San Luis)"
+      );
+
+      const videnaCenter = await prisma.sportCenter.create({
+        data: {
+          tenantId: defaultTenant.id,
+          name: "Villa Deportiva Nacional - VIDENA",
+          slug: "videna",
+          address: "Av. del Aire cdra 1",
+          city: "Lima",
+          district: "San Luis",
+          description:
+            "Sede del Instituto Peruano del Deporte. Canchas de fútbol y futsal de nivel competitivo, césped sintético y tribunas.",
+          phone: "+51 1 265 1234",
+          email: "info@ipd.gob.pe",
+          latitude: -12.0785,
+          longitude: -77.0518,
+          googleMapsUrl: "https://maps.google.com/?q=-12.0785,-77.0518",
+          status: SportCenterStatus.ACTIVE,
+          rating: 4.8,
+          images: [],
+          ownerId: ownerUser2.id,
+        },
+      });
+      videna = videnaCenter;
+      console.log("   ✅ Created sport center: VIDENA (San Luis)");
+
+      const complejoMariaReiche = await prisma.sportCenter.create({
+        data: {
+          tenantId: defaultTenant.id,
+          name: "Complejo Deportivo María Reiche",
+          slug: "complejo-maria-reiche",
+          address: "Av. El Polo 305, Monterrico",
+          city: "Lima",
+          district: "Santiago de Surco",
+          description:
+            "Complejo con canchas de tenis y vóley. Ambiente familiar, estacionamiento y cafetería.",
+          phone: "+51 1 437 4567",
+          email: "reservas@mariareiche.edu.pe",
+          latitude: -12.0842,
+          longitude: -76.9765,
+          googleMapsUrl: "https://maps.google.com/?q=-12.0842,-76.9765",
+          status: SportCenterStatus.ACTIVE,
+          rating: 4.3,
+          images: [],
+          ownerId: ownerUser.id,
+        },
+      });
+      mariaReicheId = complejoMariaReiche.id;
+      console.log("   ✅ Created sport center: Complejo María Reiche (Surco)");
+    } catch (error: unknown) {
+      const prismaError = error as { code?: string };
+      if (prismaError?.code === "P2021") {
+        console.log("⏭️ Tabla sport_centers no existe, omitiendo centros...");
+      } else {
+        throw error;
+      }
+    }
+
+    // 8b. Canchas: dentro de centros deportivos + canchas individuales (lugares reales Lima)
+    const palacioId = palacioJuventud?.id;
+    const videnaId = videna?.id;
+
+    const fields: Array<{
+      name: string;
+      sport: Sport;
+      price: number;
+      available: boolean;
+      images: string[];
+      address: string;
+      city: string;
+      district: string;
+      latitude: number;
+      longitude: number;
+      googleMapsUrl: string;
+      description: string;
+      phone: string;
+      email: string;
+      ownerId: string;
+      tenantId: string;
+      sportCenterId?: string;
+    }> = [];
+
+    // Palacio de la Juventud: tenis, básquet, vóley
+    if (palacioId) {
+      const baseAddr = "Av. del Aire s/n, San Luis";
+      const baseLat = -12.0772;
+      const baseLng = -77.0524;
+      fields.push(
+        {
+          name: "Tenis 1 - Palacio de la Juventud",
+          sport: Sport.TENNIS,
+          price: 55.0,
+          available: true,
+          images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+          address: baseAddr,
+          city: "Lima",
+          district: "San Luis",
+          latitude: baseLat,
+          longitude: baseLng,
+          googleMapsUrl: "https://maps.google.com/?q=-12.0772,-77.0524",
+          description:
+            "Cancha de tenis con superficie de cemento. Iluminación nocturna.",
+          phone: "+51 1 265 7890",
+          email: "contacto@palaciojuventud.gob.pe",
+          ownerId: ownerUser.id,
+          tenantId: defaultTenant.id,
+          sportCenterId: palacioId,
+        },
+        {
+          name: "Tenis 2 - Palacio de la Juventud",
+          sport: Sport.TENNIS,
+          price: 55.0,
+          available: true,
+          images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+          address: baseAddr,
+          city: "Lima",
+          district: "San Luis",
+          latitude: baseLat,
+          longitude: baseLng,
+          googleMapsUrl: "https://maps.google.com/?q=-12.0772,-77.0524",
+          description: "Cancha de tenis arcilla. Vestuarios en el complejo.",
+          phone: "+51 1 265 7890",
+          email: "contacto@palaciojuventud.gob.pe",
+          ownerId: ownerUser.id,
+          tenantId: defaultTenant.id,
+          sportCenterId: palacioId,
+        },
+        {
+          name: "Básquet - Palacio de la Juventud",
+          sport: Sport.BASKETBALL,
+          price: 65.0,
+          available: true,
+          images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+          address: baseAddr,
+          city: "Lima",
+          district: "San Luis",
+          latitude: baseLat,
+          longitude: baseLng,
+          googleMapsUrl: "https://maps.google.com/?q=-12.0772,-77.0524",
+          description:
+            "Cancha de básquet techada, piso de parquet. Ideal para torneos.",
+          phone: "+51 1 265 7890",
+          email: "contacto@palaciojuventud.gob.pe",
+          ownerId: ownerUser.id,
+          tenantId: defaultTenant.id,
+          sportCenterId: palacioId,
+        },
+        {
+          name: "Vóley - Palacio de la Juventud",
+          sport: Sport.VOLLEYBALL,
+          price: 50.0,
+          available: true,
+          images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+          address: baseAddr,
+          city: "Lima",
+          district: "San Luis",
+          latitude: baseLat,
+          longitude: baseLng,
+          googleMapsUrl: "https://maps.google.com/?q=-12.0772,-77.0524",
+          description: "Cancha de vóley sala. Red y líneas reglamentarias.",
+          phone: "+51 1 265 7890",
+          email: "contacto@palaciojuventud.gob.pe",
+          ownerId: ownerUser.id,
+          tenantId: defaultTenant.id,
+          sportCenterId: palacioId,
+        }
+      );
+    }
+
+    // VIDENA: fútbol y futsal
+    if (videnaId) {
+      const baseAddr = "Av. del Aire cdra 1, San Luis";
+      const baseLat = -12.0785;
+      const baseLng = -77.0518;
+      fields.push(
+        {
+          name: "Fútbol 1 - VIDENA",
+          sport: Sport.FOOTBALL,
+          price: 90.0,
+          available: true,
+          images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+          address: baseAddr,
+          city: "Lima",
+          district: "San Luis",
+          latitude: baseLat,
+          longitude: baseLng,
+          googleMapsUrl: "https://maps.google.com/?q=-12.0785,-77.0518",
+          description:
+            "Cancha de fútbol césped sintético. Nivel competitivo, tribunas.",
+          phone: "+51 1 265 1234",
+          email: "info@ipd.gob.pe",
+          ownerId: ownerUser2.id,
+          tenantId: defaultTenant.id,
+          sportCenterId: videnaId,
+        },
+        {
+          name: "Futsal - VIDENA",
+          sport: Sport.FUTSAL,
+          price: 70.0,
+          available: true,
+          images: [
+            "https://sport-12.com/wp-content/uploads/2022/02/Cancha-Chapultepec_cuadrado.jpg",
+          ],
+          address: baseAddr,
+          city: "Lima",
+          district: "San Luis",
+          latitude: baseLat,
+          longitude: baseLng,
+          googleMapsUrl: "https://maps.google.com/?q=-12.0785,-77.0518",
+          description: "Cancha de futsal techada. Piso sintético profesional.",
+          phone: "+51 1 265 1234",
+          email: "info@ipd.gob.pe",
+          ownerId: ownerUser2.id,
+          tenantId: defaultTenant.id,
+          sportCenterId: videnaId,
+        }
+      );
+    }
+
+    // Complejo María Reiche (Surco): tenis y vóley
+    if (mariaReicheId) {
+      const baseAddr = "Av. El Polo 305, Monterrico";
+      const baseLat = -12.0842;
+      const baseLng = -76.9765;
+      fields.push(
+        {
+          name: "Tenis - María Reiche",
+          sport: Sport.TENNIS,
+          price: 50.0,
+          available: true,
+          images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+          address: baseAddr,
+          city: "Lima",
+          district: "Santiago de Surco",
+          latitude: baseLat,
+          longitude: baseLng,
+          googleMapsUrl: "https://maps.google.com/?q=-12.0842,-76.9765",
+          description:
+            "Cancha de tenis en complejo familiar. Estacionamiento disponible.",
+          phone: "+51 1 437 4567",
+          email: "reservas@mariareiche.edu.pe",
+          ownerId: ownerUser.id,
+          tenantId: defaultTenant.id,
+          sportCenterId: mariaReicheId,
+        },
+        {
+          name: "Vóley - María Reiche",
+          sport: Sport.VOLLEYBALL,
+          price: 45.0,
+          available: true,
+          images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+          address: baseAddr,
+          city: "Lima",
+          district: "Santiago de Surco",
+          latitude: baseLat,
+          longitude: baseLng,
+          googleMapsUrl: "https://maps.google.com/?q=-12.0842,-76.9765",
+          description: "Cancha de vóley al aire libre. Ideal para grupos.",
+          phone: "+51 1 437 4567",
+          email: "reservas@mariareiche.edu.pe",
+          ownerId: ownerUser.id,
+          tenantId: defaultTenant.id,
+          sportCenterId: mariaReicheId,
+        }
+      );
+    }
+
+    // Canchas individuales (sin centro) - lugares reales de Lima
+    fields.push(
       {
         name: "Cancha de Fútbol - San Isidro",
         sport: Sport.FOOTBALL,
@@ -1061,46 +1377,6 @@ async function main() {
         tenantId: defaultTenant.id,
       },
       {
-        name: "Cancha de Tenis - Surco",
-        sport: Sport.TENNIS,
-        price: 50.0,
-        available: true,
-        images: [
-          "https://sport-12.com/wp-content/uploads/2022/02/Cancha-Chapultepec_cuadrado.jpg",
-        ],
-        address: "Av. Caminos del Inca 3456",
-        city: "Lima",
-        district: "Santiago de Surco",
-        latitude: -12.1355,
-        longitude: -76.9904,
-        googleMapsUrl: "https://maps.google.com/?q=-12.1355,-76.9904",
-        description:
-          "Cancha de tenis con superficie de arcilla. Vestuarios y duchas disponibles.",
-        phone: "+51 987 654 324",
-        email: "cancha4@reservo.com",
-        ownerId: ownerUser2.id,
-        tenantId: defaultTenant.id,
-      },
-      {
-        name: "Cancha de Básquet - San Borja",
-        sport: Sport.BASKETBALL,
-        price: 70.0,
-        available: true,
-        images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
-        address: "Av. San Borja Norte 789",
-        city: "Lima",
-        district: "San Borja",
-        latitude: -12.0956,
-        longitude: -77.0064,
-        googleMapsUrl: "https://maps.google.com/?q=-12.0956,-77.0064",
-        description:
-          "Cancha de básquet techada con piso de parquet. Iluminación profesional.",
-        phone: "+51 987 654 325",
-        email: "cancha5@reservo.com",
-        ownerId: ownerUser.id,
-        tenantId: defaultTenant.id,
-      },
-      {
         name: "Cancha de Fútbol - Barranco",
         sport: Sport.FOOTBALL,
         price: 65.0,
@@ -1119,25 +1395,6 @@ async function main() {
         phone: "+51 987 654 326",
         email: "cancha6@reservo.com",
         ownerId: ownerUser2.id,
-        tenantId: defaultTenant.id,
-      },
-      {
-        name: "Cancha de Vóley - Chorrillos",
-        sport: Sport.VOLLEYBALL,
-        price: 55.0,
-        available: true,
-        images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
-        address: "Av. Defensores del Morro 123",
-        city: "Lima",
-        district: "Chorrillos",
-        latitude: -12.1696,
-        longitude: -77.0081,
-        googleMapsUrl: "https://maps.google.com/?q=-12.1696,-77.0081",
-        description:
-          "Cancha de vóley playa y sala. Ideal para entrenamientos y partidos.",
-        phone: "+51 987 654 327",
-        email: "cancha7@reservo.com",
-        ownerId: ownerUser.id,
         tenantId: defaultTenant.id,
       },
       {
@@ -1160,14 +1417,21 @@ async function main() {
         email: "cancha8@reservo.com",
         ownerId: ownerUser2.id,
         tenantId: defaultTenant.id,
-      },
-    ];
+      }
+    );
 
     const createdFields = [];
+    const usedSlugs = new Set<string>();
     try {
       for (const fieldData of fields) {
+        const slug = generateUniqueSlug(
+          fieldData.name,
+          fieldData.sport,
+          usedSlugs
+        );
+        usedSlugs.add(slug);
         const field = await prisma.field.create({
-          data: fieldData,
+          data: { ...fieldData, slug },
         });
         createdFields.push(field);
         console.log(`   ✅ Created field: ${field.name} (${field.district})`);
@@ -1306,45 +1570,123 @@ async function main() {
 
     const clientUser = createdUsers.find((u) => u.email === "user@myapp.com");
     const mariaUser = createdUsers.find((u) => u.email === "maria@myapp.com");
+    const clienteUser = createdUsers.find(
+      (u) => u.email === "cliente@test.com"
+    );
+    const johnUser = createdUsers.find((u) => u.email === "user@myapp.com");
 
-    // Verify users and fields exist before creating reservations
-    if (clientUser && mariaUser && createdFields.length >= 2) {
-      const now = new Date();
-      const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(18, 0, 0, 0);
+    const clientUsers = [clientUser, mariaUser, clienteUser, johnUser].filter(
+      (u): u is NonNullable<typeof u> => !!u
+    );
+    const clientUserForNotif = clientUser ?? mariaUser ?? clientUsers[0];
 
-      const dayAfter = new Date(now);
-      dayAfter.setDate(dayAfter.getDate() + 2);
-      dayAfter.setHours(19, 0, 0, 0);
-
-      // Ensure fields exist (TypeScript safety)
+    if (clientUsers.length === 0 || createdFields.length < 2) {
+      console.log("⚠️ Not enough users or fields, skipping reservations");
+    } else {
       const firstField = createdFields[0];
       const secondField = createdFields[1];
+      const thirdField = createdFields[2];
+      const fourthField = createdFields[3];
+      const fieldsForRes = [
+        firstField,
+        secondField,
+        thirdField,
+        fourthField,
+      ].filter((f): f is NonNullable<typeof f> => !!f);
 
-      if (!firstField || !secondField) {
+      if (fieldsForRes.length < 2) {
         console.log("⚠️ Not enough fields created, skipping reservations");
       } else {
-        const reservations = [
-          {
-            startDate: tomorrow,
-            endDate: new Date(tomorrow.getTime() + 2 * 60 * 60 * 1000), // +2 horas
-            amount: 160.0,
-            status: ReservationStatus.CONFIRMED,
-            createdByChatbot: false,
-            userId: clientUser.id,
-            fieldId: firstField.id,
-          },
-          {
-            startDate: dayAfter,
-            endDate: new Date(dayAfter.getTime() + 1.5 * 60 * 60 * 1000), // +1.5 horas
-            amount: 90.0,
-            status: ReservationStatus.PENDING,
-            createdByChatbot: true,
-            userId: mariaUser.id,
-            fieldId: secondField.id,
-          },
+        const now = new Date();
+        const hourMs = 60 * 60 * 1000;
+
+        const statuses: ReservationStatus[] = [
+          ReservationStatus.CONFIRMED,
+          ReservationStatus.CONFIRMED,
+          ReservationStatus.PENDING,
+          ReservationStatus.COMPLETED,
+          ReservationStatus.CANCELLED,
+          ReservationStatus.NO_SHOW,
         ];
+
+        const reservations: Array<{
+          startDate: Date;
+          endDate: Date;
+          amount: number;
+          status: ReservationStatus;
+          createdByChatbot: boolean;
+          userId: string;
+          fieldId: string;
+        }> = [];
+
+        // Últimos 14 días: para que los gráficos del dashboard muestren datos
+        for (let dayOffset = -14; dayOffset <= 0; dayOffset++) {
+          const date = new Date(now);
+          date.setDate(date.getDate() + dayOffset);
+          date.setHours(0, 0, 0, 0);
+
+          const numSlots = 3 + (Math.abs(dayOffset) % 4);
+          for (let s = 0; s < numSlots; s++) {
+            const hour = 8 + s * 2 + (dayOffset % 2);
+            const startDate = new Date(date);
+            startDate.setHours(hour, 0, 0, 0);
+            const endDate = new Date(startDate.getTime() + hourMs);
+
+            const user = clientUsers[s % clientUsers.length];
+            const field =
+              fieldsForRes[(Math.abs(dayOffset) + s) % fieldsForRes.length];
+            const status =
+              statuses[(Math.abs(dayOffset) + s) % statuses.length];
+            if (!user || !field || status == null) continue;
+            const price = field.price ?? 80;
+            reservations.push({
+              startDate,
+              endDate,
+              amount: Number(price),
+              status,
+              createdByChatbot: s % 4 === 0,
+              userId: user.id,
+              fieldId: field.id,
+            });
+          }
+        }
+
+        // Además: 2 semanas hacia adelante (para calendario y variedad)
+        for (let weekOffset = 0; weekOffset <= 1; weekOffset++) {
+          const weekStart = new Date(now);
+          weekStart.setDate(
+            weekStart.getDate() - weekStart.getDay() + 1 + weekOffset * 7
+          );
+          weekStart.setHours(0, 0, 0, 0);
+
+          for (let day = 0; day < 7; day++) {
+            const date = new Date(weekStart);
+            date.setDate(date.getDate() + day);
+
+            const numSlots = 2 + (day % 2);
+            for (let s = 0; s < numSlots; s++) {
+              const hour = 10 + s * 4 + (day % 2);
+              const startDate = new Date(date);
+              startDate.setHours(hour, 0, 0, 0);
+              const endDate = new Date(startDate.getTime() + hourMs);
+
+              const user = clientUsers[s % clientUsers.length];
+              const field = fieldsForRes[(day + s) % fieldsForRes.length];
+              const status = statuses[(day + s) % statuses.length];
+              if (!user || !field || status == null) continue;
+              const price = field.price ?? 80;
+              reservations.push({
+                startDate,
+                endDate,
+                amount: Number(price),
+                status,
+                createdByChatbot: s % 4 === 0,
+                userId: user.id,
+                fieldId: field.id,
+              });
+            }
+          }
+        }
 
         const createdReservations = [];
         try {
@@ -1431,7 +1773,7 @@ async function main() {
           (u) => u.email === "owner@myapp.com"
         );
 
-        if (ownerUser && clientUser) {
+        if (ownerUser && clientUserForNotif) {
           const notifications = [
             {
               title: "Nueva Reserva Pendiente",
@@ -1446,7 +1788,7 @@ async function main() {
               message: "Tu reserva ha sido confirmada exitosamente",
               type: NotificationType.RESERVATION_CONFIRMED,
               isRead: true,
-              userId: clientUser.id,
+              userId: clientUserForNotif.id,
             },
           ];
 
@@ -1460,10 +1802,6 @@ async function main() {
           console.log("⚠️ Missing owner or client user, skipping notifications");
         }
       }
-    } else {
-      console.log(
-        "⚠️ Missing users or fields, skipping reservations and related data"
-      );
     }
   }
 
@@ -1478,6 +1816,9 @@ async function main() {
     }
   };
 
+  const sportCenterCount = await safeCount("sport_centers", () =>
+    prisma.sportCenter.count()
+  );
   const fieldCount = await safeCount("fields", () => prisma.field.count());
   const reservationCount = await safeCount("reservations", () =>
     prisma.reservation.count()
@@ -1497,7 +1838,8 @@ async function main() {
 - Permissions: ${createdPermissions.length} permissions
 - Features: ${createdFeatures.length} features
 - Payment Methods: ${createdPaymentMethods.length} payment methods
-- Fields (Individual Canchas): ${fieldCount} fields with individual locations
+- Sport Centers: ${sportCenterCount} (Palacio de la Juventud, VIDENA, María Reiche)
+- Fields: ${fieldCount} (canchas en centros + individuales)
 - Reservations: ${reservationCount} reservations
 - Payments: ${paymentCount} payments
 - Notifications: ${notificationCount} notifications

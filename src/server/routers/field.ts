@@ -9,6 +9,7 @@ import {
   createSortOrder,
   paginationInputSchema,
 } from "../../lib/pagination";
+import { generateSlug } from "../../lib/utils/slug";
 import {
   hasPermissionOrManage,
   isSysAdmin,
@@ -189,10 +190,20 @@ export const fieldRouter = router({
         }
       }
 
+      // Generar slug único
+      const baseSlug = generateSlug(input.name, input.sport);
+      let slug = baseSlug;
+      let slugCounter = 2;
+      while (await prisma.field.findUnique({ where: { slug } })) {
+        slug = `${baseSlug}-${slugCounter}`;
+        slugCounter++;
+      }
+
       const field = await prisma.$transaction(async (tx) => {
         const createdField = await tx.field.create({
           data: {
             name: input.name,
+            slug,
             sport: input.sport,
             price: priceDecimal,
             available: input.available,
@@ -1164,6 +1175,7 @@ export const fieldRouter = router({
           where,
           select: {
             id: true,
+            slug: true,
             name: true,
             sport: true,
             price: true,
@@ -1172,6 +1184,13 @@ export const fieldRouter = router({
             description: true,
             images: true,
             sportCenter: { select: { name: true } },
+            fieldFeatures: {
+              select: {
+                id: true,
+                value: true,
+                feature: { select: { name: true, icon: true } },
+              },
+            },
           },
           orderBy: { name: "asc" },
           skip: offset,
@@ -1196,6 +1215,35 @@ export const fieldRouter = router({
     .query(async ({ input }) => {
       const field = await prisma.field.findUnique({
         where: { id: input.id, available: true },
+        include: {
+          sportCenter: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              district: true,
+              _count: { select: { fields: true } },
+            },
+          },
+          schedules: { orderBy: { day: "asc" } },
+          fieldFeatures: { include: { feature: true } },
+        },
+      });
+      if (!field) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Cancha no encontrada",
+        });
+      }
+      return field;
+    }),
+
+  // Obtener cancha por slug (público)
+  getBySlugPublic: publicProcedure
+    .input(z.object({ slug: z.string().min(1) }))
+    .query(async ({ input }) => {
+      const field = await prisma.field.findUnique({
+        where: { slug: input.slug, available: true },
         include: {
           sportCenter: {
             select: {

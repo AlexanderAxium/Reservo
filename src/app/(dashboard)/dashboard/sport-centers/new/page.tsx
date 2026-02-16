@@ -1,17 +1,21 @@
 "use client";
 
+import { ImageUpload } from "@/components/fields/ImageUpload";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/hooks/useTRPC";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
 export default function NewSportCenterPage() {
   const router = useRouter();
+  const { t } = useTranslation("dashboard");
+  const [images, setImages] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -24,102 +28,98 @@ export default function NewSportCenterPage() {
 
   const createMutation = trpc.sportCenter.create.useMutation({
     onSuccess: () => {
-      toast.success("Centro deportivo creado correctamente");
+      toast.success(t("sportCenterForm.centerCreated"));
       router.push("/dashboard/sport-centers");
     },
     onError: (error) => {
-      toast.error(error.message || "Error al crear centro deportivo");
+      toast.error(error.message || t("sportCenterForm.createError"));
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate(formData);
+    createMutation.mutate({ ...formData, images });
   };
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Nuevo Centro Deportivo</h1>
-        <p className="text-muted-foreground">
-          Crea una nueva ubicación para tus instalaciones deportivas.
-        </p>
+        <h1 className="text-2xl font-bold">{t("sportCenterForm.newTitle")}</h1>
+        <p className="text-muted-foreground">{t("sportCenterForm.newDesc")}</p>
       </div>
 
       <Card className="p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="name">
-                Nombre <span className="text-destructive">*</span>
-              </Label>
+              <Label htmlFor="name">{t("sportCenterForm.nameLabel")}</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                placeholder="Ej: Complejo Deportivo Central"
+                placeholder={t("sportCenterForm.namePlaceholder")}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="city">Ciudad</Label>
+              <Label htmlFor="city">{t("sportCenterForm.cityLabel")}</Label>
               <Input
                 id="city"
                 value={formData.city}
                 onChange={(e) =>
                   setFormData({ ...formData, city: e.target.value })
                 }
-                placeholder="Lima"
+                placeholder={t("sportCenterForm.cityPlaceholder")}
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="address">
-              Dirección <span className="text-destructive">*</span>
-            </Label>
+            <Label htmlFor="address">{t("sportCenterForm.addressLabel")}</Label>
             <Input
               id="address"
               value={formData.address}
               onChange={(e) =>
                 setFormData({ ...formData, address: e.target.value })
               }
-              placeholder="Ej: Av. Principal 123"
+              placeholder={t("sportCenterForm.addressPlaceholder")}
               required
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="district">Distrito</Label>
+              <Label htmlFor="district">
+                {t("sportCenterForm.districtLabel")}
+              </Label>
               <Input
                 id="district"
                 value={formData.district}
                 onChange={(e) =>
                   setFormData({ ...formData, district: e.target.value })
                 }
-                placeholder="Ej: Miraflores"
+                placeholder={t("sportCenterForm.districtPlaceholder")}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">Teléfono</Label>
+              <Label htmlFor="phone">{t("sportCenterForm.phoneLabel")}</Label>
               <Input
                 id="phone"
                 value={formData.phone}
                 onChange={(e) =>
                   setFormData({ ...formData, phone: e.target.value })
                 }
-                placeholder="Ej: +51 999 999 999"
+                placeholder={t("sportCenterForm.phonePlaceholder")}
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("sportCenterForm.emailLabel")}</Label>
             <Input
               id="email"
               type="email"
@@ -127,22 +127,31 @@ export default function NewSportCenterPage() {
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
               }
-              placeholder="contacto@centro.com"
+              placeholder={t("sportCenterForm.emailPlaceholder")}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Descripción</Label>
+            <Label htmlFor="description">
+              {t("sportCenterForm.descriptionLabel")}
+            </Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
               }
-              placeholder="Descripción del centro deportivo..."
+              placeholder={t("sportCenterForm.descriptionPlaceholder")}
               rows={4}
             />
           </div>
+
+          <ImageUpload
+            images={images}
+            onImagesChange={setImages}
+            scope="sport_center"
+            maxImages={10}
+          />
 
           <div className="flex gap-3 justify-end">
             <Button
@@ -150,10 +159,12 @@ export default function NewSportCenterPage() {
               variant="outline"
               onClick={() => router.back()}
             >
-              Cancelar
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Creando..." : "Crear Centro"}
+              {createMutation.isPending
+                ? t("sportCenterForm.creating")
+                : t("sportCenterForm.createCenter")}
             </Button>
           </div>
         </form>

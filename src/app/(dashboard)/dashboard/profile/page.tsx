@@ -1,16 +1,19 @@
 "use client";
 
+import { SingleImageUpload } from "@/components/dashboard/SingleImageUpload";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/hooks/useTRPC";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useUser } from "@/hooks/useUser";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export default function ProfilePage() {
+  const { t } = useTranslation("dashboard");
   const { isLoading: userLoading } = useUser();
   const [formData, setFormData] = useState({
     name: "",
@@ -18,6 +21,7 @@ export default function ProfilePage() {
     phone: "",
     password: "",
     confirmPassword: "",
+    image: null as string | null,
   });
 
   const { data: profile, isLoading: profileLoading } =
@@ -25,11 +29,11 @@ export default function ProfilePage() {
 
   const updateMutation = trpc.user.update.useMutation({
     onSuccess: () => {
-      toast.success("Perfil actualizado correctamente");
+      toast.success(t("profilePage.profileUpdated"));
       setFormData({ ...formData, password: "", confirmPassword: "" });
     },
     onError: (error) => {
-      toast.error(error.message || "Error al actualizar perfil");
+      toast.error(error.message || t("profilePage.updateError"));
     },
   });
 
@@ -41,6 +45,7 @@ export default function ProfilePage() {
         phone: profile.phone || "",
         password: "",
         confirmPassword: "",
+        image: profile.image ?? null,
       });
     }
   }, [profile]);
@@ -49,14 +54,15 @@ export default function ProfilePage() {
     e.preventDefault();
 
     if (formData.password && formData.password !== formData.confirmPassword) {
-      toast.error("Las contraseñas no coinciden");
+      toast.error(t("profilePage.passwordMismatch"));
       return;
     }
 
-    const updateData: Record<string, string> = {
+    const updateData: Record<string, string | null> = {
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
+      image: formData.image,
     };
 
     if (formData.password) {
@@ -82,29 +88,34 @@ export default function ProfilePage() {
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Mi Perfil</h1>
-        <p className="text-muted-foreground">
-          Gestiona tu información personal
-        </p>
+        <h1 className="text-2xl font-bold">{t("profilePage.title")}</h1>
+        <p className="text-muted-foreground">{t("profilePage.description")}</p>
       </div>
 
       <Card className="p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
+          <SingleImageUpload
+            label={t("upload.avatarLabel")}
+            value={formData.image}
+            onChange={(url) => setFormData({ ...formData, image: url ?? null })}
+            scope="profile_avatar"
+            variant="avatar"
+          />
           <div className="space-y-2">
-            <Label htmlFor="name">Nombre completo</Label>
+            <Label htmlFor="name">{t("profilePage.nameLabel")}</Label>
             <Input
               id="name"
               value={formData.name}
               onChange={(e) =>
                 setFormData({ ...formData, name: e.target.value })
               }
-              placeholder="Tu nombre"
+              placeholder={t("profilePage.namePlaceholder")}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("profilePage.emailLabel")}</Label>
             <Input
               id="email"
               type="email"
@@ -112,28 +123,32 @@ export default function ProfilePage() {
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
               }
-              placeholder="tu@email.com"
+              placeholder={t("profilePage.emailPlaceholder")}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Teléfono</Label>
+            <Label htmlFor="phone">{t("profilePage.phoneLabel")}</Label>
             <Input
               id="phone"
               value={formData.phone}
               onChange={(e) =>
                 setFormData({ ...formData, phone: e.target.value })
               }
-              placeholder="+51 999 999 999"
+              placeholder={t("profilePage.phonePlaceholder")}
             />
           </div>
 
           <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold mb-4">Cambiar Contraseña</h3>
+            <h3 className="text-lg font-semibold mb-4">
+              {t("profilePage.changePassword")}
+            </h3>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="password">Nueva contraseña</Label>
+                <Label htmlFor="password">
+                  {t("profilePage.newPasswordLabel")}
+                </Label>
                 <Input
                   id="password"
                   type="password"
@@ -141,12 +156,14 @@ export default function ProfilePage() {
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
-                  placeholder="Dejar en blanco para no cambiar"
+                  placeholder={t("profilePage.newPasswordPlaceholder")}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
+                <Label htmlFor="confirmPassword">
+                  {t("profilePage.confirmPasswordLabel")}
+                </Label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -157,7 +174,7 @@ export default function ProfilePage() {
                       confirmPassword: e.target.value,
                     })
                   }
-                  placeholder="Repetir nueva contraseña"
+                  placeholder={t("profilePage.confirmPasswordPlaceholder")}
                 />
               </div>
             </div>
@@ -165,7 +182,9 @@ export default function ProfilePage() {
 
           <div className="flex justify-end">
             <Button type="submit" disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? "Guardando..." : "Guardar Cambios"}
+              {updateMutation.isPending
+                ? t("profilePage.saving")
+                : t("profilePage.saveChanges")}
             </Button>
           </div>
         </form>

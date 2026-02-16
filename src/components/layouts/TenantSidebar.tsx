@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { LanguageSelector } from "@/components/ui/language-selector";
 import {
   Sidebar,
   SidebarContent,
@@ -27,9 +28,10 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useRBAC } from "@/hooks/useRBAC";
+import { useTranslation } from "@/hooks/useTranslation";
 import { cn } from "@/lib/utils";
+import { PermissionAction, PermissionResource } from "@/types/rbac";
 import {
-  BarChart3,
   Calendar,
   ChevronDown,
   ChevronRight,
@@ -55,62 +57,70 @@ interface NavItem {
   children?: { title: string; href: string }[];
 }
 
-function getNavItems(isTenantAdmin: boolean): NavItem[] {
+type HasPermissionFn = (
+  action: PermissionAction,
+  resource: PermissionResource
+) => boolean;
+
+type TranslateFn = (key: string, params?: Record<string, string>) => string;
+
+function getNavItems(can: HasPermissionFn, t: TranslateFn): NavItem[] {
   const items: NavItem[] = [
-    { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { title: t("nav.dashboard"), href: "/dashboard", icon: LayoutDashboard },
   ];
 
-  if (isTenantAdmin) {
+  if (can(PermissionAction.READ, PermissionResource.SPORT_CENTER)) {
     items.push({
-      title: "Sport Centers",
+      title: t("nav.sportCenters"),
       href: "/dashboard/sport-centers",
       icon: Store,
     });
   }
 
   items.push(
-    { title: "Fields", href: "/dashboard/fields", icon: MapPin },
+    { title: t("nav.fields"), href: "/dashboard/fields", icon: MapPin },
     {
-      title: "Reservations",
+      title: t("nav.reservations"),
       href: "/dashboard/reservations",
       icon: Calendar,
       children: [
-        { title: "List", href: "/dashboard/reservations" },
-        { title: "Calendar", href: "/dashboard/reservations/calendar" },
+        { title: t("nav.list"), href: "/dashboard/reservations" },
+        { title: t("nav.calendar"), href: "/dashboard/reservations/calendar" },
       ],
     },
-    { title: "Payments", href: "/dashboard/payments", icon: CreditCard },
-    { title: "Clients", href: "/dashboard/clients", icon: UsersRound }
+    { title: t("nav.payments"), href: "/dashboard/payments", icon: CreditCard },
+    { title: t("nav.clients"), href: "/dashboard/clients", icon: UsersRound }
   );
 
-  if (isTenantAdmin) {
-    items.push(
-      { title: "Staff", href: "/dashboard/staff", icon: Users },
-      {
-        title: "Metrics",
-        href: "/dashboard/metrics",
-        icon: BarChart3,
-        children: [
-          { title: "Overview", href: "/dashboard/metrics" },
-          { title: "Revenue", href: "/dashboard/metrics/revenue" },
-          { title: "Occupancy", href: "/dashboard/metrics/occupancy" },
-        ],
-      },
-      { title: "Features", href: "/dashboard/features", icon: Star },
-      {
-        title: "Settings",
-        href: "/dashboard/settings",
-        icon: Settings,
-        children: [
-          { title: "General", href: "/dashboard/settings" },
-          {
-            title: "Payment Methods",
-            href: "/dashboard/settings/payment-methods",
-          },
-          { title: "Notifications", href: "/dashboard/settings/notifications" },
-        ],
-      }
-    );
+  if (can(PermissionAction.READ, PermissionResource.STAFF)) {
+    items.push({ title: t("nav.team"), href: "/dashboard/staff", icon: Users });
+  }
+
+  if (can(PermissionAction.READ, PermissionResource.FIELD)) {
+    items.push({
+      title: t("nav.features"),
+      href: "/dashboard/features",
+      icon: Star,
+    });
+  }
+
+  if (can(PermissionAction.READ, PermissionResource.SETTINGS)) {
+    items.push({
+      title: t("nav.settings"),
+      href: "/dashboard/settings",
+      icon: Settings,
+      children: [
+        { title: t("nav.general"), href: "/dashboard/settings" },
+        {
+          title: t("nav.paymentMethods"),
+          href: "/dashboard/settings/payment-methods",
+        },
+        {
+          title: t("nav.notifications"),
+          href: "/dashboard/settings/notifications",
+        },
+      ],
+    });
   }
 
   return items;
@@ -120,14 +130,15 @@ export function TenantSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, signOut } = useAuthContext();
-  const { isTenantAdmin } = useRBAC();
+  const { hasPermission, canAccessAdmin } = useRBAC();
+  const { t } = useTranslation("dashboard");
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>(
     {}
   );
 
-  const navItems = getNavItems(isTenantAdmin);
+  const navItems = getNavItems(hasPermission, t);
 
   const handleSignOut = async () => {
     await signOut();
@@ -163,7 +174,7 @@ export function TenantSidebar() {
                   Reservo
                 </p>
                 <p className="text-xs text-muted-foreground truncate">
-                  {isTenantAdmin ? "Admin Panel" : "Staff Panel"}
+                  {canAccessAdmin ? t("nav.adminPanel") : t("nav.staffPanel")}
                 </p>
               </div>
             )}
@@ -184,7 +195,7 @@ export function TenantSidebar() {
               isCollapsed ? "hidden" : "px-2"
             )}
           >
-            Navigation
+            {t("navigation")}
           </SidebarGroupLabel>
           <SidebarGroupContent className="w-full">
             <SidebarMenu
@@ -314,6 +325,11 @@ export function TenantSidebar() {
       <SidebarFooter
         className={cn("border-t border-border/30", isCollapsed ? "p-2" : "p-3")}
       >
+        {!isCollapsed && (
+          <div className="mb-2">
+            <LanguageSelector />
+          </div>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -341,7 +357,7 @@ export function TenantSidebar() {
                 <>
                   <div className="flex-1 min-w-0 text-left">
                     <p className="text-sm font-medium text-foreground truncate">
-                      {user?.name || "User"}
+                      {user?.name || t("nav.user")}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
                       {user?.email || ""}
@@ -356,7 +372,7 @@ export function TenantSidebar() {
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">
-                  {user?.name || "User"}
+                  {user?.name || t("nav.user")}
                 </p>
                 <p className="text-xs leading-none text-muted-foreground">
                   {user?.email || ""}
@@ -366,20 +382,23 @@ export function TenantSidebar() {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
               <User className="mr-2 h-4 w-4" />
-              <span>Profile</span>
+              <span>{t("nav.profile")}</span>
             </DropdownMenuItem>
-            {isTenantAdmin && (
+            {hasPermission(
+              PermissionAction.READ,
+              PermissionResource.SETTINGS
+            ) && (
               <DropdownMenuItem
                 onClick={() => router.push("/dashboard/settings")}
               >
                 <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
+                <span>{t("nav.settings")}</span>
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut}>
               <LogOut className="mr-2 h-4 w-4" />
-              <span>Sign out</span>
+              <span>{t("nav.signOut")}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

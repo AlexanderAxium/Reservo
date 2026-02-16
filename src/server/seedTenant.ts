@@ -43,6 +43,24 @@ const PERMISSIONS: {
   { action: "READ", resource: "REVIEW" },
   { action: "UPDATE", resource: "REVIEW" },
   { action: "DELETE", resource: "REVIEW" },
+  { action: "CREATE", resource: "STAFF" },
+  { action: "READ", resource: "STAFF" },
+  { action: "UPDATE", resource: "STAFF" },
+  { action: "DELETE", resource: "STAFF" },
+  { action: "MANAGE", resource: "STAFF" },
+  { action: "READ", resource: "METRICS" },
+  { action: "MANAGE", resource: "METRICS" },
+  { action: "READ", resource: "SETTINGS" },
+  { action: "UPDATE", resource: "SETTINGS" },
+  { action: "MANAGE", resource: "SETTINGS" },
+  { action: "CREATE", resource: "PAYMENT" },
+  { action: "READ", resource: "PAYMENT" },
+  { action: "UPDATE", resource: "PAYMENT" },
+  { action: "DELETE", resource: "PAYMENT" },
+  { action: "MANAGE", resource: "PAYMENT" },
+  { action: "READ", resource: "TENANT" },
+  { action: "UPDATE", resource: "TENANT" },
+  { action: "MANAGE", resource: "TENANT" },
 ];
 
 const ROLES = [
@@ -172,7 +190,11 @@ export async function seedTenantRolesAndPermissions(
         ["CREATE", "READ", "UPDATE", "DELETE", "MANAGE"].includes(p.action)) ||
       (p.resource === "RESERVATION" &&
         ["READ", "UPDATE", "MANAGE"].includes(p.action)) ||
-      (p.resource === "DASHBOARD" && p.action === "READ")
+      (p.resource === "DASHBOARD" && p.action === "READ") ||
+      (p.resource === "STAFF" && ["READ", "CREATE"].includes(p.action)) ||
+      (p.resource === "METRICS" && p.action === "READ") ||
+      (p.resource === "SETTINGS" && p.action === "READ") ||
+      (p.resource === "PAYMENT" && ["READ", "UPDATE"].includes(p.action))
   );
   for (const perm of ownerPerms) {
     await prisma.rolePermission.create({

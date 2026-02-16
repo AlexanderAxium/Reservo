@@ -2,6 +2,7 @@
 
 import { ReservationCalendar } from "@/components/fields/ReservationCalendar";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -10,11 +11,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/hooks/useTRPC";
+import { useTranslation } from "@/hooks/useTranslation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
 export default function ReservationCalendarPage() {
+  const { t } = useTranslation("dashboard");
   const [selectedFieldId, setSelectedFieldId] = useState<string>("");
 
   const { data: fieldsData } = trpc.field.getAll.useQuery({
@@ -47,7 +50,7 @@ export default function ReservationCalendarPage() {
       endDate: String(r.endDate),
       status: r.status,
       amount: Number(r.amount),
-      clientName: r.user?.name || r.guestName || "Invitado",
+      clientName: r.user?.name || r.guestName || t("reservationCalendar.guest"),
     })) || [];
 
   return (
@@ -56,29 +59,28 @@ export default function ReservationCalendarPage() {
         <Link href="/dashboard/reservations">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver
+            {t("reservationCalendar.back")}
           </Button>
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-semibold text-foreground">
-            Calendario de Reservas
+          <h1 className="text-2xl font-bold text-foreground">
+            {t("reservationCalendar.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Vista semanal de reservas por cancha
+            {t("reservationCalendar.description")}
           </p>
         </div>
       </div>
 
       <div className="max-w-xs">
-        <label
-          htmlFor="field-select"
-          className="text-sm font-medium mb-2 block"
-        >
-          Selecciona una cancha
-        </label>
+        <Label htmlFor="field-select" className="mb-2 block">
+          {t("reservationCalendar.selectField")}
+        </Label>
         <Select value={selectedFieldId} onValueChange={setSelectedFieldId}>
           <SelectTrigger id="field-select">
-            <SelectValue placeholder="Elige una cancha..." />
+            <SelectValue
+              placeholder={t("reservationCalendar.fieldPlaceholder")}
+            />
           </SelectTrigger>
           <SelectContent>
             {fields.map((field) => (
@@ -93,13 +95,15 @@ export default function ReservationCalendarPage() {
       {selectedFieldId && selectedField ? (
         <ReservationCalendar
           fieldId={selectedFieldId}
+          fieldName={selectedField.name}
+          fieldPrice={Number(selectedField.price)}
           schedules={schedules}
           reservations={reservations}
           fieldHref={(id) => `/dashboard/fields/${id}`}
         />
       ) : (
         <div className="text-center py-12 text-muted-foreground">
-          Selecciona una cancha para ver el calendario de reservas
+          {t("reservationCalendar.selectFieldHint")}
         </div>
       )}
     </div>

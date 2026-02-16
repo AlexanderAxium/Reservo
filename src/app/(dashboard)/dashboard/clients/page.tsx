@@ -1,7 +1,6 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   ScrollableTable,
@@ -10,7 +9,8 @@ import {
 } from "@/components/ui/scrollable-table";
 import { usePagination } from "@/hooks/usePagination";
 import { trpc } from "@/hooks/useTRPC";
-import { Search } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
+import { Search, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -26,6 +26,7 @@ type Client = {
 };
 
 export default function ClientsPage() {
+  const { t } = useTranslation("dashboard");
   const router = useRouter();
   const { page, limit, search, setPage, setLimit, setSearch } = usePagination({
     defaultLimit: 20,
@@ -40,7 +41,7 @@ export default function ClientsPage() {
   const columns: TableColumn<Client>[] = [
     {
       key: "name",
-      title: "Cliente",
+      title: t("clientsList.clientCol"),
       width: "200px",
       render: (_, record) => (
         <div>
@@ -51,13 +52,13 @@ export default function ClientsPage() {
     },
     {
       key: "phone",
-      title: "Teléfono",
+      title: t("clientsList.phoneCol"),
       width: "140px",
       render: (value) => (value != null && value !== "" ? String(value) : "-"),
     },
     {
       key: "_count",
-      title: "Reservas",
+      title: t("clientsList.reservationsCol"),
       width: "100px",
       render: (_, record) => (
         <Badge variant="secondary">{record._count.reservations}</Badge>
@@ -65,7 +66,7 @@ export default function ClientsPage() {
     },
     {
       key: "createdAt",
-      title: "Registrado",
+      title: t("clientsList.registeredCol"),
       width: "130px",
       render: (value): ReactNode =>
         new Date(value as Date).toLocaleDateString("es-PE", {
@@ -78,7 +79,7 @@ export default function ClientsPage() {
 
   const actions: TableAction<Client>[] = [
     {
-      label: "Ver perfil",
+      label: t("clientsList.viewProfile"),
       onClick: (record) => router.push(`/dashboard/clients/${record.id}`),
     },
   ];
@@ -87,9 +88,9 @@ export default function ClientsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Clientes</h1>
+          <h1 className="text-2xl font-bold">{t("clientsList.title")}</h1>
           <p className="text-muted-foreground">
-            Gestiona los clientes y su historial de reservas
+            {t("clientsList.description")}
           </p>
         </div>
       </div>
@@ -97,7 +98,7 @@ export default function ClientsPage() {
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Buscar por nombre o email..."
+          placeholder={t("clientsList.searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-9"
@@ -113,7 +114,8 @@ export default function ClientsPage() {
         pagination={data?.pagination}
         onPageChange={setPage}
         onPageSizeChange={setLimit}
-        emptyMessage="No se encontraron clientes"
+        emptyMessage={t("clientsList.noClients")}
+        emptyIcon={<Users className="h-12 w-12 text-muted-foreground" />}
       />
     </div>
   );

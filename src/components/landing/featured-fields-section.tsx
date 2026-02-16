@@ -138,7 +138,7 @@ export function FeaturedFieldsSection() {
                           size="sm"
                           className="w-full bg-emerald-600 hover:bg-emerald-700"
                         >
-                          <Link href={`/canchas/${field.id}`}>
+                          <Link href={`/canchas/${field.slug}`}>
                             {t("featured.viewDetails")}
                           </Link>
                         </Button>

@@ -14,18 +14,19 @@ import {
   type TableColumn,
 } from "@/components/ui/scrollable-table";
 import { trpc } from "@/hooks/useTRPC";
+import { useTranslation } from "@/hooks/useTranslation";
 import { formatPrice } from "@/lib/utils";
 import type { ReservationStatus, Sport } from "@prisma/client";
 import { ArrowLeft, Calendar, Mail, Phone, User } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
-const STATUS_LABELS: Record<ReservationStatus, string> = {
-  PENDING: "Pendiente",
-  CONFIRMED: "Confirmada",
-  CANCELLED: "Cancelada",
-  COMPLETED: "Completada",
-  NO_SHOW: "No asistió",
+const STATUS_MAP: Record<ReservationStatus, string> = {
+  PENDING: "statuses.pending",
+  CONFIRMED: "statuses.confirmed",
+  CANCELLED: "statuses.cancelled",
+  COMPLETED: "statuses.completed",
+  NO_SHOW: "statuses.noShow",
 };
 
 type Reservation = {
@@ -43,6 +44,7 @@ type Reservation = {
 export default function ClientDetailPage() {
   const params = useParams();
   const clientId = params.id as string;
+  const { t } = useTranslation("dashboard");
 
   const { data: client, isLoading: clientLoading } = trpc.user.getById.useQuery(
     {
@@ -60,7 +62,7 @@ export default function ClientDetailPage() {
   const columns: TableColumn<Reservation>[] = [
     {
       key: "field",
-      title: "Cancha",
+      title: t("clientDetail.fieldCol"),
       width: "180px",
       render: (_, record) => (
         <div>
@@ -71,7 +73,7 @@ export default function ClientDetailPage() {
     },
     {
       key: "startDate",
-      title: "Fecha",
+      title: t("clientDetail.dateCol"),
       width: "130px",
       render: (value) =>
         new Date(value as string).toLocaleDateString("es-PE", {
@@ -82,7 +84,7 @@ export default function ClientDetailPage() {
     },
     {
       key: "schedule",
-      title: "Horario",
+      title: t("clientDetail.scheduleCol"),
       width: "110px",
       render: (_, record) =>
         `${new Date(record.startDate).toLocaleTimeString("es-PE", {
@@ -95,17 +97,17 @@ export default function ClientDetailPage() {
     },
     {
       key: "amount",
-      title: "Monto",
+      title: t("clientDetail.amountCol"),
       width: "100px",
       render: (value) => `S/ ${formatPrice(Number(value))}`,
     },
     {
       key: "status",
-      title: "Estado",
+      title: t("clientDetail.statusCol"),
       width: "120px",
       render: (value) => (
         <Badge variant="outline">
-          {STATUS_LABELS[value as ReservationStatus] ?? String(value)}
+          {t(STATUS_MAP[value as ReservationStatus] ?? String(value))}
         </Badge>
       ),
     },
@@ -114,7 +116,9 @@ export default function ClientDetailPage() {
   if (clientLoading) {
     return (
       <div className="p-6">
-        <div className="text-center py-8">Cargando...</div>
+        <div className="text-center py-8">
+          {t("clientDetail.loadingClient")}
+        </div>
       </div>
     );
   }
@@ -122,7 +126,7 @@ export default function ClientDetailPage() {
   if (!client) {
     return (
       <div className="p-6">
-        <div className="text-center py-8">Cliente no encontrado</div>
+        <div className="text-center py-8">{t("clientDetail.notFound")}</div>
       </div>
     );
   }
@@ -133,15 +137,15 @@ export default function ClientDetailPage() {
         <Link href="/dashboard/clients">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver
+            {t("clientDetail.back")}
           </Button>
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-semibold text-foreground">
-            Perfil del Cliente
+          <h1 className="text-2xl font-bold text-foreground">
+            {t("clientDetail.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Información y historial de reservas
+            {t("clientDetail.description")}
           </p>
         </div>
       </div>
@@ -150,14 +154,14 @@ export default function ClientDetailPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
-            Información Personal
+            {t("clientDetail.personalInfo")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">
-                Nombre
+                {t("clientDetail.nameLabel")}
               </p>
               <p className="text-base">{client.name}</p>
             </div>
@@ -165,7 +169,7 @@ export default function ClientDetailPage() {
               <Mail className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Email
+                  {t("clientDetail.emailLabel")}
                 </p>
                 <p className="text-base">{client.email}</p>
               </div>
@@ -175,7 +179,7 @@ export default function ClientDetailPage() {
                 <Phone className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    Teléfono
+                    {t("clientDetail.phoneLabel")}
                   </p>
                   <p className="text-base">{client.phone}</p>
                 </div>
@@ -185,7 +189,7 @@ export default function ClientDetailPage() {
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Cliente desde
+                  {t("clientDetail.memberSince")}
                 </p>
                 <p className="text-base">
                   {new Date(client.createdAt as string).toLocaleDateString(
@@ -205,24 +209,28 @@ export default function ClientDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Historial de Reservas</CardTitle>
+          <CardTitle>{t("clientDetail.reservationsTitle")}</CardTitle>
           <CardDescription>
-            {reservations.length} reserva(s) en total
+            {t("clientDetail.reservationsCount", {
+              count: String(reservations.length),
+            })}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {reservationsLoading ? (
-            <div className="text-center py-8">Cargando reservas...</div>
+            <div className="text-center py-8">
+              {t("clientDetail.loadingReservations")}
+            </div>
           ) : reservations.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              Este cliente no tiene reservas aún
+              {t("clientDetail.noReservations")}
             </div>
           ) : (
             <ScrollableTable
               data={reservations}
               columns={columns}
               loading={false}
-              emptyMessage="No hay reservas"
+              emptyMessage={t("clientDetail.noReservationsTable")}
             />
           )}
         </CardContent>

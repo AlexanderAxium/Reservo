@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/hooks/useTRPC";
+import { useTranslation } from "@/hooks/useTranslation";
 import { Building2, Mail, MapPin, Phone, User } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -11,6 +12,7 @@ import { useParams, useRouter } from "next/navigation";
 export default function SportCenterDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { t } = useTranslation("dashboard");
   const id = params.id as string;
 
   const { data: sportCenter, isLoading } = trpc.sportCenter.getById.useQuery({
@@ -33,7 +35,9 @@ export default function SportCenterDetailPage() {
   if (!sportCenter) {
     return (
       <div className="p-6">
-        <p className="text-muted-foreground">Centro deportivo no encontrado</p>
+        <p className="text-muted-foreground">
+          {t("sportCenterDetail.notFound")}
+        </p>
       </div>
     );
   }
@@ -43,14 +47,16 @@ export default function SportCenterDetailPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{sportCenter.name}</h1>
-          <p className="text-muted-foreground">Detalles del centro deportivo</p>
+          <p className="text-muted-foreground">
+            {t("sportCenterDetail.nameLabel")}
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => router.back()}>
-            Volver
+            {t("sportCenterDetail.back")}
           </Button>
           <Link href={`/dashboard/sport-centers/${id}/edit`}>
-            <Button>Editar</Button>
+            <Button>{t("sportCenterDetail.editCenter")}</Button>
           </Link>
         </div>
       </div>
@@ -61,7 +67,7 @@ export default function SportCenterDetailPage() {
             <Building2 className="h-5 w-5 text-muted-foreground mt-0.5" />
             <div>
               <p className="text-sm font-medium text-muted-foreground">
-                Nombre
+                {t("sportCenterDetail.nameLabel")}
               </p>
               <p className="text-base">{sportCenter.name}</p>
             </div>
@@ -71,7 +77,7 @@ export default function SportCenterDetailPage() {
             <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
             <div>
               <p className="text-sm font-medium text-muted-foreground">
-                Dirección
+                {t("sportCenterDetail.addressLabel")}
               </p>
               <p className="text-base">{sportCenter.address}</p>
               <p className="text-sm text-muted-foreground">
@@ -86,7 +92,7 @@ export default function SportCenterDetailPage() {
               <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Teléfono
+                  {t("sportCenterDetail.phoneLabel")}
                 </p>
                 <p className="text-base">{sportCenter.phone}</p>
               </div>
@@ -98,7 +104,7 @@ export default function SportCenterDetailPage() {
               <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  Email
+                  {t("sportCenterDetail.emailLabel")}
                 </p>
                 <p className="text-base">{sportCenter.email}</p>
               </div>
@@ -109,7 +115,7 @@ export default function SportCenterDetailPage() {
             <User className="h-5 w-5 text-muted-foreground mt-0.5" />
             <div>
               <p className="text-sm font-medium text-muted-foreground">
-                Propietario
+                {t("sportCenterDetail.ownerLabel")}
               </p>
               <p className="text-base">{sportCenter.owner.name}</p>
               <p className="text-sm text-muted-foreground">
@@ -121,7 +127,7 @@ export default function SportCenterDetailPage() {
           {sportCenter.description && (
             <div>
               <p className="text-sm font-medium text-muted-foreground mb-2">
-                Descripción
+                {t("sportCenterDetail.descriptionLabel")}
               </p>
               <p className="text-base">{sportCenter.description}</p>
             </div>
@@ -130,10 +136,12 @@ export default function SportCenterDetailPage() {
       </Card>
 
       <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Canchas</h3>
+        <h3 className="text-lg font-semibold mb-4">
+          {t("sportCenterDetail.fieldsTitle")}
+        </h3>
         {sportCenter.fields.length === 0 ? (
           <p className="text-muted-foreground text-sm">
-            No hay canchas registradas para este centro deportivo.
+            {t("sportCenterDetail.noFields")}
           </p>
         ) : (
           <div className="space-y-3">
@@ -149,7 +157,9 @@ export default function SportCenterDetailPage() {
                 <div className="text-right">
                   <p className="font-medium">S/ {Number(field.price)}</p>
                   <p className="text-sm text-muted-foreground">
-                    {field.available ? "Disponible" : "No disponible"}
+                    {field.available
+                      ? t("sportCenterDetail.availableStatus")
+                      : t("sportCenterDetail.unavailableStatus")}
                   </p>
                 </div>
               </div>

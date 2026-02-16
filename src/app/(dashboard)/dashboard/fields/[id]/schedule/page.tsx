@@ -1,6 +1,16 @@
 "use client";
 
 import { ScheduleModal } from "@/components/fields/ScheduleModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,22 +21,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { trpc } from "@/hooks/useTRPC";
+import { useTranslation } from "@/hooks/useTranslation";
 import type { WeekDay } from "@prisma/client";
 import { ArrowLeft, Calendar, Edit, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-
-const weekDays: Record<string, string> = {
-  MONDAY: "Lunes",
-  TUESDAY: "Martes",
-  WEDNESDAY: "Miércoles",
-  THURSDAY: "Jueves",
-  FRIDAY: "Viernes",
-  SATURDAY: "Sábado",
-  SUNDAY: "Domingo",
-};
 
 const dayOrder = [
   "MONDAY",
@@ -36,11 +37,22 @@ const dayOrder = [
   "FRIDAY",
   "SATURDAY",
   "SUNDAY",
-];
+] as const;
+
+const dayKeyMap: Record<string, string> = {
+  MONDAY: "days.monday",
+  TUESDAY: "days.tuesday",
+  WEDNESDAY: "days.wednesday",
+  THURSDAY: "days.thursday",
+  FRIDAY: "days.friday",
+  SATURDAY: "days.saturday",
+  SUNDAY: "days.sunday",
+};
 
 export default function FieldSchedulePage() {
   const params = useParams();
   const fieldId = params.id as string;
+  const { t } = useTranslation("dashboard");
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<{
@@ -49,6 +61,7 @@ export default function FieldSchedulePage() {
     startHour: string;
     endHour: string;
   } | null>(null);
+  const [deleteScheduleId, setDeleteScheduleId] = useState<string | null>(null);
 
   const { data: field, isLoading: fieldLoading } = trpc.field.getById.useQuery({
     id: fieldId,
@@ -60,34 +73,35 @@ export default function FieldSchedulePage() {
 
   const createSchedule = trpc.field.createSchedule.useMutation({
     onSuccess: () => {
-      toast.success("Horario creado correctamente");
+      toast.success(t("fieldSchedule.scheduleCreated"));
       refetch();
       setModalOpen(false);
     },
     onError: (error) => {
-      toast.error(error.message || "Error al crear horario");
+      toast.error(error.message || t("fieldSchedule.scheduleCreateError"));
     },
   });
 
   const updateSchedule = trpc.field.updateSchedule.useMutation({
     onSuccess: () => {
-      toast.success("Horario actualizado correctamente");
+      toast.success(t("fieldSchedule.scheduleUpdated"));
       refetch();
       setModalOpen(false);
       setEditingSchedule(null);
     },
     onError: (error) => {
-      toast.error(error.message || "Error al actualizar horario");
+      toast.error(error.message || t("fieldSchedule.scheduleUpdateError"));
     },
   });
 
-  const deleteSchedule = trpc.field.deleteSchedule.useMutation({
+  const deleteScheduleMutation = trpc.field.deleteSchedule.useMutation({
     onSuccess: () => {
-      toast.success("Horario eliminado correctamente");
+      toast.success(t("fieldSchedule.scheduleDeleted"));
       refetch();
+      setDeleteScheduleId(null);
     },
     onError: (error) => {
-      toast.error(error.message || "Error al eliminar horario");
+      toast.error(error.message || t("fieldSchedule.scheduleDeleteError"));
     },
   });
 
@@ -119,9 +133,7 @@ export default function FieldSchedulePage() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("¿Estás seguro de eliminar este horario?")) {
-      deleteSchedule.mutate({ scheduleId: id });
-    }
+    setDeleteScheduleId(id);
   };
 
   const handleOpenNew = () => {
@@ -140,7 +152,9 @@ export default function FieldSchedulePage() {
   if (fieldLoading) {
     return (
       <div className="p-6">
-        <div className="text-center py-8">Cargando...</div>
+        <div className="text-center py-8">
+          {t("fieldSchedule.loadingField")}
+        </div>
       </div>
     );
   }
@@ -148,7 +162,9 @@ export default function FieldSchedulePage() {
   if (!field) {
     return (
       <div className="p-6">
-        <div className="text-center py-8">Cancha no encontrada</div>
+        <div className="text-center py-8">
+          {t("fieldSchedule.fieldNotFound")}
+        </div>
       </div>
     );
   }
@@ -159,20 +175,20 @@ export default function FieldSchedulePage() {
         <Link href={`/dashboard/fields/${fieldId}`}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver
+            {t("fieldSchedule.back")}
           </Button>
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-semibold text-foreground">
-            Horarios - {field.name}
+          <h1 className="text-2xl font-bold text-foreground">
+            {t("fieldSchedule.title", { name: field.name })}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Configura los horarios de disponibilidad para cada día de la semana
+            {t("fieldSchedule.description")}
           </p>
         </div>
         <Button onClick={handleOpenNew}>
           <Plus className="mr-2 h-4 w-4" />
-          Añadir Horario
+          {t("fieldSchedule.addSchedule")}
         </Button>
       </div>
 
@@ -180,10 +196,10 @@ export default function FieldSchedulePage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Horarios Semanales
+            {t("fieldSchedule.weeklySchedules")}
           </CardTitle>
           <CardDescription>
-            Define los horarios de apertura y cierre para cada día
+            {t("fieldSchedule.weeklySchedulesDesc")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -191,17 +207,18 @@ export default function FieldSchedulePage() {
             <div className="text-center py-8">
               <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground mb-4">
-                No hay horarios configurados
+                {t("fieldSchedule.noSchedules")}
               </p>
               <Button onClick={handleOpenNew}>
                 <Plus className="mr-2 h-4 w-4" />
-                Añadir Primer Horario
+                {t("fieldSchedule.addFirstSchedule")}
               </Button>
             </div>
           ) : (
             <div className="space-y-3">
               {dayOrder.map((day) => {
                 const schedule = schedulesByDay[day];
+                const dayLabel = t(dayKeyMap[day] || "");
                 return (
                   <div
                     key={day}
@@ -209,7 +226,7 @@ export default function FieldSchedulePage() {
                   >
                     <div className="flex items-center gap-4">
                       <div className="min-w-[120px]">
-                        <p className="font-medium">{weekDays[day]}</p>
+                        <p className="font-medium">{dayLabel}</p>
                       </div>
                       {schedule ? (
                         <div className="flex items-center gap-2">
@@ -222,7 +239,9 @@ export default function FieldSchedulePage() {
                           </Badge>
                         </div>
                       ) : (
-                        <Badge variant="secondary">Cerrado</Badge>
+                        <Badge variant="secondary">
+                          {t("fieldSchedule.closed")}
+                        </Badge>
                       )}
                     </div>
                     {schedule ? (
@@ -257,7 +276,7 @@ export default function FieldSchedulePage() {
                         }}
                       >
                         <Plus className="h-4 w-4 mr-2" />
-                        Añadir
+                        {t("fieldSchedule.add")}
                       </Button>
                     )}
                   </div>
@@ -280,6 +299,38 @@ export default function FieldSchedulePage() {
         initialEndHour={editingSchedule?.endHour}
         mode={editingSchedule?.id ? "edit" : "create"}
       />
+
+      {/* AlertDialog to replace confirm() */}
+      <AlertDialog
+        open={deleteScheduleId !== null}
+        onOpenChange={(open) => !open && setDeleteScheduleId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("fieldDetail.deleteScheduleTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("fieldSchedule.deleteConfirm")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteScheduleId) {
+                  deleteScheduleMutation.mutate({
+                    scheduleId: deleteScheduleId,
+                  });
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

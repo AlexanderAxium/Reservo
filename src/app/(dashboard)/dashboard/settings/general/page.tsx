@@ -1,5 +1,6 @@
 "use client";
 
+import { SingleImageUpload } from "@/components/dashboard/SingleImageUpload";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,10 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/hooks/useTRPC";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export default function SettingsGeneralPage() {
+  const { t } = useTranslation("dashboard");
   const [formData, setFormData] = useState({
     displayName: "",
     email: "",
@@ -19,6 +22,8 @@ export default function SettingsGeneralPage() {
     city: "",
     website: "",
     description: "",
+    logoUrl: null as string | null,
+    faviconUrl: null as string | null,
   });
 
   const { data: tenant, isLoading } = trpc.tenant.getMyTenant.useQuery();
@@ -26,25 +31,38 @@ export default function SettingsGeneralPage() {
 
   const updateMutation = trpc.companyInfo.update.useMutation({
     onSuccess: () => {
-      toast.success("Configuración actualizada correctamente");
+      toast.success(t("settingsGeneral.settingsUpdated"));
     },
     onError: (error) => {
-      toast.error(error.message || "Error al actualizar configuración");
+      toast.error(error.message || t("settingsGeneral.updateError"));
     },
   });
 
   useEffect(() => {
     if (tenant || companyInfo) {
       const data = tenant || companyInfo;
-      if (data) {
+      if (data && "displayName" in data) {
+        const d = data as {
+          displayName?: string;
+          email?: string | null;
+          phone?: string | null;
+          address?: string | null;
+          city?: string | null;
+          website?: string | null;
+          description?: string | null;
+          logoUrl?: string | null;
+          faviconUrl?: string | null;
+        };
         setFormData({
-          displayName: data.displayName || "",
-          email: data.email || "",
-          phone: data.phone || "",
-          address: data.address || "",
-          city: data.city || "",
-          website: data.website || "",
-          description: data.description || "",
+          displayName: d.displayName || "",
+          email: d.email || "",
+          phone: d.phone || "",
+          address: d.address || "",
+          city: d.city || "",
+          website: d.website || "",
+          description: d.description || "",
+          logoUrl: d.logoUrl ?? null,
+          faviconUrl: d.faviconUrl ?? null,
         });
       }
     }
@@ -52,7 +70,17 @@ export default function SettingsGeneralPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateMutation.mutate(formData);
+    updateMutation.mutate({
+      displayName: formData.displayName,
+      email: formData.email,
+      phone: formData.phone,
+      address: formData.address,
+      city: formData.city,
+      website: formData.website,
+      description: formData.description,
+      logoUrl: formData.logoUrl,
+      faviconUrl: formData.faviconUrl,
+    });
   };
 
   if (isLoading) {
@@ -71,27 +99,40 @@ export default function SettingsGeneralPage() {
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Configuración General</h1>
-        <p className="text-muted-foreground">Información de tu organización</p>
+        <h1 className="text-2xl font-bold">{t("settingsGeneral.title")}</h1>
+        <p className="text-muted-foreground">
+          {t("settingsGeneral.description")}
+        </p>
       </div>
 
       <Card className="p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
+          <SingleImageUpload
+            label={t("upload.logoLabel")}
+            value={formData.logoUrl}
+            onChange={(url) =>
+              setFormData({ ...formData, logoUrl: url ?? null })
+            }
+            scope="tenant_logo"
+            variant="logo"
+          />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="displayName">Nombre para mostrar</Label>
+              <Label htmlFor="displayName">
+                {t("settingsGeneral.displayNameLabel")}
+              </Label>
               <Input
                 id="displayName"
                 value={formData.displayName}
                 onChange={(e) =>
                   setFormData({ ...formData, displayName: e.target.value })
                 }
-                placeholder="Nombre de tu negocio"
+                placeholder={t("settingsGeneral.displayNamePlaceholder")}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t("settingsGeneral.emailLabel")}</Label>
               <Input
                 id="email"
                 type="email"
@@ -99,26 +140,28 @@ export default function SettingsGeneralPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
-                placeholder="contacto@empresa.com"
+                placeholder={t("settingsGeneral.emailPlaceholder")}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="phone">Teléfono</Label>
+              <Label htmlFor="phone">{t("settingsGeneral.phoneLabel")}</Label>
               <Input
                 id="phone"
                 value={formData.phone}
                 onChange={(e) =>
                   setFormData({ ...formData, phone: e.target.value })
                 }
-                placeholder="+51 999 999 999"
+                placeholder={t("settingsGeneral.phonePlaceholder")}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="website">Sitio Web</Label>
+              <Label htmlFor="website">
+                {t("settingsGeneral.websiteLabel")}
+              </Label>
               <Input
                 id="website"
                 type="url"
@@ -126,51 +169,55 @@ export default function SettingsGeneralPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, website: e.target.value })
                 }
-                placeholder="https://tusitio.com"
+                placeholder={t("settingsGeneral.websitePlaceholder")}
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="address">Dirección</Label>
+            <Label htmlFor="address">{t("settingsGeneral.addressLabel")}</Label>
             <Input
               id="address"
               value={formData.address}
               onChange={(e) =>
                 setFormData({ ...formData, address: e.target.value })
               }
-              placeholder="Dirección principal"
+              placeholder={t("settingsGeneral.addressPlaceholder")}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="city">Ciudad</Label>
+            <Label htmlFor="city">{t("settingsGeneral.cityLabel")}</Label>
             <Input
               id="city"
               value={formData.city}
               onChange={(e) =>
                 setFormData({ ...formData, city: e.target.value })
               }
-              placeholder="Lima"
+              placeholder={t("settingsGeneral.cityPlaceholder")}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Descripción</Label>
+            <Label htmlFor="description">
+              {t("settingsGeneral.descriptionLabel")}
+            </Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
               }
-              placeholder="Descripción de tu negocio"
+              placeholder={t("settingsGeneral.descriptionPlaceholder")}
               rows={4}
             />
           </div>
 
           <div className="flex justify-end">
             <Button type="submit" disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? "Guardando..." : "Guardar Cambios"}
+              {updateMutation.isPending
+                ? t("settingsGeneral.saving")
+                : t("settingsGeneral.saveChanges")}
             </Button>
           </div>
         </form>

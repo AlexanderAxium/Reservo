@@ -9,6 +9,7 @@ import { reservationRouter } from "./reservation";
 import { sportCenterRouter } from "./sportCenter";
 import { tenantRouter } from "./tenant";
 import { translationRouter } from "./translation";
+import { uploadRouter } from "./upload";
 import { userRouter } from "./user";
 
 export const appRouter = router({
@@ -23,6 +24,7 @@ export const appRouter = router({
   sportCenter: sportCenterRouter,
   payment: paymentRouter,
   metrics: metricsRouter,
+  upload: uploadRouter,
 });
 
 export type AppRouter = typeof appRouter;

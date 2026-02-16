@@ -17,6 +17,10 @@ export enum PermissionResource {
   FIELD = "FIELD",
   RESERVATION = "RESERVATION",
   REVIEW = "REVIEW",
+  TENANT = "TENANT",
+  STAFF = "STAFF",
+  METRICS = "METRICS",
+  SETTINGS = "SETTINGS",
   PAYMENT = "PAYMENT",
 }
 

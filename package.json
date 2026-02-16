@@ -34,6 +34,8 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.990.0",
+    "@aws-sdk/s3-request-presigner": "^3.990.0",
     "@hookform/resolvers": "^5.2.2",
     "@prisma/client": "^6.5.0",
     "@radix-ui/react-accordion": "^1.2.12",

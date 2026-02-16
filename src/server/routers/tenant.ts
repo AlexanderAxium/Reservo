@@ -56,6 +56,8 @@ const updateTenantSchema = z.object({
   maxFields: z.number().int().positive().optional(),
   maxUsers: z.number().int().positive().optional(),
   isVerified: z.boolean().optional(),
+  logoUrl: z.string().url().optional().nullable(),
+  faviconUrl: z.string().url().optional().nullable(),
 });
 
 export const tenantRouter = router({
@@ -288,6 +290,9 @@ export const tenantRouter = router({
       if (input.plan !== undefined) updateData.plan = input.plan;
       if (input.maxFields !== undefined) updateData.maxFields = input.maxFields;
       if (input.maxUsers !== undefined) updateData.maxUsers = input.maxUsers;
+      if (input.logoUrl !== undefined) updateData.logoUrl = input.logoUrl;
+      if (input.faviconUrl !== undefined)
+        updateData.faviconUrl = input.faviconUrl;
 
       // Solo SYS_ADMIN puede cambiar isVerified
       if (

@@ -115,10 +115,12 @@ export function useRBAC() {
         action: PermissionAction,
         resource: PermissionResource
       ) => {
+        if (isTenantAdmin || isSysAdmin) return true;
         if (!userPermissions.length) return false;
         return userPermissions.some(
           (permission) =>
-            permission.action === action &&
+            (permission.action === action ||
+              permission.action === PermissionAction.MANAGE) &&
             permission.resource === resource &&
             permission.isActive
         );
@@ -169,7 +171,7 @@ export function useRBAC() {
         );
       },
     }),
-    [userRoles, userPermissions]
+    [userRoles, userPermissions, isTenantAdmin, isSysAdmin]
   );
 
   return {

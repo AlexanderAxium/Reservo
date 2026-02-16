@@ -22,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useTranslation } from "@/hooks/useTranslation";
 import { FeatureIcon } from "@/lib/feature-icons";
 import { formatPrice } from "@/lib/utils";
 import { trpc } from "@/utils/trpc";
@@ -41,25 +42,25 @@ import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
-const _dayLabels: Record<string, string> = {
-  MONDAY: "Lunes",
-  TUESDAY: "Martes",
-  WEDNESDAY: "Miércoles",
-  THURSDAY: "Jueves",
-  FRIDAY: "Viernes",
-  SATURDAY: "Sábado",
-  SUNDAY: "Domingo",
-};
+const dayOrder = [
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+  "SUNDAY",
+] as const;
 
-const weekDays = [
-  { value: "MONDAY", label: "Lunes" },
-  { value: "TUESDAY", label: "Martes" },
-  { value: "WEDNESDAY", label: "Miércoles" },
-  { value: "THURSDAY", label: "Jueves" },
-  { value: "FRIDAY", label: "Viernes" },
-  { value: "SATURDAY", label: "Sábado" },
-  { value: "SUNDAY", label: "Domingo" },
-];
+const dayKeyMap: Record<string, string> = {
+  MONDAY: "days.monday",
+  TUESDAY: "days.tuesday",
+  WEDNESDAY: "days.wednesday",
+  THURSDAY: "days.thursday",
+  FRIDAY: "days.friday",
+  SATURDAY: "days.saturday",
+  SUNDAY: "days.sunday",
+};
 
 type ScheduleItem = {
   id: string;
@@ -72,6 +73,7 @@ type ScheduleItem = {
 export default function OwnerFieldDetailPage() {
   const params = useParams();
   const _router = useRouter();
+  const { t } = useTranslation("dashboard");
   const fieldId = params.id as string;
 
   const {
@@ -91,36 +93,36 @@ export default function OwnerFieldDetailPage() {
 
   const createSchedule = trpc.field.createSchedule.useMutation({
     onSuccess: () => {
-      toast.success("Horario creado correctamente");
+      toast.success(t("fieldDetail.scheduleCreated"));
       refetch();
       setScheduleModalOpen(false);
       setEditingSchedule(null);
     },
     onError: (error) => {
-      toast.error(error.message || "No se pudo crear el horario");
+      toast.error(error.message || t("fieldDetail.scheduleCreateError"));
     },
   });
 
   const updateSchedule = trpc.field.updateSchedule.useMutation({
     onSuccess: () => {
-      toast.success("Horario actualizado correctamente");
+      toast.success(t("fieldDetail.scheduleUpdated"));
       refetch();
       setScheduleModalOpen(false);
       setEditingSchedule(null);
     },
     onError: (error) => {
-      toast.error(error.message || "No se pudo actualizar el horario");
+      toast.error(error.message || t("fieldDetail.scheduleUpdateError"));
     },
   });
 
   const deleteSchedule = trpc.field.deleteSchedule.useMutation({
     onSuccess: () => {
-      toast.success("Horario eliminado correctamente");
+      toast.success(t("fieldDetail.scheduleDeleted"));
       refetch();
       setDeleteScheduleId(null);
     },
     onError: (error) => {
-      toast.error(error.message || "No se pudo eliminar el horario");
+      toast.error(error.message || t("fieldDetail.scheduleDeleteError"));
     },
   });
 
@@ -181,14 +183,6 @@ export default function OwnerFieldDetailPage() {
     return map;
   }, [field?.schedules]);
 
-  const sportLabels: Record<string, string> = {
-    FOOTBALL: "Fútbol",
-    TENNIS: "Tenis",
-    BASKETBALL: "Básquet",
-    VOLLEYBALL: "Vóley",
-    FUTSAL: "Futsal",
-  };
-
   // Imagen por defecto
   const defaultImageUrl =
     "https://images.unsplash.com/photo-1575361204480-05e88e6e8b1f?w=800";
@@ -211,19 +205,16 @@ export default function OwnerFieldDetailPage() {
     const totalRevenue = effectiveReservations.reduce((sum, reservation) => {
       const paidAmount =
         reservation.payments?.reduce((paymentSum, payment) => {
-          // Solo contar pagos con status PAID
           if (payment.status === "PAID") {
             return paymentSum + Number(payment.amount || 0);
           }
           return paymentSum;
         }, 0) || 0;
-      // Si hay pagos pagados, usar esos; si no, usar el monto de la reserva
       return (
         sum + (paidAmount > 0 ? paidAmount : Number(reservation.amount || 0))
       );
     }, 0);
 
-    // Calcular ocupación (simplificado: basado en reservas confirmadas)
     const occupancy =
       field.schedules && field.schedules.length > 0
         ? Math.min(100, Math.round((totalReservations / 10) * 100))
@@ -248,7 +239,7 @@ export default function OwnerFieldDetailPage() {
     return (
       <ProtectedRoute>
         <div className="flex items-center justify-center min-h-[400px]">
-          <p>Cargando cancha...</p>
+          <p>{t("fieldForm.loadingField")}</p>
         </div>
       </ProtectedRoute>
     );
@@ -259,9 +250,11 @@ export default function OwnerFieldDetailPage() {
       <ProtectedRoute>
         <div className="space-y-6">
           <div className="text-center py-8">
-            <p className="text-muted-foreground mb-4">Cancha no encontrada</p>
+            <p className="text-muted-foreground mb-4">
+              {t("fieldForm.fieldNotFound")}
+            </p>
             <Link href="/dashboard/fields">
-              <Button variant="outline">Volver a la lista</Button>
+              <Button variant="outline">{t("fieldForm.backToList")}</Button>
             </Link>
           </div>
         </div>
@@ -277,17 +270,17 @@ export default function OwnerFieldDetailPage() {
           <Link href="/dashboard/fields">
             <Button variant="ghost" className="text-muted-foreground">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Volver al Dashboard
+              {t("fieldDetail.backToDashboard")}
             </Button>
           </Link>
           <div className="flex gap-2">
             <Button variant="outline">
               <Clock className="mr-2 h-4 w-4" />
-              Configurar Horarios
+              {t("fieldDetail.configureSchedules")}
             </Button>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
-              Nueva Reserva
+              {t("fieldDetail.newReservation")}
             </Button>
           </div>
         </div>
@@ -314,7 +307,7 @@ export default function OwnerFieldDetailPage() {
                 variant="default"
                 className="absolute top-2 right-2 bg-green-600"
               >
-                {sportLabels[field.sport] || field.sport}
+                {t(`sports.${field.sport}`)}
               </Badge>
             </div>
 
@@ -368,17 +361,23 @@ export default function OwnerFieldDetailPage() {
                   <p className="text-2xl font-bold">
                     {statistics.totalReservations}
                   </p>
-                  <p className="text-sm text-muted-foreground">Reservas</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t("fieldDetail.reservationCount")}
+                  </p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold">
                     S/ {formatPrice(statistics.totalRevenue)}
                   </p>
-                  <p className="text-sm text-muted-foreground">Ingresos</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t("fieldDetail.income")}
+                  </p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{statistics.occupancy}%</p>
-                  <p className="text-sm text-muted-foreground">Ocupación</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t("fieldDetail.occupancyRate")}
+                  </p>
                 </div>
               </div>
             </div>
@@ -390,7 +389,7 @@ export default function OwnerFieldDetailPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <CardTitle>Horarios de Atención</CardTitle>
+                <CardTitle>{t("fieldDetail.schedules")}</CardTitle>
                 <Info className="h-4 w-4 text-muted-foreground" />
               </div>
               <Button
@@ -401,14 +400,15 @@ export default function OwnerFieldDetailPage() {
                 }}
               >
                 <Plus className="mr-2 h-4 w-4" />
-                Añadir
+                {t("fieldDetail.addSchedule")}
               </Button>
             </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {weekDays.map((weekDay) => {
-                const schedule = schedulesByDay.get(weekDay.value);
+              {dayOrder.map((dayValue) => {
+                const schedule = schedulesByDay.get(dayValue);
+                const dayLabel = t(dayKeyMap[dayValue] || "");
                 if (schedule) {
                   const hours = calculateHours(
                     schedule.startHour,
@@ -416,14 +416,14 @@ export default function OwnerFieldDetailPage() {
                   );
                   return (
                     <div
-                      key={weekDay.value}
+                      key={dayValue}
                       className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
                     >
                       <div>
-                        <p className="font-medium">{weekDay.label}</p>
+                        <p className="font-medium">{dayLabel}</p>
                         <p className="text-sm text-muted-foreground">
                           {schedule.startHour} - {schedule.endHour} ({hours}{" "}
-                          horas)
+                          {t("fieldDetail.hours")})
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -434,7 +434,7 @@ export default function OwnerFieldDetailPage() {
                             navigator.clipboard.writeText(
                               `${schedule.startHour}-${schedule.endHour}`
                             );
-                            toast.success("Horario copiado");
+                            toast.success(t("fieldDetail.scheduleCopied"));
                           }}
                         >
                           <Copy className="h-4 w-4" />
@@ -460,22 +460,22 @@ export default function OwnerFieldDetailPage() {
                 }
                 return (
                   <div
-                    key={weekDay.value}
+                    key={dayValue}
                     className="flex items-center justify-between p-3 border border-dashed rounded-lg hover:bg-accent/50 transition-colors"
                   >
                     <div>
-                      <p className="font-medium">{weekDay.label}</p>
+                      <p className="font-medium">{dayLabel}</p>
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        setEditingSchedule({ day: weekDay.value });
+                        setEditingSchedule({ day: dayValue });
                         setScheduleModalOpen(true);
                       }}
                     >
                       <Plus className="mr-2 h-4 w-4" />
-                      Configurar
+                      {t("fieldDetail.configure")}
                     </Button>
                   </div>
                 );
@@ -508,14 +508,15 @@ export default function OwnerFieldDetailPage() {
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>¿Eliminar horario?</AlertDialogTitle>
+              <AlertDialogTitle>
+                {t("fieldDetail.deleteScheduleTitle")}
+              </AlertDialogTitle>
               <AlertDialogDescription>
-                Esta acción eliminará el horario. El día seguirá apareciendo
-                pero sin horario configurado.
+                {t("fieldDetail.deleteScheduleDesc")}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
                   if (deleteScheduleId) {
@@ -524,7 +525,7 @@ export default function OwnerFieldDetailPage() {
                 }}
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
-                Eliminar
+                {t("delete")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -545,7 +546,7 @@ export default function OwnerFieldDetailPage() {
               clientName:
                 (r as { user?: { name: string | null } }).user?.name ??
                 (r as { guestName: string | null }).guestName ??
-                "Invitado",
+                t("fieldDetail.guest"),
             })) || []
           }
         />
@@ -555,7 +556,7 @@ export default function OwnerFieldDetailPage() {
           <Link href={`/dashboard/fields/${fieldId}/edit`}>
             <Button>
               <Edit className="mr-2 h-4 w-4" />
-              Editar Cancha
+              {t("fieldDetail.editField")}
             </Button>
           </Link>
         </div>

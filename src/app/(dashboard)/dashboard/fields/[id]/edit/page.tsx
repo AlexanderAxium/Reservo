@@ -1,5 +1,6 @@
 "use client";
 
+import { ImageUpload } from "@/components/fields/ImageUpload";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -27,57 +28,65 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useTranslation } from "@/hooks/useTranslation";
 import { FeatureIcon } from "@/lib/feature-icons";
 import { trpc } from "@/utils/trpc";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, Save, Tag } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
-const updateFieldSchema = z.object({
-  name: z.string().min(1, "El nombre es requerido").optional(),
-  sport: z
-    .enum(["FOOTBALL", "TENNIS", "BASKETBALL", "VOLLEYBALL", "FUTSAL"])
-    .optional(),
-  price: z.number().positive("El precio debe ser mayor a 0").optional(),
-  available: z.boolean().optional(),
-  images: z.array(z.string().url("URL de imagen inválida")).optional(),
-  address: z.string().min(1, "La dirección es requerida").optional(),
-  city: z.string().optional(),
-  district: z.string().optional(),
-  latitude: z.number().min(-90).max(90).optional(),
-  longitude: z.number().min(-180).max(180).optional(),
-  googleMapsUrl: z
-    .string()
-    .url("URL de Google Maps inválida")
-    .optional()
-    .or(z.literal("")),
-  description: z.string().optional(),
-  phone: z.string().optional(),
-  email: z.string().email("Email inválido").optional().or(z.literal("")),
-  sportCenterId: z.string().uuid().optional(),
-  features: z
-    .array(
-      z.object({
-        featureId: z.string().uuid(),
-        value: z.string().optional(),
-      })
-    )
-    .optional(),
-});
+const getUpdateFieldSchema = (t: (key: string) => string) =>
+  z.object({
+    name: z.string().min(1, t("fieldForm.nameRequired")).optional(),
+    sport: z
+      .enum(["FOOTBALL", "TENNIS", "BASKETBALL", "VOLLEYBALL", "FUTSAL"])
+      .optional(),
+    price: z.number().positive(t("fieldForm.pricePositive")).optional(),
+    available: z.boolean().optional(),
+    images: z.array(z.string().url(t("fieldForm.invalidImageUrl"))).optional(),
+    address: z.string().min(1, t("fieldForm.addressRequired")).optional(),
+    city: z.string().optional(),
+    district: z.string().optional(),
+    latitude: z.number().min(-90).max(90).optional(),
+    longitude: z.number().min(-180).max(180).optional(),
+    googleMapsUrl: z
+      .string()
+      .url(t("fieldForm.mapsUrlInvalid"))
+      .optional()
+      .or(z.literal("")),
+    description: z.string().optional(),
+    phone: z.string().optional(),
+    email: z
+      .string()
+      .email(t("fieldForm.emailInvalid"))
+      .optional()
+      .or(z.literal("")),
+    sportCenterId: z.string().uuid().optional(),
+    features: z
+      .array(
+        z.object({
+          featureId: z.string().uuid(),
+          value: z.string().optional(),
+        })
+      )
+      .optional(),
+  });
 
-type UpdateFieldFormData = z.infer<typeof updateFieldSchema>;
+type UpdateFieldFormData = z.infer<ReturnType<typeof getUpdateFieldSchema>>;
 
 export default function EditOwnerFieldPage() {
   const params = useParams();
   const router = useRouter();
+  const { t } = useTranslation("dashboard");
   const fieldId = params.id as string;
   const [imageUrls, setImageUrls] = useState<string[]>([]);
-  const [newImageUrl, setNewImageUrl] = useState("");
+
+  const updateFieldSchema = useMemo(() => getUpdateFieldSchema(t), [t]);
 
   // Obtener la cancha actual
   const { data: field, isLoading: isLoadingField } =
@@ -141,11 +150,11 @@ export default function EditOwnerFieldPage() {
 
   const updateField = trpc.field.update.useMutation({
     onSuccess: () => {
-      toast.success("Cancha actualizada correctamente");
+      toast.success(t("fieldForm.fieldUpdated"));
       router.push("/dashboard/fields");
     },
     onError: (error) => {
-      toast.error(error.message || "No se pudo actualizar la cancha");
+      toast.error(error.message || t("fieldForm.fieldUpdateError"));
     },
   });
 
@@ -161,20 +170,9 @@ export default function EditOwnerFieldPage() {
     });
   };
 
-  const addImageUrl = () => {
-    if (newImageUrl && z.string().url().safeParse(newImageUrl).success) {
-      setImageUrls([...imageUrls, newImageUrl]);
-      setNewImageUrl("");
-      form.setValue("images", [...imageUrls, newImageUrl]);
-    } else {
-      toast.error("URL de imagen inválida");
-    }
-  };
-
-  const removeImageUrl = (index: number) => {
-    const newUrls = imageUrls.filter((_, i) => i !== index);
-    setImageUrls(newUrls);
-    form.setValue("images", newUrls);
+  const handleImagesChange = (urls: string[]) => {
+    setImageUrls(urls);
+    form.setValue("images", urls);
   };
 
   const selectedFeatures = form.watch("features") || [];
@@ -209,7 +207,7 @@ export default function EditOwnerFieldPage() {
   if (isLoadingField) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <p>Cargando cancha...</p>
+        <p>{t("fieldForm.loadingField")}</p>
       </div>
     );
   }
@@ -218,9 +216,11 @@ export default function EditOwnerFieldPage() {
     return (
       <div className="space-y-6">
         <div className="text-center py-8">
-          <p className="text-muted-foreground mb-4">Cancha no encontrada</p>
+          <p className="text-muted-foreground mb-4">
+            {t("fieldForm.fieldNotFound")}
+          </p>
           <Link href="/dashboard/fields">
-            <Button variant="outline">Volver a la lista</Button>
+            <Button variant="outline">{t("fieldForm.backToList")}</Button>
           </Link>
         </div>
       </div>
@@ -232,17 +232,17 @@ export default function EditOwnerFieldPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">
-            Editar Cancha
+          <h1 className="text-2xl font-bold text-foreground">
+            {t("fieldForm.editTitle")}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Modifica la información de la cancha: {field.name}
+            {t("fieldForm.editDesc", { name: field.name })}
           </p>
         </div>
         <Link href="/dashboard/fields">
           <Button variant="outline">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Volver
+            {t("fieldForm.back")}
           </Button>
         </Link>
       </div>
@@ -253,9 +253,9 @@ export default function EditOwnerFieldPage() {
             {/* Información Básica */}
             <Card>
               <CardHeader>
-                <CardTitle>Información Básica</CardTitle>
+                <CardTitle>{t("fieldForm.basicInfo")}</CardTitle>
                 <CardDescription>
-                  Datos principales de la cancha deportiva
+                  {t("fieldForm.basicInfoDesc")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -264,9 +264,12 @@ export default function EditOwnerFieldPage() {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nombre *</FormLabel>
+                      <FormLabel>{t("fieldForm.nameLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ej: Cancha Principal" {...field} />
+                        <Input
+                          placeholder={t("fieldForm.namePlaceholder")}
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -278,22 +281,34 @@ export default function EditOwnerFieldPage() {
                   name="sport"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Deporte *</FormLabel>
+                      <FormLabel>{t("fieldForm.sportLabel")}</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Selecciona un deporte" />
+                            <SelectValue
+                              placeholder={t("fieldForm.sportPlaceholder")}
+                            />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="FOOTBALL">Fútbol</SelectItem>
-                          <SelectItem value="TENNIS">Tenis</SelectItem>
-                          <SelectItem value="BASKETBALL">Básquet</SelectItem>
-                          <SelectItem value="VOLLEYBALL">Vóley</SelectItem>
-                          <SelectItem value="FUTSAL">Futsal</SelectItem>
+                          <SelectItem value="FOOTBALL">
+                            {t("sports.FOOTBALL")}
+                          </SelectItem>
+                          <SelectItem value="TENNIS">
+                            {t("sports.TENNIS")}
+                          </SelectItem>
+                          <SelectItem value="BASKETBALL">
+                            {t("sports.BASKETBALL")}
+                          </SelectItem>
+                          <SelectItem value="VOLLEYBALL">
+                            {t("sports.VOLLEYBALL")}
+                          </SelectItem>
+                          <SelectItem value="FUTSAL">
+                            {t("sports.FUTSAL")}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -306,13 +321,13 @@ export default function EditOwnerFieldPage() {
                   name="price"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Precio (S/) *</FormLabel>
+                      <FormLabel>{t("fieldForm.priceLabel")}</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           step="0.01"
                           min="0"
-                          placeholder="0.00"
+                          placeholder={t("fieldForm.pricePlaceholder")}
                           {...field}
                           onChange={(e) =>
                             field.onChange(
@@ -333,17 +348,17 @@ export default function EditOwnerFieldPage() {
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                       <div className="space-y-0.5">
-                        <FormLabel className="text-base">Disponible</FormLabel>
+                        <FormLabel className="text-base">
+                          {t("fieldForm.availableLabel")}
+                        </FormLabel>
                         <FormDescription>
-                          La cancha estará disponible para reservas
+                          {t("fieldForm.availableDesc")}
                         </FormDescription>
                       </div>
                       <FormControl>
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={field.value}
-                          onChange={field.onChange}
-                          className="h-4 w-4"
+                          onCheckedChange={field.onChange}
                         />
                       </FormControl>
                     </FormItem>
@@ -355,10 +370,8 @@ export default function EditOwnerFieldPage() {
             {/* Ubicación */}
             <Card>
               <CardHeader>
-                <CardTitle>Ubicación</CardTitle>
-                <CardDescription>
-                  Información de ubicación de la cancha
-                </CardDescription>
+                <CardTitle>{t("fieldForm.location")}</CardTitle>
+                <CardDescription>{t("fieldForm.locationDesc")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <FormField
@@ -366,9 +379,12 @@ export default function EditOwnerFieldPage() {
                   name="address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Dirección *</FormLabel>
+                      <FormLabel>{t("fieldForm.addressLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ej: Av. Principal 123" {...field} />
+                        <Input
+                          placeholder={t("fieldForm.addressPlaceholder")}
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -380,9 +396,12 @@ export default function EditOwnerFieldPage() {
                   name="city"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Ciudad</FormLabel>
+                      <FormLabel>{t("fieldForm.cityLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Lima" {...field} />
+                        <Input
+                          placeholder={t("fieldForm.cityPlaceholder")}
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -394,9 +413,12 @@ export default function EditOwnerFieldPage() {
                   name="district"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Distrito</FormLabel>
+                      <FormLabel>{t("fieldForm.districtLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ej: San Isidro" {...field} />
+                        <Input
+                          placeholder={t("fieldForm.districtPlaceholder")}
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -409,7 +431,7 @@ export default function EditOwnerFieldPage() {
                     name="latitude"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Latitud</FormLabel>
+                        <FormLabel>{t("fieldForm.latLabel")}</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -436,7 +458,7 @@ export default function EditOwnerFieldPage() {
                     name="longitude"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Longitud</FormLabel>
+                        <FormLabel>{t("fieldForm.lngLabel")}</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -464,10 +486,10 @@ export default function EditOwnerFieldPage() {
                   name="googleMapsUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>URL de Google Maps</FormLabel>
+                      <FormLabel>{t("fieldForm.mapsUrlLabel")}</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="https://maps.google.com/..."
+                          placeholder={t("fieldForm.mapsUrlPlaceholder")}
                           {...field}
                         />
                       </FormControl>
@@ -484,17 +506,16 @@ export default function EditOwnerFieldPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Tag className="h-5 w-5" />
-                Características
+                {t("fieldForm.characteristics")}
               </CardTitle>
               <CardDescription>
-                Selecciona las características disponibles en tu cancha
+                {t("fieldForm.characteristicsDesc")}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {features.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No hay características disponibles. Contacta al administrador
-                  para que agregue características al sistema.
+                  {t("fieldForm.noFeatures")}
                 </p>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -544,7 +565,9 @@ export default function EditOwnerFieldPage() {
                           )}
                           {isSelected && (
                             <Input
-                              placeholder="Valor opcional (ej: 2 duchas)"
+                              placeholder={t(
+                                "fieldForm.featureValuePlaceholder"
+                              )}
                               value={selectedFeature?.value || ""}
                               onChange={(e) =>
                                 updateFeatureValue(feature.id, e.target.value)
@@ -564,8 +587,10 @@ export default function EditOwnerFieldPage() {
           {/* Información Adicional */}
           <Card>
             <CardHeader>
-              <CardTitle>Información Adicional</CardTitle>
-              <CardDescription>Detalles adicionales y contacto</CardDescription>
+              <CardTitle>{t("fieldForm.additionalInfo")}</CardTitle>
+              <CardDescription>
+                {t("fieldForm.additionalInfoDesc")}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <FormField
@@ -573,10 +598,10 @@ export default function EditOwnerFieldPage() {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Descripción</FormLabel>
+                    <FormLabel>{t("fieldForm.descriptionLabel")}</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Describe las características de la cancha..."
+                        placeholder={t("fieldForm.descriptionPlaceholder")}
                         rows={4}
                         {...field}
                       />
@@ -592,9 +617,12 @@ export default function EditOwnerFieldPage() {
                   name="phone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Teléfono</FormLabel>
+                      <FormLabel>{t("fieldForm.phoneLabel")}</FormLabel>
                       <FormControl>
-                        <Input placeholder="+51 999 999 999" {...field} />
+                        <Input
+                          placeholder={t("fieldForm.phonePlaceholder")}
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -606,11 +634,11 @@ export default function EditOwnerFieldPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>{t("fieldForm.emailLabel")}</FormLabel>
                       <FormControl>
                         <Input
                           type="email"
-                          placeholder="contacto@ejemplo.com"
+                          placeholder={t("fieldForm.emailPlaceholder")}
                           {...field}
                         />
                       </FormControl>
@@ -625,64 +653,17 @@ export default function EditOwnerFieldPage() {
                 name="images"
                 render={() => (
                   <FormItem>
-                    <FormLabel>Imágenes</FormLabel>
+                    <FormLabel>{t("fieldForm.imagesLabel")}</FormLabel>
                     <FormControl>
-                      <div className="space-y-2">
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="URL de imagen"
-                            value={newImageUrl}
-                            onChange={(e) => setNewImageUrl(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                addImageUrl();
-                              }
-                            }}
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={addImageUrl}
-                          >
-                            Agregar
-                          </Button>
-                        </div>
-                        {imageUrls.length > 0 && (
-                          <div className="flex flex-wrap gap-2">
-                            {imageUrls.map((url, index) => (
-                              <div
-                                key={url}
-                                className="relative group border rounded p-2"
-                              >
-                                <img
-                                  src={url}
-                                  alt={`Imagen ${index + 1}`}
-                                  className="h-20 w-20 object-cover rounded"
-                                  onError={() => {
-                                    toast.error(
-                                      `La imagen ${index + 1} no se pudo cargar`
-                                    );
-                                    removeImageUrl(index);
-                                  }}
-                                />
-                                <Button
-                                  type="button"
-                                  variant="destructive"
-                                  size="sm"
-                                  className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => removeImageUrl(index)}
-                                >
-                                  ×
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <ImageUpload
+                        images={imageUrls}
+                        onImagesChange={handleImagesChange}
+                        scope="field"
+                        maxImages={10}
+                      />
                     </FormControl>
                     <FormDescription>
-                      Agrega URLs de imágenes de la cancha
+                      {t("fieldForm.imagesDesc")}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -695,12 +676,14 @@ export default function EditOwnerFieldPage() {
           <div className="flex justify-end gap-4">
             <Link href="/dashboard/fields">
               <Button type="button" variant="outline">
-                Cancelar
+                {t("cancel")}
               </Button>
             </Link>
             <Button type="submit" disabled={updateField.isPending}>
               <Save className="mr-2 h-4 w-4" />
-              {updateField.isPending ? "Guardando..." : "Guardar Cambios"}
+              {updateField.isPending
+                ? t("fieldForm.savingChanges")
+                : t("fieldForm.saveChanges")}
             </Button>
           </div>
         </form>

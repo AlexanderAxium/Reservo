@@ -9,8 +9,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { trpc } from "@/hooks/useTRPC";
 import { formatPrice } from "@/lib/utils";
-import { trpc } from "@/utils/trpc";
 import {
   Calendar,
   Clock,

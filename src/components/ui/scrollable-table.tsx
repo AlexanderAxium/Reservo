@@ -76,6 +76,7 @@ export interface ScrollableTableProps<T = Record<string, unknown>> {
   // Empty state
   emptyMessage?: string;
   emptyIcon?: ReactNode;
+  emptyAction?: ReactNode;
 
   // Selection
   selectable?: boolean;
@@ -119,6 +120,7 @@ export function ScrollableTable<T = Record<string, unknown>>({
   // Empty state
   emptyMessage = "No hay datos disponibles",
   emptyIcon,
+  emptyAction,
 
   // Selection
   selectable = false,
@@ -298,9 +300,12 @@ export function ScrollableTable<T = Record<string, unknown>>({
                       }
                       className="px-6 py-8 text-center text-muted-foreground"
                     >
-                      <div className="flex flex-col items-center">
-                        {emptyIcon && <div className="mb-4">{emptyIcon}</div>}
+                      <div className="flex flex-col items-center gap-3">
+                        {emptyIcon && <div>{emptyIcon}</div>}
                         <p>{emptyMessage}</p>
+                        {emptyAction && (
+                          <div className="mt-1">{emptyAction}</div>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

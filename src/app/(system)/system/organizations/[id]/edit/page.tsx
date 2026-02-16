@@ -1,5 +1,6 @@
 "use client";
 
+import { SingleImageUpload } from "@/components/dashboard/SingleImageUpload";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ export default function EditOrganization({
     plan: "free",
     maxFields: 10,
     maxUsers: 5,
+    logoUrl: null as string | null,
   });
 
   useEffect(() => {
@@ -47,6 +49,7 @@ export default function EditOrganization({
         plan: tenant.plan,
         maxFields: tenant.maxFields,
         maxUsers: tenant.maxUsers,
+        logoUrl: tenant.logoUrl ?? null,
       });
     }
   }, [tenant]);
@@ -79,6 +82,7 @@ export default function EditOrganization({
       id: unwrappedParams.id,
       ...rest,
       plan: plan as "FREE" | "BASIC" | "PROFESSIONAL" | "ENTERPRISE",
+      logoUrl: formData.logoUrl,
     });
   };
 
@@ -115,6 +119,16 @@ export default function EditOrganization({
             <CardTitle>Organization Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            <SingleImageUpload
+              label="Organization logo"
+              value={formData.logoUrl}
+              onChange={(url) =>
+                setFormData((prev) => ({ ...prev, logoUrl: url ?? null }))
+              }
+              scope="tenant_logo"
+              tenantIdOverride={unwrappedParams.id}
+              variant="logo"
+            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Organization Name *</Label>

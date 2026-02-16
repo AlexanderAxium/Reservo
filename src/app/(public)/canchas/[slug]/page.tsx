@@ -1,7 +1,5 @@
 "use client";
 
-import { useAuthContext } from "@/AuthContext";
-import { ReservationGuestForm } from "@/components/reservation/ReservationGuestForm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,18 +16,12 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslation } from "@/hooks/useTranslation";
 import { FeatureIcon } from "@/lib/feature-icons";
 import { formatPrice } from "@/lib/utils";
 import { trpc } from "@/utils/trpc";
-import { addDays, format, parseISO, startOfDay, startOfWeek } from "date-fns";
+import { addDays, format, parseISO, startOfDay } from "date-fns";
 import type { Locale } from "date-fns";
 import { enUS } from "date-fns/locale";
 import { es } from "date-fns/locale";
@@ -40,15 +32,12 @@ import {
   ChevronRight,
   Clock,
   CreditCard,
-  DollarSign,
   MapPin,
   Users,
-  Wallet,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
 
 const WEEKDAY_TO_ENUM: Record<number, string> = {
   1: "MONDAY",
@@ -78,20 +67,16 @@ export default function PublicFieldReservePage() {
   const dateLocale = DATE_LOCALES[locale] ?? es;
 
   const params = useParams();
-  const fieldId = params.id as string;
-  const { user } = useAuthContext();
+  const router = useRouter();
+  const slug = params.slug as string;
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
-  const [reservationModalOpen, setReservationModalOpen] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
-    "qulqi" | "mercadopago" | "otro"
-  >("qulqi");
   const [carouselIndex, setCarouselIndex] = useState(0);
   const carouselApiRef = useRef<{ scrollTo: (i: number) => void } | null>(null);
 
-  const { data: field, isLoading } = trpc.field.getByIdPublic.useQuery(
-    { id: fieldId },
-    { enabled: !!fieldId }
+  const { data: field, isLoading } = trpc.field.getBySlugPublic.useQuery(
+    { slug },
+    { enabled: !!slug }
   );
 
   const todayStart = startOfDay(new Date());
@@ -124,24 +109,12 @@ export default function PublicFieldReservePage() {
   const { data: reservationsInRange } =
     trpc.field.getReservationsForRange.useQuery(
       {
-        fieldId,
+        fieldId: field?.id ?? "",
         startDate: rangeStart.toISOString(),
         endDate: rangeEnd.toISOString(),
       },
-      { enabled: !!fieldId && !!field && (!!selectedDate || true) }
+      { enabled: !!field?.id && (!!selectedDate || true) }
     );
-
-  const createReservation = trpc.field.createReservation.useMutation({
-    onSuccess: () => {
-      toast.success(t("reservationSuccess"));
-      setReservationModalOpen(false);
-      setSelectedDate(null);
-      setSelectedSlots([]);
-    },
-    onError: (err) => {
-      toast.error(err.message || t("reservationError"));
-    },
-  });
 
   const scheduleForSelectedDay = useMemo(() => {
     if (!field || !selectedDate) return null;
@@ -200,7 +173,6 @@ export default function PublicFieldReservePage() {
       }
       const next = [...prev, slot].sort();
       if (next.length > 2) return prev;
-      const _idx = timeSlotsForDay.indexOf(slot);
       const idx0 = next[0] ? timeSlotsForDay.indexOf(next[0]) : -1;
       const idx1 = next[1] ? timeSlotsForDay.indexOf(next[1]) : -1;
       const isConsecutive =
@@ -217,65 +189,42 @@ export default function PublicFieldReservePage() {
   const totalHours = selectedSlots.length;
   const totalAmount =
     field && totalHours > 0 ? Number(field.price) * totalHours : 0;
-  const SERVICE_CHARGE = 2;
-  const totalWithService = totalAmount + SERVICE_CHARGE;
   const canComplete = selectedDate && selectedSlots.length > 0;
 
-  const handleCompleteReservation = () => {
+  const handleGoToCheckout = () => {
     if (!canComplete || !field || !selectedDate) return;
-    setReservationModalOpen(true);
+    const dateParam = format(selectedDate, "yyyy-MM-dd");
+    const slotsParam = selectedSlots.join(",");
+    router.push(
+      `/canchas/${slug}/checkout?date=${dateParam}&slots=${slotsParam}`
+    );
   };
 
-  const confirmReservationAsUser = () => {
-    if (!canComplete || !field || !selectedDate) return;
-    const startDate = new Date(selectedDate);
-    const [h = 0, m = 0] = selectedSlots[0]!.split(":").map(Number);
-    startDate.setHours(h, m, 0, 0);
-    const endDate = new Date(startDate);
-    endDate.setHours(startDate.getHours() + totalHours, 0, 0, 0);
-    createReservation.mutate({
-      fieldId: field.id,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      amount: totalAmount,
-    });
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <Skeleton className="aspect-video w-full rounded-xl" />
+            <div className="grid grid-cols-2 gap-4">
+              <Skeleton className="h-20 rounded-xl" />
+              <Skeleton className="h-20 rounded-xl" />
+            </div>
+            <Skeleton className="h-40 rounded-xl" />
+          </div>
+          <div>
+            <Skeleton className="h-80 rounded-xl" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  const submitGuestReservation = (guest: {
-    guestName: string;
-    guestEmail: string;
-    guestPhone: string;
-  }) => {
-    if (!canComplete || !field || !selectedDate) return;
-    const startDate = new Date(selectedDate);
-    const [h = 0, m = 0] = selectedSlots[0]!.split(":").map(Number);
-    startDate.setHours(h, m, 0, 0);
-    const endDate = new Date(startDate);
-    endDate.setHours(startDate.getHours() + totalHours, 0, 0, 0);
-    createReservation.mutate({
-      fieldId: field.id,
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
-      amount: totalAmount,
-      guestName: guest.guestName,
-      guestEmail: guest.guestEmail,
-      guestPhone: guest.guestPhone,
-    });
-  };
-
-  if (isLoading || !field) {
+  if (!field) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="container mx-auto py-12">
-          {isLoading ? (
-            <p className="text-center text-foreground/80">
-              {t("loadingField")}
-            </p>
-          ) : (
-            <p className="text-center text-foreground/80">
-              {t("fieldNotFound")}
-            </p>
-          )}
+          <p className="text-center text-foreground/80">{t("fieldNotFound")}</p>
         </div>
       </div>
     );
@@ -312,9 +261,35 @@ export default function PublicFieldReservePage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Información de la cancha */}
           <div>
-            <h2 className="text-xl font-bold text-foreground mb-4">
-              Información de la cancha
-            </h2>
+            <h1 className="text-2xl font-bold text-foreground mb-2">
+              {field.name}
+            </h1>
+            {field.sportCenter && (
+              <div className="flex items-start gap-2 text-muted-foreground mb-4">
+                <MapPin className="h-5 w-5 mt-0.5 shrink-0" />
+                <div>
+                  <p className="font-medium text-foreground">
+                    {field.sportCenter.name}
+                  </p>
+                  {field.sportCenter.address && (
+                    <p className="text-sm">{field.sportCenter.address}</p>
+                  )}
+                  {field.sportCenter.district && (
+                    <p className="text-sm">{field.sportCenter.district}</p>
+                  )}
+                  {field.googleMapsUrl && (
+                    <a
+                      href={field.googleMapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-teal-600 hover:underline flex items-center gap-1 mt-1"
+                    >
+                      <MapPin className="h-4 w-4" /> Ver en Google Maps
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
               <Carousel
                 className="w-full"
@@ -572,7 +547,7 @@ export default function PublicFieldReservePage() {
                   </span>
                   <span>
                     {selectedSlots.length > 0
-                      ? `${selectedSlots[0]!}${selectedSlots[1] ? ` - ${selectedSlots[1]}` : ""} (${totalHours}h)`
+                      ? `${selectedSlots[0] ?? ""}${selectedSlots[1] ? ` - ${selectedSlots[1]}` : ""} (${totalHours}h)`
                       : t("notSelectedPlural")}
                   </span>
                 </div>
@@ -612,7 +587,7 @@ export default function PublicFieldReservePage() {
               {selectedSlots.length > 0 && (
                 <div className="space-y-1 text-sm">
                   <p>
-                    {selectedSlots[0]!}
+                    {selectedSlots[0] ?? ""}
                     {selectedSlots[1] ? ` - ${selectedSlots[1]}` : ""} S/{" "}
                     {formatPrice(totalAmount)}
                   </p>
@@ -625,12 +600,10 @@ export default function PublicFieldReservePage() {
               <Button
                 className="w-full bg-teal-600 hover:bg-teal-700 text-white"
                 size="lg"
-                disabled={!canComplete || createReservation.isPending}
-                onClick={handleCompleteReservation}
+                disabled={!canComplete}
+                onClick={handleGoToCheckout}
               >
-                {createReservation.isPending
-                  ? t("processing")
-                  : t("completeReservation")}
+                {t("completeReservation")}
               </Button>
               <p className="text-xs text-foreground/70 text-center">
                 {t("termsNote")}
@@ -640,285 +613,27 @@ export default function PublicFieldReservePage() {
         </div>
       </div>
 
-      {/* Modal Completar Reserva (diseño mockup: resumen, detalles pago, método pago solo selección) */}
-      <Dialog
-        open={reservationModalOpen}
-        onOpenChange={setReservationModalOpen}
-      >
-        <DialogContent className="bg-card border-border text-foreground max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-foreground text-xl">
-              {t("completeReservationTitle")}
-            </DialogTitle>
-            <DialogDescription className="text-foreground/70">
-              {t("confirmDetails")}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-6 py-2">
-            {/* Resumen de la Reserva */}
+      {/* Sticky mobile bottom bar */}
+      {canComplete && (
+        <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4 lg:hidden z-50">
+          <div className="container mx-auto flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-foreground mb-3">
-                {t("reservationSummary")}
-              </h3>
-              <div className="rounded-xl border border-border bg-muted/30 dark:bg-muted/20 p-4 grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-foreground/70 mb-0.5">{t("court")}</p>
-                  <p className="font-medium text-foreground">{field.name}</p>
-                </div>
-                <div>
-                  <p className="text-foreground/70 mb-0.5">
-                    {t("sportCenter")}
-                  </p>
-                  <p className="font-medium text-foreground">
-                    {field.sportCenter?.name ?? "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-foreground/70 mb-0.5">{t("date")}</p>
-                  <p className="font-medium text-foreground">
-                    {selectedDate
-                      ? format(
-                          selectedDate,
-                          locale === "en"
-                            ? "EEEE, MMMM d, yyyy"
-                            : "EEEE, d 'de' MMMM yyyy",
-                          {
-                            locale: dateLocale,
-                          }
-                        )
-                      : "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground mb-0.5">Hora</p>
-                  <p className="font-medium text-foreground">
-                    {selectedSlots[0]!}
-                    {selectedSlots[1] ? ` - ${selectedSlots[1]}` : ""}
-                  </p>
-                </div>
-              </div>
+              <p className="font-semibold text-foreground">
+                S/ {formatPrice(totalAmount)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {totalHours}h seleccionadas
+              </p>
             </div>
-
-            {/* Datos invitado o Detalles del Pago (placeholder) */}
-            {!user ? (
-              <div>
-                <h3 className="font-semibold text-foreground mb-3">
-                  {t("contactData")}
-                </h3>
-                <ReservationGuestForm
-                  onSubmit={submitGuestReservation}
-                  onCancel={() => setReservationModalOpen(false)}
-                  isLoading={createReservation.isPending}
-                  namespace="fields"
-                />
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-semibold text-foreground mb-3">
-                    {t("contactData")}
-                  </h3>
-                  <div className="rounded-xl border border-border bg-muted/30 dark:bg-muted/20 p-4 grid grid-cols-1 gap-3 text-sm">
-                    <div>
-                      <p className="text-foreground/70 mb-0.5">
-                        {t("guestName")}
-                      </p>
-                      <p className="font-medium text-foreground">
-                        {user.name ?? "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-foreground/70 mb-0.5">
-                        {t("guestEmail")}
-                      </p>
-                      <p className="font-medium text-foreground">
-                        {user.email ?? "—"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-foreground/70 mb-0.5">
-                        {t("guestPhone")}
-                      </p>
-                      <p className="font-medium text-foreground">
-                        {user.phone ?? "—"}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {t("reservationUnderYourAccount")}
-                  </p>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground mb-3">
-                    {t("paymentDetails")}
-                  </h3>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    (Solo visualización por ahora; el pago no está
-                    implementado.)
-                  </p>
-                  <div className="space-y-3">
-                    <div>
-                      <label
-                        htmlFor="res-card-name"
-                        className="text-sm text-foreground/70 block mb-1"
-                      >
-                        {t("cardName")}
-                      </label>
-                      <input
-                        id="res-card-name"
-                        type="text"
-                        placeholder="Juan Pérez"
-                        readOnly
-                        className="w-full rounded-lg border border-border bg-muted/50 dark:bg-gray-800 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="res-card-number"
-                        className="text-sm text-foreground/70 block mb-1"
-                      >
-                        {t("cardNumber")}
-                      </label>
-                      <input
-                        id="res-card-number"
-                        type="text"
-                        placeholder="4111 1111 1111 1111"
-                        readOnly
-                        className="w-full rounded-lg border border-border bg-muted/50 dark:bg-gray-800 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label
-                          htmlFor="res-card-expiry"
-                          className="text-sm text-foreground/70 block mb-1"
-                        >
-                          {t("expiryDate")}
-                        </label>
-                        <input
-                          id="res-card-expiry"
-                          type="text"
-                          placeholder="MM/AA"
-                          readOnly
-                          className="w-full rounded-lg border border-border bg-muted/50 dark:bg-gray-800 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
-                        />
-                      </div>
-                      <div>
-                        <label
-                          htmlFor="res-card-cvv"
-                          className="text-sm text-muted-foreground block mb-1"
-                        >
-                          CVV
-                        </label>
-                        <input
-                          id="res-card-cvv"
-                          type="text"
-                          placeholder="123"
-                          readOnly
-                          className="w-full rounded-lg border border-border bg-muted/50 dark:bg-gray-800 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Método de Pago (solo selección) */}
-            <div>
-              <h3 className="font-semibold text-foreground mb-3">
-                {t("paymentMethod")}
-              </h3>
-              <div className="flex gap-3 flex-wrap">
-                {(
-                  [
-                    {
-                      id: "qulqi" as const,
-                      labelKey: "paymentQulqi",
-                      icon: CreditCard,
-                    },
-                    {
-                      id: "mercadopago" as const,
-                      labelKey: "paymentMercadoPago",
-                      icon: Wallet,
-                    },
-                    {
-                      id: "otro" as const,
-                      labelKey: "paymentOther",
-                      icon: DollarSign,
-                    },
-                  ] as const
-                ).map((method) => (
-                  <button
-                    key={method.id}
-                    type="button"
-                    onClick={() => setSelectedPaymentMethod(method.id)}
-                    className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-4 py-3 min-w-[100px] transition-colors ${
-                      selectedPaymentMethod === method.id
-                        ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                        : "border-border bg-muted/30 dark:bg-gray-800/50 text-foreground hover:border-muted-foreground/50"
-                    }`}
-                  >
-                    <method.icon className="h-6 w-6" />
-                    <span className="text-sm font-medium">
-                      {t(method.labelKey)}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Resumen de cargos y Total */}
-            <div className="rounded-xl border border-border bg-muted/20 dark:bg-muted/10 p-4 space-y-2 text-sm">
-              <div className="flex justify-between text-foreground">
-                <span>
-                  {t("courtRental")} ({selectedSlots[0]!}
-                  {selectedSlots[1] ? ` - ${selectedSlots[1]}` : ""})
-                </span>
-                <span>S/ {formatPrice(totalAmount)}</span>
-              </div>
-              <div className="flex justify-between text-foreground">
-                <span>{t("serviceCharge")}</span>
-                <span>S/ {formatPrice(SERVICE_CHARGE)}</span>
-              </div>
-              <div className="flex justify-between font-semibold text-foreground pt-2 border-t border-border">
-                <span>{t("total")}</span>
-                <span className="text-emerald-600 dark:text-emerald-400">
-                  S/ {formatPrice(totalWithService)}
-                </span>
-              </div>
-            </div>
-
-            {/* Confirmar: usuario envía reserva; invitado ya envió con el form */}
-            {user ? (
-              <div className="flex gap-2 justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setReservationModalOpen(false)}
-                  disabled={createReservation.isPending}
-                >
-                  {t("cancel")}
-                </Button>
-                <Button
-                  onClick={confirmReservationAsUser}
-                  disabled={createReservation.isPending}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                >
-                  {createReservation.isPending
-                    ? t("processing")
-                    : t("confirmReservation")}
-                </Button>
-              </div>
-            ) : null}
+            <Button
+              className="bg-teal-600 hover:bg-teal-700 text-white"
+              onClick={handleGoToCheckout}
+            >
+              {t("reserve")}
+            </Button>
           </div>
-
-          <p className="text-xs text-foreground/70 text-center pt-2 border-t border-border">
-            {t("termsFooter")}
-          </p>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </div>
   );
 }

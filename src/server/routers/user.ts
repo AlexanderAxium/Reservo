@@ -167,7 +167,9 @@ export const userRouter = router({
       const items = users.map(({ userRoles, ...u }) => ({
         ...u,
         roles: userRoles.map((ur) => ({
+          id: ur.role.id,
           name: ur.role.name,
+          displayName: ur.role.displayName,
           isActive: ur.role.isActive,
         })),
       }));
@@ -315,8 +317,22 @@ export const userRouter = router({
         return { user: newUser, tempPassword };
       });
 
-      // TODO: Send invitation email with tempPassword if sendInvite is true
-      // This would integrate with your mailer service
+      // Send invitation email with tempPassword if sendInvite is true
+      if (input.sendInvite) {
+        const { sendStaffInvitationEmail } = await import("../../lib/mailer");
+        const tenant = await prisma.tenant.findUnique({
+          where: { id: tenantId },
+          select: { name: true },
+        });
+        await sendStaffInvitationEmail(
+          input.email,
+          input.name,
+          result.tempPassword,
+          tenant?.name ?? "CanchaLibre"
+        ).catch((err) => {
+          console.error("[inviteStaff] Error sending invitation email:", err);
+        });
+      }
 
       return {
         user: result.user,
@@ -360,7 +376,9 @@ export const userRouter = router({
       if (!user) throw new Error("Usuario no encontrado");
       const { userRoles, ...rest } = user;
       const roles = userRoles.map((ur) => ({
+        id: ur.role.id,
         name: ur.role.name,
+        displayName: ur.role.displayName,
         isActive: ur.role.isActive,
       }));
       return { ...rest, roles };
@@ -401,6 +419,9 @@ export const userRouter = router({
             language: true,
           }).partial()
         )
+        .extend({
+          image: z.string().url().optional().nullable(),
+        })
     )
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user?.tenantId) {
@@ -439,6 +460,10 @@ export const userRouter = router({
         typeof input.phone === "string" ? input.phone : undefined;
       const languageValue =
         typeof input.language === "string" ? input.language : input.language;
+      const imageValue =
+        typeof input.image === "string" || input.image === null
+          ? input.image
+          : undefined;
 
       if (emailValue && !validateEmail(emailValue))
         throw new Error("Email inválido");
@@ -461,6 +486,7 @@ export const userRouter = router({
       if (emailValue !== undefined) updateData.email = emailValue;
       if (phoneValue !== undefined) updateData.phone = phoneValue;
       if (languageValue !== undefined) updateData.language = languageValue;
+      if (imageValue !== undefined) updateData.image = imageValue;
 
       // Handle password update if provided - passwords are stored in Account table
       if (input.password && input.password.trim() !== "") {

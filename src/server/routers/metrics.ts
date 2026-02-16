@@ -3,7 +3,12 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { prisma } from "../../lib/db";
 import { isSysAdmin } from "../../services/rbacService";
-import { router, sysAdminProcedure, tenantAdminProcedure } from "../trpc";
+import {
+  router,
+  sysAdminProcedure,
+  tenantAdminProcedure,
+  tenantStaffProcedure,
+} from "../trpc";
 
 const dateRangeSchema = z.object({
   startDate: z.string().datetime().optional(),
@@ -96,7 +101,122 @@ export const metricsRouter = router({
       };
     }),
 
-  // Ingresos por período - TENANT_ADMIN
+  // Horas reservadas por día (para gráfico en dashboard)
+  hoursReservedByDay: tenantStaffProcedure
+    .input(
+      z.object({
+        days: z.number().min(7).max(90).optional().default(14),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      if (!ctx.user.tenantId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario sin tenant asignado",
+        });
+      }
+
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - input.days);
+      startDate.setHours(0, 0, 0, 0);
+
+      const reservations = await prisma.reservation.findMany({
+        where: {
+          field: { tenantId: ctx.user.tenantId },
+          startDate: { gte: startDate, lte: endDate },
+          status: { in: ["CONFIRMED", "COMPLETED", "PENDING"] },
+        },
+        select: {
+          startDate: true,
+          endDate: true,
+        },
+      });
+
+      const hoursByDay = new Map<string, number>();
+
+      for (let d = 0; d < input.days; d++) {
+        const date = new Date(startDate);
+        date.setDate(date.getDate() + d);
+        const key = date.toISOString().slice(0, 10);
+        hoursByDay.set(key, 0);
+      }
+
+      for (const r of reservations) {
+        const start = new Date(r.startDate);
+        const end = new Date(r.endDate);
+        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        const key = start.toISOString().slice(0, 10);
+        if (hoursByDay.has(key)) {
+          hoursByDay.set(key, (hoursByDay.get(key) ?? 0) + hours);
+        }
+      }
+
+      return Array.from(hoursByDay.entries())
+        .map(([date, hours]) => ({
+          date,
+          hours: Math.round(hours * 100) / 100,
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+    }),
+
+  // Ingresos por día (para gráfico en dashboard)
+  revenueByDay: tenantStaffProcedure
+    .input(
+      z.object({
+        days: z.number().min(7).max(90).optional().default(14),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      if (!ctx.user.tenantId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario sin tenant asignado",
+        });
+      }
+
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - input.days);
+      startDate.setHours(0, 0, 0, 0);
+
+      const reservations = await prisma.reservation.findMany({
+        where: {
+          field: { tenantId: ctx.user.tenantId },
+          startDate: { gte: startDate, lte: endDate },
+          status: { in: ["CONFIRMED", "COMPLETED"] },
+        },
+        select: {
+          startDate: true,
+          amount: true,
+        },
+      });
+
+      const revenueByDay = new Map<string, number>();
+
+      for (let d = 0; d < input.days; d++) {
+        const date = new Date(startDate);
+        date.setDate(date.getDate() + d);
+        const key = date.toISOString().slice(0, 10);
+        revenueByDay.set(key, 0);
+      }
+
+      for (const r of reservations) {
+        const key = new Date(r.startDate).toISOString().slice(0, 10);
+        if (revenueByDay.has(key)) {
+          revenueByDay.set(
+            key,
+            (revenueByDay.get(key) ?? 0) + Number(r.amount)
+          );
+        }
+      }
+
+      return Array.from(revenueByDay.entries())
+        .map(([date, revenue]) => ({ date, revenue }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+    }),
+
+  // Ingresos por período - TENANT_ADMIN (mantener para compatibilidad si se usa en otro lado)
   revenue: tenantAdminProcedure
     .input(
       dateRangeSchema.extend({

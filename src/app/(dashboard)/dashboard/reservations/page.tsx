@@ -8,22 +8,22 @@ import {
   type TableAction,
   type TableColumn,
 } from "@/components/ui/scrollable-table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { usePagination } from "@/hooks/usePagination";
 import { trpc } from "@/hooks/useTRPC";
+import { useTranslation } from "@/hooks/useTranslation";
 import { formatPrice } from "@/lib/utils";
 import type { ReservationStatus, Sport } from "@prisma/client";
-import { Calendar, Plus, Search } from "lucide-react";
+import { Calendar, CalendarX, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-
-const STATUS_LABELS: Record<ReservationStatus, string> = {
-  PENDING: "Pendiente",
-  CONFIRMED: "Confirmada",
-  CANCELLED: "Cancelada",
-  COMPLETED: "Completada",
-  NO_SHOW: "No asistió",
-};
 
 type Reservation = {
   id: string;
@@ -46,7 +46,13 @@ type Reservation = {
   createdAt: string;
 };
 
-function StatusBadge({ status }: { status: ReservationStatus }) {
+function StatusBadge({
+  status,
+  labels,
+}: {
+  status: ReservationStatus;
+  labels: Record<ReservationStatus, string>;
+}) {
   const colors: Record<ReservationStatus, string> = {
     CONFIRMED: "bg-emerald-500/10 text-emerald-600 border-emerald-500/50",
     COMPLETED: "bg-emerald-500/10 text-emerald-600 border-emerald-500/50",
@@ -57,18 +63,27 @@ function StatusBadge({ status }: { status: ReservationStatus }) {
 
   return (
     <Badge variant="outline" className={colors[status] || ""}>
-      {STATUS_LABELS[status] || status}
+      {labels[status] || status}
     </Badge>
   );
 }
 
 export default function ReservationsPage() {
   const router = useRouter();
+  const { t } = useTranslation("dashboard");
   const { page, limit, search, setPage, setLimit, setSearch } = usePagination({
     defaultLimit: 20,
   });
 
   const [statusFilter, setStatusFilter] = useState<"" | ReservationStatus>("");
+
+  const STATUS_LABELS: Record<ReservationStatus, string> = {
+    PENDING: t("statuses.pending"),
+    CONFIRMED: t("statuses.confirmed"),
+    CANCELLED: t("statuses.cancelled"),
+    COMPLETED: t("statuses.completed"),
+    NO_SHOW: t("statuses.noShow"),
+  };
 
   const { data, isLoading, error } = trpc.reservation.listForTenant.useQuery({
     page,
@@ -80,7 +95,7 @@ export default function ReservationsPage() {
   const columns: TableColumn<Reservation>[] = [
     {
       key: "field",
-      title: "Cancha",
+      title: t("reservationsList.fieldCol"),
       width: "180px",
       render: (_, record) => (
         <div>
@@ -91,12 +106,14 @@ export default function ReservationsPage() {
     },
     {
       key: "user",
-      title: "Cliente",
+      title: t("reservationsList.clientCol"),
       width: "160px",
       render: (_, record) => (
         <div>
           <p className="font-medium text-sm">
-            {record.user?.name || record.guestName || "Invitado"}
+            {record.user?.name ||
+              record.guestName ||
+              t("reservationsList.guest")}
           </p>
           <p className="text-xs text-muted-foreground">
             {record.user?.email || record.guestEmail || "-"}
@@ -106,7 +123,7 @@ export default function ReservationsPage() {
     },
     {
       key: "startDate",
-      title: "Fecha",
+      title: t("reservationsList.dateCol"),
       width: "130px",
       render: (value) =>
         new Date(value as string).toLocaleDateString("es-PE", {
@@ -117,7 +134,7 @@ export default function ReservationsPage() {
     },
     {
       key: "schedule",
-      title: "Horario",
+      title: t("reservationsList.scheduleCol"),
       width: "120px",
       render: (_, record) => (
         <div className="text-sm">
@@ -135,19 +152,24 @@ export default function ReservationsPage() {
     },
     {
       key: "amount",
-      title: "Monto",
+      title: t("reservationsList.amountCol"),
       width: "100px",
       render: (value) => `S/ ${formatPrice(Number(value))}`,
     },
     {
       key: "status",
-      title: "Estado",
+      title: t("reservationsList.statusCol"),
       width: "120px",
-      render: (value) => <StatusBadge status={value as ReservationStatus} />,
+      render: (value) => (
+        <StatusBadge
+          status={value as ReservationStatus}
+          labels={STATUS_LABELS}
+        />
+      ),
     },
     {
       key: "createdAt",
-      title: "Creada",
+      title: t("reservationsList.createdCol"),
       width: "110px",
       render: (value) =>
         new Date(value as string).toLocaleDateString("es-PE", {
@@ -159,7 +181,7 @@ export default function ReservationsPage() {
 
   const actions: TableAction<Reservation>[] = [
     {
-      label: "Ver detalles",
+      label: t("reservationsList.viewDetails"),
       onClick: (record) => router.push(`/dashboard/reservations/${record.id}`),
     },
   ];
@@ -168,22 +190,22 @@ export default function ReservationsPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Reservas</h1>
+          <h1 className="text-2xl font-bold">{t("reservationsList.title")}</h1>
           <p className="text-muted-foreground">
-            Gestiona todas las reservas de tus canchas
+            {t("reservationsList.description")}
           </p>
         </div>
         <div className="flex gap-2">
           <Link href="/dashboard/reservations/calendar">
             <Button variant="outline">
               <Calendar className="h-4 w-4 mr-2" />
-              Vista Calendario
+              {t("reservationsList.calendarView")}
             </Button>
           </Link>
           <Link href="/dashboard/reservations/new">
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Nueva Reserva
+              {t("reservationsList.newReservation")}
             </Button>
           </Link>
         </div>
@@ -193,27 +215,45 @@ export default function ReservationsPage() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por cliente o cancha..."
+            placeholder={t("reservationsList.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
           />
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value as "" | ReservationStatus);
+        <Select
+          value={statusFilter || "__all__"}
+          onValueChange={(val) => {
+            setStatusFilter(
+              val === "__all__" ? "" : (val as ReservationStatus)
+            );
             setPage(1);
           }}
-          className="px-3 py-2 border rounded-md"
         >
-          <option value="">Todos los estados</option>
-          <option value="PENDING">Pendiente</option>
-          <option value="CONFIRMED">Confirmada</option>
-          <option value="COMPLETED">Completada</option>
-          <option value="CANCELLED">Cancelada</option>
-          <option value="NO_SHOW">No asistió</option>
-        </select>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">
+              {t("reservationsList.allStatuses")}
+            </SelectItem>
+            <SelectItem value="PENDING">
+              {t("reservationsList.pending")}
+            </SelectItem>
+            <SelectItem value="CONFIRMED">
+              {t("reservationsList.confirmed")}
+            </SelectItem>
+            <SelectItem value="COMPLETED">
+              {t("reservationsList.completed")}
+            </SelectItem>
+            <SelectItem value="CANCELLED">
+              {t("reservationsList.cancelled")}
+            </SelectItem>
+            <SelectItem value="NO_SHOW">
+              {t("reservationsList.noShow")}
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <ScrollableTable
@@ -225,7 +265,16 @@ export default function ReservationsPage() {
         pagination={data?.pagination}
         onPageChange={setPage}
         onPageSizeChange={setLimit}
-        emptyMessage="No se encontraron reservas"
+        emptyMessage={t("reservationsList.noReservations")}
+        emptyIcon={<CalendarX className="h-12 w-12 text-muted-foreground" />}
+        emptyAction={
+          <Link href="/dashboard/reservations/new">
+            <Button size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              {t("reservationsList.newReservation")}
+            </Button>
+          </Link>
+        }
       />
     </div>
   );

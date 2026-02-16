@@ -19,6 +19,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -28,6 +37,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { trpc } from "@/hooks/useTRPC";
+import { useTranslation } from "@/hooks/useTranslation";
 import { formatPrice } from "@/lib/utils";
 import {
   Edit,
@@ -47,6 +57,7 @@ import { toast } from "sonner";
 type ViewMode = "list" | "grid";
 
 export default function FieldsPage() {
+  const { t } = useTranslation("dashboard");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [sportFilter, setSportFilter] = useState<string | undefined>(undefined);
@@ -72,22 +83,22 @@ export default function FieldsPage() {
 
   const deleteMutation = trpc.field.delete.useMutation({
     onSuccess: () => {
-      toast.success("Cancha eliminada correctamente");
+      toast.success(t("fieldsList.fieldDeleted"));
       setDeleteFieldId(null);
       refetch();
     },
     onError: (error) => {
-      toast.error(error.message || "No se pudo eliminar la cancha");
+      toast.error(error.message || t("fieldsList.fieldDeleteError"));
     },
   });
 
   const updateAvailabilityMutation = trpc.field.updateAvailability.useMutation({
     onSuccess: () => {
-      toast.success("Disponibilidad actualizada correctamente");
+      toast.success(t("fieldsList.availabilityUpdated"));
       refetch();
     },
     onError: (error) => {
-      toast.error(error.message || "No se pudo actualizar la disponibilidad");
+      toast.error(error.message || t("fieldsList.availabilityUpdateError"));
     },
   });
 
@@ -106,11 +117,11 @@ export default function FieldsPage() {
   };
 
   const sportLabels: Record<string, string> = {
-    FOOTBALL: "Fútbol",
-    TENNIS: "Tenis",
-    BASKETBALL: "Básquet",
-    VOLLEYBALL: "Vóley",
-    FUTSAL: "Futsal",
+    FOOTBALL: t("sports.FOOTBALL"),
+    TENNIS: t("sports.TENNIS"),
+    BASKETBALL: t("sports.BASKETBALL"),
+    VOLLEYBALL: t("sports.VOLLEYBALL"),
+    FUTSAL: t("sports.FUTSAL"),
   };
 
   const defaultImageUrl =
@@ -120,97 +131,106 @@ export default function FieldsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">
-            Mis Canchas
+          <h1 className="text-2xl font-bold text-foreground">
+            {t("fieldsList.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Gestiona todas tus canchas deportivas
+            {t("fieldsList.description")}
           </p>
         </div>
         <Link href="/dashboard/fields/new">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            Nueva Cancha
+            {t("fieldsList.newField")}
           </Button>
         </Link>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Filtros</CardTitle>
+          <CardTitle>{t("fieldsList.filters")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label
-                htmlFor="search-field"
-                className="text-sm font-medium mb-2 block"
-              >
-                Búsqueda
-              </label>
-              <input
+              <Label htmlFor="search-field" className="mb-2">
+                {t("fieldsList.search")}
+              </Label>
+              <Input
                 id="search-field"
                 type="text"
-                placeholder="Buscar por nombre, dirección..."
+                placeholder={t("fieldsList.searchPlaceholder")}
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                className="w-full px-3 py-2 border rounded-md"
               />
             </div>
             <div>
-              <label
-                htmlFor="sport-filter"
-                className="text-sm font-medium mb-2 block"
-              >
-                Deporte
-              </label>
-              <select
-                id="sport-filter"
-                value={sportFilter || ""}
-                onChange={(e) => {
-                  setSportFilter(e.target.value || undefined);
+              <Label htmlFor="sport-filter" className="mb-2">
+                {t("fieldsList.sport")}
+              </Label>
+              <Select
+                value={sportFilter ?? "__all__"}
+                onValueChange={(val) => {
+                  setSportFilter(val === "__all__" ? undefined : val);
                   setPage(1);
                 }}
-                className="w-full px-3 py-2 border rounded-md"
               >
-                <option value="">Todos</option>
-                <option value="FOOTBALL">Fútbol</option>
-                <option value="TENNIS">Tenis</option>
-                <option value="BASKETBALL">Básquet</option>
-                <option value="VOLLEYBALL">Vóley</option>
-                <option value="FUTSAL">Futsal</option>
-              </select>
+                <SelectTrigger id="sport-filter">
+                  <SelectValue placeholder={t("fieldsList.allSports")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">
+                    {t("fieldsList.allSports")}
+                  </SelectItem>
+                  <SelectItem value="FOOTBALL">
+                    {t("sports.FOOTBALL")}
+                  </SelectItem>
+                  <SelectItem value="TENNIS">{t("sports.TENNIS")}</SelectItem>
+                  <SelectItem value="BASKETBALL">
+                    {t("sports.BASKETBALL")}
+                  </SelectItem>
+                  <SelectItem value="VOLLEYBALL">
+                    {t("sports.VOLLEYBALL")}
+                  </SelectItem>
+                  <SelectItem value="FUTSAL">{t("sports.FUTSAL")}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
-              <label
-                htmlFor="availability-filter"
-                className="text-sm font-medium mb-2 block"
-              >
-                Disponibilidad
-              </label>
-              <select
-                id="availability-filter"
+              <Label htmlFor="availability-filter" className="mb-2">
+                {t("fieldsList.availability")}
+              </Label>
+              <Select
                 value={
                   availableFilter === undefined
-                    ? ""
+                    ? "__all__"
                     : availableFilter.toString()
                 }
-                onChange={(e) => {
-                  const value = e.target.value;
+                onValueChange={(val) => {
                   setAvailableFilter(
-                    value === "" ? undefined : value === "true"
+                    val === "__all__" ? undefined : val === "true"
                   );
                   setPage(1);
                 }}
-                className="w-full px-3 py-2 border rounded-md"
               >
-                <option value="">Todas</option>
-                <option value="true">Disponibles</option>
-                <option value="false">No disponibles</option>
-              </select>
+                <SelectTrigger id="availability-filter">
+                  <SelectValue placeholder={t("fieldsList.allAvailability")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">
+                    {t("fieldsList.allAvailability")}
+                  </SelectItem>
+                  <SelectItem value="true">
+                    {t("fieldsList.available")}
+                  </SelectItem>
+                  <SelectItem value="false">
+                    {t("fieldsList.unavailable")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>
@@ -220,9 +240,11 @@ export default function FieldsPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Lista de Canchas</CardTitle>
+              <CardTitle>{t("fieldsList.fieldList")}</CardTitle>
               <CardDescription>
-                {data?.pagination.total || 0} cancha(s) encontrada(s)
+                {t("fieldsList.fieldsFound", {
+                  count: String(data?.pagination.total || 0),
+                })}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -245,17 +267,19 @@ export default function FieldsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-center py-8">Cargando canchas...</div>
+            <div className="text-center py-8">
+              {t("fieldsList.loadingFields")}
+            </div>
           ) : !data?.data || data.data.length === 0 ? (
             <div className="text-center py-8">
               <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground mb-4">
-                No se encontraron canchas
+                {t("fieldsList.noFieldsFound")}
               </p>
               <Link href="/dashboard/fields/new">
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
-                  Crear Primera Cancha
+                  {t("fieldsList.createFirst")}
                 </Button>
               </Link>
             </div>
@@ -313,19 +337,22 @@ export default function FieldsPage() {
                           {field.available ? (
                             <>
                               <ToggleRight className="mr-2 h-4 w-4 text-green-600" />
-                              <span className="text-green-600">Disponible</span>
+                              <span className="text-green-600">
+                                {t("fieldsList.availableStatus")}
+                              </span>
                             </>
                           ) : (
                             <>
                               <ToggleLeft className="mr-2 h-4 w-4 text-red-600" />
                               <span className="text-red-600">
-                                No disponible
+                                {t("fieldsList.unavailableStatus")}
                               </span>
                             </>
                           )}
                         </Button>
                         <Badge variant="secondary">
-                          {field._count?.reservations || 0} reservas
+                          {field._count?.reservations || 0}{" "}
+                          {t("fieldsList.reservations")}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-2 pt-2 border-t">
@@ -339,7 +366,7 @@ export default function FieldsPage() {
                             className="w-full"
                           >
                             <Eye className="h-4 w-4 mr-2" />
-                            Ver
+                            {t("fieldsList.view")}
                           </Button>
                         </Link>
                         <Link
@@ -352,7 +379,7 @@ export default function FieldsPage() {
                             className="w-full"
                           >
                             <Edit className="h-4 w-4 mr-2" />
-                            Editar
+                            {t("fieldsList.editBtn")}
                           </Button>
                         </Link>
                         <Button
@@ -375,13 +402,15 @@ export default function FieldsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nombre</TableHead>
-                      <TableHead>Deporte</TableHead>
-                      <TableHead>Ubicación</TableHead>
-                      <TableHead>Precio</TableHead>
-                      <TableHead>Disponibilidad</TableHead>
-                      <TableHead>Reservas</TableHead>
-                      <TableHead className="text-right">Acciones</TableHead>
+                      <TableHead>{t("fieldsList.tableNameCol")}</TableHead>
+                      <TableHead>{t("fieldsList.tableSportCol")}</TableHead>
+                      <TableHead>{t("fieldsList.tableLocationCol")}</TableHead>
+                      <TableHead>{t("fieldsList.tablePriceCol")}</TableHead>
+                      <TableHead>{t("fieldsList.tableAvailCol")}</TableHead>
+                      <TableHead>{t("fieldsList.tableResCol")}</TableHead>
+                      <TableHead className="text-right">
+                        {t("fieldsList.tableActionsCol")}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -427,14 +456,14 @@ export default function FieldsPage() {
                               <>
                                 <ToggleRight className="mr-2 h-4 w-4 text-green-600" />
                                 <span className="text-green-600">
-                                  Disponible
+                                  {t("fieldsList.availableStatus")}
                                 </span>
                               </>
                             ) : (
                               <>
                                 <ToggleLeft className="mr-2 h-4 w-4 text-red-600" />
                                 <span className="text-red-600">
-                                  No disponible
+                                  {t("fieldsList.unavailableStatus")}
                                 </span>
                               </>
                             )}
@@ -475,8 +504,10 @@ export default function FieldsPage() {
               {data.pagination.totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4">
                   <div className="text-sm text-muted-foreground">
-                    Página {data.pagination.page} de{" "}
-                    {data.pagination.totalPages}
+                    {t("fieldsList.page", {
+                      current: String(data.pagination.page),
+                      total: String(data.pagination.totalPages),
+                    })}
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -485,7 +516,7 @@ export default function FieldsPage() {
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={!data.pagination.hasPrev || isLoading}
                     >
-                      Anterior
+                      {t("fieldsList.previous")}
                     </Button>
                     <Button
                       variant="outline"
@@ -493,7 +524,7 @@ export default function FieldsPage() {
                       onClick={() => setPage((p) => p + 1)}
                       disabled={!data.pagination.hasNext || isLoading}
                     >
-                      Siguiente
+                      {t("fieldsList.next")}
                     </Button>
                   </div>
                 </div>
@@ -509,19 +540,18 @@ export default function FieldsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar cancha?</AlertDialogTitle>
+            <AlertDialogTitle>{t("fieldsList.deleteField")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. La cancha será eliminada
-              permanentemente junto con todos sus datos asociados.
+              {t("fieldsList.deleteFieldDesc")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteFieldId && handleDelete(deleteFieldId)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Eliminar
+              {t("delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

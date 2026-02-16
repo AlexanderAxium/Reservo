@@ -4,6 +4,7 @@ import { ManualReservationModal } from "@/components/reservation/ManualReservati
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { trpc } from "@/hooks/useTRPC";
+import { useTranslation } from "@/hooks/useTranslation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,6 +12,7 @@ import { useState } from "react";
 
 export default function NewReservationPage() {
   const router = useRouter();
+  const { t } = useTranslation("dashboard");
   const [modalOpen, setModalOpen] = useState(true);
 
   const { data: fieldsData } = trpc.field.getAll.useQuery({
@@ -41,15 +43,15 @@ export default function NewReservationPage() {
         <Link href="/dashboard/reservations">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver
+            {t("reservationNew.back")}
           </Button>
         </Link>
         <div className="flex-1">
-          <h1 className="text-2xl font-semibold text-foreground">
-            Nueva Reserva Manual
+          <h1 className="text-2xl font-bold text-foreground">
+            {t("reservationNew.title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Crea una reserva para un cliente o invitado
+            {t("reservationNew.description")}
           </p>
         </div>
       </div>
@@ -57,7 +59,7 @@ export default function NewReservationPage() {
       <Card>
         <CardContent className="p-6">
           <p className="text-sm text-muted-foreground">
-            Utiliza el formulario para crear una nueva reserva manual.
+            {t("reservationNew.formHint")}
           </p>
         </CardContent>
       </Card>
