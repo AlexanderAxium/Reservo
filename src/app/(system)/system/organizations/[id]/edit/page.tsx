@@ -43,7 +43,7 @@ export default function EditOrganization({
       setFormData({
         name: tenant.name,
         displayName: tenant.displayName,
-        email: tenant.email,
+        email: tenant.email || "",
         plan: tenant.plan,
         maxFields: tenant.maxFields,
         maxUsers: tenant.maxUsers,
@@ -54,8 +54,8 @@ export default function EditOrganization({
   const updateMutation = trpc.tenant.update.useMutation({
     onSuccess: () => {
       toast.success("Organization updated successfully");
-      utils.tenant.getById.invalidate({ id: params.id });
-      router.push(`/system/organizations/${params.id}`);
+      utils.tenant.getById.invalidate({ id: unwrappedParams.id });
+      router.push(`/system/organizations/${unwrappedParams.id}`);
     },
     onError: (error) => {
       toast.error(error.message || "Failed to update organization");
@@ -65,7 +65,7 @@ export default function EditOrganization({
   const toggleActiveMutation = trpc.tenant.toggleActive.useMutation({
     onSuccess: () => {
       toast.success("Organization status updated");
-      utils.tenant.getById.invalidate({ id: params.id });
+      utils.tenant.getById.invalidate({ id: unwrappedParams.id });
     },
     onError: (error) => {
       toast.error(error.message || "Failed to toggle status");
@@ -74,7 +74,12 @@ export default function EditOrganization({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateMutation.mutate({ id: params.id, ...formData });
+    const { plan, ...rest } = formData;
+    updateMutation.mutate({
+      id: unwrappedParams.id,
+      ...rest,
+      plan: plan as "FREE" | "BASIC" | "PROFESSIONAL" | "ENTERPRISE",
+    });
   };
 
   if (isLoading) {
@@ -93,7 +98,7 @@ export default function EditOrganization({
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-4">
-        <Link href={`/system/organizations/${params.id}`}>
+        <Link href={`/system/organizations/${unwrappedParams.id}`}>
           <Button variant="outline" size="icon">
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -206,14 +211,16 @@ export default function EditOrganization({
               <Button
                 type="button"
                 variant={tenant.isActive ? "destructive" : "default"}
-                onClick={() => toggleActiveMutation.mutate({ id: params.id })}
+                onClick={() =>
+                  toggleActiveMutation.mutate({ id: unwrappedParams.id })
+                }
                 disabled={toggleActiveMutation.isPending}
               >
                 {tenant.isActive ? "Deactivate" : "Activate"} Organization
               </Button>
 
               <div className="flex gap-2">
-                <Link href={`/system/organizations/${params.id}`}>
+                <Link href={`/system/organizations/${unwrappedParams.id}`}>
                   <Button type="button" variant="outline">
                     Cancel
                   </Button>

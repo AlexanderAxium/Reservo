@@ -59,7 +59,7 @@ export default function OrganizationDetail({
             <p className="text-muted-foreground">{tenant.slug}</p>
           </div>
         </div>
-        <Link href={`/system/organizations/${params.id}/edit`}>
+        <Link href={`/system/organizations/${unwrappedParams.id}/edit`}>
           <Button>
             <Edit className="h-4 w-4 mr-2" />
             Edit
@@ -74,7 +74,7 @@ export default function OrganizationDetail({
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.fieldsCount || 0}</div>
+            <div className="text-2xl font-bold">{stats?.totalFields || 0}</div>
             <p className="text-xs text-muted-foreground">
               of {tenant.maxFields} allowed
             </p>
@@ -87,7 +87,7 @@ export default function OrganizationDetail({
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.usersCount || 0}</div>
+            <div className="text-2xl font-bold">{stats?.totalUsers || 0}</div>
             <p className="text-xs text-muted-foreground">
               of {tenant.maxUsers} allowed
             </p>
@@ -101,7 +101,7 @@ export default function OrganizationDetail({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats?.reservationsCount || 0}
+              {stats?.totalReservations || 0}
             </div>
             <p className="text-xs text-muted-foreground">Total bookings</p>
           </CardContent>

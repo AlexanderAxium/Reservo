@@ -149,7 +149,7 @@ export function ManualReservationModal({
   const createManual = trpc.reservation.createManual.useMutation({
     onSuccess: () => {
       utils.reservation.listForAdmin.invalidate();
-      utils.reservation.listForOwner.invalidate();
+      utils.reservation.listForTenant.invalidate();
       toast.success("Reserva creada correctamente");
       form.reset();
       onOpenChange(false);

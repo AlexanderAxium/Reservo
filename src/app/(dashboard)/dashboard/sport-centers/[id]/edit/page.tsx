@@ -46,7 +46,7 @@ export default function EditSportCenterPage() {
         name: sportCenter.name,
         address: sportCenter.address,
         district: sportCenter.district || "",
-        city: sportCenter.city,
+        city: sportCenter.city || "Lima",
         phone: sportCenter.phone || "",
         email: sportCenter.email || "",
         description: sportCenter.description || "",

@@ -11,11 +11,12 @@ import {
 import { usePagination } from "@/hooks/usePagination";
 import { trpc } from "@/hooks/useTRPC";
 import { formatPrice } from "@/lib/utils";
+import type { ReservationStatus } from "@prisma/client";
 import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-const STATUS_LABELS: Record<string, string> = {
+const STATUS_LABELS: Record<ReservationStatus, string> = {
   PENDING: "Pendiente",
   CONFIRMED: "Confirmada",
   CANCELLED: "Cancelada",
@@ -23,29 +24,22 @@ const STATUS_LABELS: Record<string, string> = {
   NO_SHOW: "No asistió",
 };
 
-type ReservationStatusFilter =
-  | "PENDING"
-  | "CONFIRMED"
-  | "CANCELLED"
-  | "COMPLETED"
-  | "NO_SHOW";
-
 type Reservation = {
   id: string;
-  startDate: string | Date;
-  endDate: string | Date;
-  status: string;
-  amount: number | string;
+  startDate: string;
+  endDate: string;
+  status: ReservationStatus;
+  amount: string;
   field: {
     id: string;
     name: string;
     sport: string;
   };
-  createdAt: string | Date;
+  createdAt: string;
 };
 
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
+function StatusBadge({ status }: { status: ReservationStatus }) {
+  const colors: Record<ReservationStatus, string> = {
     CONFIRMED: "bg-emerald-500/10 text-emerald-600 border-emerald-500/50",
     COMPLETED: "bg-emerald-500/10 text-emerald-600 border-emerald-500/50",
     PENDING: "bg-amber-500/10 text-amber-600 border-amber-500/50",
@@ -66,9 +60,7 @@ export default function MyReservationsPage() {
     defaultLimit: 20,
   });
 
-  const [statusFilter, setStatusFilter] = useState<
-    "" | ReservationStatusFilter
-  >("");
+  const [statusFilter, setStatusFilter] = useState<"" | ReservationStatus>("");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
 
@@ -98,14 +90,14 @@ export default function MyReservationsPage() {
       title: "Fecha",
       width: "130px",
       render: (value) =>
-        new Date(value as Date).toLocaleDateString("es-PE", {
+        new Date(value as string).toLocaleDateString("es-PE", {
           day: "2-digit",
           month: "short",
           year: "numeric",
         }),
     },
     {
-      key: "startDate",
+      key: "schedule",
       title: "Horario",
       width: "120px",
       render: (_, record) =>
@@ -127,7 +119,7 @@ export default function MyReservationsPage() {
       key: "status",
       title: "Estado",
       width: "120px",
-      render: (value) => <StatusBadge status={value as string} />,
+      render: (value) => <StatusBadge status={value as ReservationStatus} />,
     },
   ];
 
@@ -160,7 +152,7 @@ export default function MyReservationsPage() {
         <select
           value={statusFilter}
           onChange={(e) => {
-            setStatusFilter(e.target.value as "" | ReservationStatusFilter);
+            setStatusFilter(e.target.value as "" | ReservationStatus);
             setPage(1);
           }}
           className="px-3 py-2 border rounded-md"

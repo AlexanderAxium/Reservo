@@ -11,21 +11,23 @@ import {
 import { usePagination } from "@/hooks/usePagination";
 import { trpc } from "@/hooks/useTRPC";
 import { formatPrice } from "@/lib/utils";
+import type { PaymentStatus } from "@prisma/client";
 import { Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-const STATUS_LABELS: Record<string, string> = {
+const STATUS_LABELS: Record<PaymentStatus, string> = {
   PENDING: "Pendiente",
   PAID: "Pagado",
   CANCELLED: "Cancelado",
   REFUNDED: "Reembolsado",
+  FAILED: "Fallido",
 };
 
 type Payment = {
   id: string;
-  amount: number;
-  status: string;
+  amount: number | string;
+  status: PaymentStatus;
   reservation: {
     id: string;
     field: {
@@ -40,15 +42,16 @@ type Payment = {
   paymentMethod: {
     name: string;
   } | null;
-  createdAt: Date;
+  createdAt: string;
 };
 
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
+function StatusBadge({ status }: { status: PaymentStatus }) {
+  const colors: Record<PaymentStatus, string> = {
     PAID: "bg-emerald-500/10 text-emerald-600 border-emerald-500/50",
     PENDING: "bg-amber-500/10 text-amber-600 border-amber-500/50",
     CANCELLED: "bg-red-500/10 text-red-600 border-red-500/50",
     REFUNDED: "bg-blue-500/10 text-blue-600 border-blue-500/50",
+    FAILED: "bg-red-500/10 text-red-600 border-red-500/50",
   };
 
   return (
@@ -64,13 +67,13 @@ export default function PaymentsPage() {
     defaultLimit: 20,
   });
 
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<"" | PaymentStatus>("");
 
   const { data, isLoading, error } = trpc.payment.list.useQuery({
     page,
     limit,
     search: search || undefined,
-    status: statusFilter || undefined,
+    status: (statusFilter === "" ? undefined : statusFilter) as any,
   });
 
   const columns: TableColumn<Payment>[] = [
@@ -113,7 +116,7 @@ export default function PaymentsPage() {
       key: "status",
       title: "Estado",
       width: "120px",
-      render: (value) => <StatusBadge status={value as string} />,
+      render: (value) => <StatusBadge status={value as PaymentStatus} />,
     },
     {
       key: "createdAt",
@@ -159,7 +162,7 @@ export default function PaymentsPage() {
         <select
           value={statusFilter}
           onChange={(e) => {
-            setStatusFilter(e.target.value);
+            setStatusFilter(e.target.value as "" | PaymentStatus);
             setPage(1);
           }}
           className="px-3 py-2 border rounded-md"
@@ -169,6 +172,7 @@ export default function PaymentsPage() {
           <option value="PAID">Pagado</option>
           <option value="CANCELLED">Cancelado</option>
           <option value="REFUNDED">Reembolsado</option>
+          <option value="FAILED">Fallido</option>
         </select>
       </div>
 

@@ -35,7 +35,7 @@ type User = {
       isActive: boolean;
     };
   }>;
-  createdAt: Date;
+  createdAt: string;
 };
 
 export default function Users() {
@@ -92,7 +92,7 @@ export default function Users() {
       key: "createdAt",
       title: "Joined",
       width: "120px",
-      render: (value) => new Date(value as Date).toLocaleDateString(),
+      render: (value) => new Date(value as string).toLocaleDateString(),
     },
   ];
 

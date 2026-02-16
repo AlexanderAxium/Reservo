@@ -28,6 +28,7 @@ export const userRouter = router({
       paginationInputSchema
         .extend({
           tenantId: z.string().uuid().optional(),
+          role: z.string().optional(),
         })
         .optional()
     )
@@ -39,6 +40,7 @@ export const userRouter = router({
         sortBy,
         sortOrder = "desc",
         tenantId,
+        role: roleFilter,
       } = input || {};
       const offset = calculateOffset(page, limit);
 
@@ -48,6 +50,14 @@ export const userRouter = router({
       const whereClause = {
         ...searchFilter,
         ...(tenantId && { tenantId }),
+        ...(roleFilter && {
+          userRoles: {
+            some: {
+              role: { name: roleFilter },
+              OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+            },
+          },
+        }),
       };
 
       const [users, total] = await Promise.all([
@@ -154,7 +164,14 @@ export const userRouter = router({
         prisma.user.count({ where: whereClause }),
       ]);
 
-      return createPaginatedResponse(users, total, page, limit);
+      const items = users.map(({ userRoles, ...u }) => ({
+        ...u,
+        roles: userRoles.map((ur) => ({
+          name: ur.role.name,
+          isActive: ur.role.isActive,
+        })),
+      }));
+      return createPaginatedResponse(items, total, page, limit);
     }),
 
   /** Lista clientes (rol CLIENT) del tenant (TENANT_STAFF o superior) */
@@ -332,10 +349,21 @@ export const userRouter = router({
           tenantId: true,
           createdAt: true,
           updatedAt: true,
+          userRoles: {
+            where: {
+              OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+            },
+            include: { role: true },
+          },
         },
       });
       if (!user) throw new Error("Usuario no encontrado");
-      return user;
+      const { userRoles, ...rest } = user;
+      const roles = userRoles.map((ur) => ({
+        name: ur.role.name,
+        isActive: ur.role.isActive,
+      }));
+      return { ...rest, roles };
     }),
 
   getProfile: protectedProcedure.query(async ({ ctx }) => {

@@ -28,7 +28,7 @@ type Tenant = {
   slug: string;
   plan: string;
   isActive: boolean;
-  createdAt: Date;
+  createdAt: string;
   _count?: {
     fields?: number;
     users?: number;
@@ -105,7 +105,7 @@ export default function Organizations() {
       key: "createdAt",
       title: "Created",
       width: "120px",
-      render: (value) => new Date(value as Date).toLocaleDateString(),
+      render: (value) => new Date(value as string).toLocaleDateString(),
     },
   ];
 

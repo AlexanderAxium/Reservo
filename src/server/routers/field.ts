@@ -208,11 +208,7 @@ export const fieldRouter = router({
             email: input.email || null,
             tenantId: ctx.user.tenantId,
             ownerId: ownerId,
-            ...(input.sportCenterId && {
-              sportCenter: {
-                connect: { id: input.sportCenterId },
-              },
-            }),
+            sportCenterId: input.sportCenterId || null,
           },
         });
 

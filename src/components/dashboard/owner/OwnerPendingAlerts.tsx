@@ -1,15 +1,13 @@
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { trpc } from "@/utils/trpc";
+import { trpc } from "@/hooks/useTRPC";
 import { AlertCircle } from "lucide-react";
 import Link from "next/link";
 
 export function OwnerPendingAlerts() {
   const { data: pendingCount, isLoading } =
-    trpc.reservation.getOwnerPendingCount.useQuery(undefined, {
-      enabled: true,
-    });
+    trpc.reservation.getOwnerPendingCount.useQuery();
 
   if (isLoading || pendingCount === undefined || pendingCount === 0) {
     return null;

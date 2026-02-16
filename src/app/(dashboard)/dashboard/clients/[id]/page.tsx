@@ -15,11 +15,12 @@ import {
 } from "@/components/ui/scrollable-table";
 import { trpc } from "@/hooks/useTRPC";
 import { formatPrice } from "@/lib/utils";
+import type { ReservationStatus, Sport } from "@prisma/client";
 import { ArrowLeft, Calendar, Mail, Phone, User } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
-const STATUS_LABELS: Record<string, string> = {
+const STATUS_LABELS: Record<ReservationStatus, string> = {
   PENDING: "Pendiente",
   CONFIRMED: "Confirmada",
   CANCELLED: "Cancelada",
@@ -29,15 +30,14 @@ const STATUS_LABELS: Record<string, string> = {
 
 type Reservation = {
   id: string;
-  startDate: string | Date;
-  endDate: string | Date;
-  status: string;
-  amount: number | string;
+  startDate: string;
+  endDate: string;
+  status: ReservationStatus;
+  amount: string;
   field: {
     name: string;
-    sport: string;
+    sport: Sport;
   };
-  createdAt: string | Date;
 };
 
 export default function ClientDetailPage() {
@@ -74,14 +74,14 @@ export default function ClientDetailPage() {
       title: "Fecha",
       width: "130px",
       render: (value) =>
-        new Date(value as Date).toLocaleDateString("es-PE", {
+        new Date(value as string).toLocaleDateString("es-PE", {
           day: "2-digit",
           month: "short",
           year: "numeric",
         }),
     },
     {
-      key: "startDate",
+      key: "schedule",
       title: "Horario",
       width: "110px",
       render: (_, record) =>
@@ -105,7 +105,7 @@ export default function ClientDetailPage() {
       width: "120px",
       render: (value) => (
         <Badge variant="outline">
-          {STATUS_LABELS[value as string] ?? String(value)}
+          {STATUS_LABELS[value as ReservationStatus] ?? String(value)}
         </Badge>
       ),
     },
@@ -188,11 +188,14 @@ export default function ClientDetailPage() {
                   Cliente desde
                 </p>
                 <p className="text-base">
-                  {new Date(client.createdAt).toLocaleDateString("es-PE", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
+                  {new Date(client.createdAt as string).toLocaleDateString(
+                    "es-PE",
+                    {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    }
+                  )}
                 </p>
               </div>
             </div>

@@ -32,7 +32,7 @@ export default function RolesAndPermissions() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {roles?.map((role) => (
+        {roles?.data?.map((role) => (
           <Card key={role.id}>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -49,11 +49,9 @@ export default function RolesAndPermissions() {
               <p className="text-sm text-muted-foreground">
                 {role.description || "No description"}
               </p>
-              {role._count && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  {role._count.permissions || 0} permissions
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground mt-2">
+                {role.rolePermissions?.length ?? 0} permissions
+              </p>
             </CardContent>
           </Card>
         ))}

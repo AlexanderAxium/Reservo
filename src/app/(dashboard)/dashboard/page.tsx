@@ -35,18 +35,18 @@ export default function Dashboard() {
   // Define KPI cards based on role
   const kpiCards = [
     {
-      title: "Today's Reservations",
-      value: metrics?.todayReservations || 0,
-      subtitle: "Bookings today",
+      title: "Total Reservations",
+      value: metrics?.totalReservations || 0,
+      subtitle: "This period",
       icon: Calendar,
       color: "text-blue-600",
       bgColor: "bg-blue-50 dark:bg-blue-950",
       show: true,
     },
     {
-      title: "This Month's Revenue",
-      value: `S/ ${(metrics?.monthlyRevenue || 0).toLocaleString()}`,
-      subtitle: `${metrics?.monthlyReservations || 0} reservations`,
+      title: "Period Revenue",
+      value: `S/ ${(metrics?.revenue || 0).toLocaleString()}`,
+      subtitle: `${metrics?.confirmedReservations || 0} confirmed`,
       icon: DollarSign,
       color: "text-green-600",
       bgColor: "bg-green-50 dark:bg-green-950",
@@ -54,18 +54,18 @@ export default function Dashboard() {
       show: isTenantAdmin, // Only show to admins
     },
     {
-      title: "Occupancy Rate",
-      value: `${metrics?.occupancyRate || 0}%`,
-      subtitle: "This month",
+      title: "Active Fields",
+      value: metrics?.totalFields || 0,
+      subtitle: "Available courts",
       icon: TrendingUp,
       color: "text-purple-600",
       bgColor: "bg-purple-50 dark:bg-purple-950",
-      href: isTenantAdmin ? "/dashboard/metrics/occupancy" : undefined,
+      href: "/dashboard/fields",
       show: isTenantAdmin, // Only show to admins
     },
     {
       title: "Pending Confirmations",
-      value: metrics?.pendingConfirmations || 0,
+      value: metrics?.pendingReservations || 0,
       subtitle: "Awaiting action",
       icon: Clock,
       color: "text-orange-600",
@@ -74,13 +74,13 @@ export default function Dashboard() {
       show: true,
     },
     {
-      title: "Pending Payments",
-      value: metrics?.pendingPayments || 0,
-      subtitle: "Awaiting verification",
+      title: "Unique Clients",
+      value: metrics?.uniqueClients || 0,
+      subtitle: "This period",
       icon: AlertCircle,
       color: "text-red-600",
       bgColor: "bg-red-50 dark:bg-red-950",
-      href: "/dashboard/payments",
+      href: "/dashboard/clients",
       show: isTenantAdmin, // Only show to admins
     },
   ];
@@ -138,30 +138,7 @@ export default function Dashboard() {
         })}
       </div>
 
-      {/* Most Booked Field */}
-      {metrics?.mostBookedField && isTenantAdmin && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              Most Booked Field
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">{metrics.mostBookedField.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {metrics.mostBookedField.sport}
-                </p>
-              </div>
-              <Badge variant="default">
-                {metrics.mostBookedField.bookings} bookings
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* TODO: Most Booked Field - implement when backend provides this data */}
 
       {/* Quick Links for Staff */}
       {isTenantStaff && (

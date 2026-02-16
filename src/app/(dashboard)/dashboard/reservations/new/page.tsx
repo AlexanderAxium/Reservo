@@ -23,7 +23,7 @@ export default function NewReservationPage() {
     fieldsData?.data.map((f) => ({
       id: f.id,
       name: f.name,
-      price: f.price,
+      price: Number(f.price),
     })) || [];
 
   const handleClose = () => {

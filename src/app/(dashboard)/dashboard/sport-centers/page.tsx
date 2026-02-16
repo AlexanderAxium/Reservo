@@ -19,7 +19,7 @@ type SportCenter = {
   name: string;
   address: string;
   district?: string | null;
-  city: string;
+  city: string | null;
   phone?: string | null;
   email?: string | null;
   owner: {
@@ -30,7 +30,7 @@ type SportCenter = {
   _count: {
     fields: number;
   };
-  createdAt: Date;
+  createdAt: string;
 };
 
 export default function SportCentersPage() {
@@ -64,7 +64,7 @@ export default function SportCentersPage() {
         <div>
           <p className="font-medium">{record.name}</p>
           <p className="text-xs text-muted-foreground">
-            {record.district}, {record.city}
+            {[record.district, record.city].filter(Boolean).join(", ") || "-"}
           </p>
         </div>
       ),
@@ -95,13 +95,13 @@ export default function SportCentersPage() {
       key: "phone",
       title: "Teléfono",
       width: "120px",
-      render: (value) => value || "-",
+      render: (value) => (value != null && value !== "" ? String(value) : "-"),
     },
     {
       key: "createdAt",
       title: "Creado",
       width: "120px",
-      render: (value) => new Date(value as Date).toLocaleDateString(),
+      render: (value) => new Date(value as string).toLocaleDateString(),
     },
   ];
 

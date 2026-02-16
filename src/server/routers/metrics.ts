@@ -377,7 +377,7 @@ export const metricsRouter = router({
           tenantStats.set(tenantId, {
             reservations:
               current.reservations +
-              (typeof r._count === "number" ? r._count : r._count._all || 0),
+              (typeof r._count === "number" ? r._count : 0),
             revenue: current.revenue + Number(r._sum?.amount ?? 0),
           });
         }

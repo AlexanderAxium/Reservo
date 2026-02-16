@@ -90,6 +90,58 @@ export const reservationRouter = router({
       return createPaginatedResponse(reservations, total, page, limit);
     }),
 
+  /** Próximas reservas del tenant (para widget owner dashboard) */
+  getUpcomingForOwner: tenantStaffProcedure
+    .input(
+      z.object({ limit: z.number().int().positive().optional() }).optional()
+    )
+    .query(async ({ input, ctx }) => {
+      if (!ctx.user.tenantId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario sin tenant asignado",
+        });
+      }
+      const limit = input?.limit ?? 5;
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      const now = new Date();
+      const reservations = await prisma.reservation.findMany({
+        where: {
+          field: {
+            ...(!isSys && { tenantId: ctx.user.tenantId }),
+          },
+          startDate: { gte: now },
+          status: { in: ["PENDING", "CONFIRMED"] },
+        },
+        include: {
+          field: { select: { id: true, name: true } },
+          user: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: { startDate: "asc" },
+        take: limit,
+      });
+      return reservations;
+    }),
+
+  /** Cantidad de reservas PENDING del tenant (para alerta owner dashboard) */
+  getOwnerPendingCount: tenantStaffProcedure.query(async ({ ctx }) => {
+    if (!ctx.user.tenantId) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Usuario sin tenant asignado",
+      });
+    }
+    const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+    return prisma.reservation.count({
+      where: {
+        field: {
+          ...(!isSys && { tenantId: ctx.user.tenantId }),
+        },
+        status: "PENDING",
+      },
+    });
+  }),
+
   /** Mis reservas como cliente (protectedProcedure) */
   myReservations: protectedProcedure
     .input(

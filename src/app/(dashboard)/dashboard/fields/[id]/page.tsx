@@ -61,6 +61,14 @@ const weekDays = [
   { value: "SUNDAY", label: "Domingo" },
 ];
 
+type ScheduleItem = {
+  id: string;
+  day: string;
+  startHour: string;
+  endHour: string;
+  fieldId: string;
+};
+
 export default function OwnerFieldDetailPage() {
   const params = useParams();
   const _router = useRouter();
@@ -165,10 +173,11 @@ export default function OwnerFieldDetailPage() {
 
   // Crear mapa de horarios por día
   const schedulesByDay = useMemo(() => {
-    const map = new Map<string, (typeof field.schedules)[0]>();
-    field?.schedules?.forEach((schedule) => {
-      map.set(schedule.day, schedule);
-    });
+    const map = new Map<string, ScheduleItem>();
+    if (!field?.schedules) return map;
+    for (const schedule of field.schedules) {
+      map.set(schedule.day, schedule as ScheduleItem);
+    }
     return map;
   }, [field?.schedules]);
 
@@ -228,8 +237,8 @@ export default function OwnerFieldDetailPage() {
   }, [field]);
 
   const calculateHours = (startHour: string, endHour: string): number => {
-    const [startH, startM] = startHour.split(":").map(Number);
-    const [endH, endM] = endHour.split(":").map(Number);
+    const [startH = 0, startM = 0] = startHour.split(":").map(Number);
+    const [endH = 0, endM = 0] = endHour.split(":").map(Number);
     const startMinutes = startH * 60 + startM;
     const endMinutes = endH * 60 + endM;
     return (endMinutes - startMinutes) / 60;
@@ -529,14 +538,8 @@ export default function OwnerFieldDetailPage() {
           reservations={
             field.reservations?.map((r) => ({
               id: r.id,
-              startDate:
-                r.startDate instanceof Date
-                  ? r.startDate.toISOString()
-                  : new Date(r.startDate as string).toISOString(),
-              endDate:
-                r.endDate instanceof Date
-                  ? r.endDate.toISOString()
-                  : new Date(r.endDate as string).toISOString(),
+              startDate: new Date(r.startDate as string).toISOString(),
+              endDate: new Date(r.endDate as string).toISOString(),
               status: r.status,
               amount: Number(r.amount),
               clientName:

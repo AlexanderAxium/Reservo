@@ -18,19 +18,43 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+const TenantPlan = {
+  FREE: "FREE",
+  BASIC: "BASIC",
+  PROFESSIONAL: "PROFESSIONAL",
+  ENTERPRISE: "ENTERPRISE",
+} as const;
+type TenantPlan = (typeof TenantPlan)[keyof typeof TenantPlan];
+
+type NewOrgFormData = {
+  name: string;
+  displayName: string;
+  slug: string;
+  email: string;
+  plan: TenantPlan;
+  maxFields: number;
+  maxUsers: number;
+  adminEmail: string;
+  adminName: string;
+  adminPassword: string;
+};
+
+const initialFormData: NewOrgFormData = {
+  name: "",
+  displayName: "",
+  slug: "",
+  email: "",
+  plan: TenantPlan.FREE,
+  maxFields: 10,
+  maxUsers: 5,
+  adminEmail: "",
+  adminName: "",
+  adminPassword: "",
+};
+
 export default function NewOrganization() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    name: "",
-    displayName: "",
-    slug: "",
-    email: "",
-    plan: "free",
-    maxFields: 10,
-    maxUsers: 5,
-    adminEmail: "",
-    adminName: "",
-  });
+  const [formData, setFormData] = useState<NewOrgFormData>(initialFormData);
 
   const createMutation = trpc.tenant.create.useMutation({
     onSuccess: () => {
@@ -137,17 +161,22 @@ export default function NewOrganization() {
                 <Select
                   value={formData.plan}
                   onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, plan: value }))
+                    setFormData((prev) => ({
+                      ...prev,
+                      plan: value as TenantPlan,
+                    }))
                   }
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="free">Free</SelectItem>
-                    <SelectItem value="basic">Basic</SelectItem>
-                    <SelectItem value="pro">Pro</SelectItem>
-                    <SelectItem value="enterprise">Enterprise</SelectItem>
+                    <SelectItem value={TenantPlan.FREE}>Free</SelectItem>
+                    <SelectItem value={TenantPlan.BASIC}>Basic</SelectItem>
+                    <SelectItem value={TenantPlan.PROFESSIONAL}>Pro</SelectItem>
+                    <SelectItem value={TenantPlan.ENTERPRISE}>
+                      Enterprise
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -215,6 +244,27 @@ export default function NewOrganization() {
                     }
                     required
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="adminPassword">Admin Password *</Label>
+                  <Input
+                    id="adminPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    value={formData.adminPassword}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        adminPassword: e.target.value,
+                      }))
+                    }
+                    required
+                    minLength={8}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    At least 8 characters
+                  </p>
                 </div>
               </div>
             </div>

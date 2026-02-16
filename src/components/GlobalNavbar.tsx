@@ -20,7 +20,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useTranslation } from "@/hooks/useTranslation";
-import { useUser } from "@/hooks/useUser";
+import { USER_ROLE, useUser } from "@/hooks/useUser";
 import { getInitials } from "@/lib/utils/avatar";
 import { LayoutDashboard, LogOut, Menu, Settings, User } from "lucide-react";
 import Link from "next/link";
@@ -50,10 +50,10 @@ export default function GlobalNavbar() {
 
   const getDashboardUrl = useCallback(() => {
     switch (primaryRole) {
-      case "admin":
-      case "super_admin":
-      case "user":
-      case "viewer":
+      case USER_ROLE.SYS_ADMIN:
+      case USER_ROLE.TENANT_ADMIN:
+      case USER_ROLE.TENANT_STAFF:
+      case USER_ROLE.CLIENT:
         return "/dashboard";
       default:
         return "/dashboard";

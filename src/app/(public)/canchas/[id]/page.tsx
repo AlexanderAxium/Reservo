@@ -151,10 +151,12 @@ export default function PublicFieldReservePage() {
 
   const timeSlotsForDay = useMemo(() => {
     if (!scheduleForSelectedDay) return [];
-    const [startH, startM] = scheduleForSelectedDay.startHour
+    const [startH = 0, startM = 0] = scheduleForSelectedDay.startHour
       .split(":")
       .map(Number);
-    const [endH, endM] = scheduleForSelectedDay.endHour.split(":").map(Number);
+    const [endH = 0, endM = 0] = scheduleForSelectedDay.endHour
+      .split(":")
+      .map(Number);
     const startMin = startH * 60 + startM;
     const endMin = endH * 60 + endM;
     const slots: string[] = [];
@@ -199,12 +201,14 @@ export default function PublicFieldReservePage() {
       const next = [...prev, slot].sort();
       if (next.length > 2) return prev;
       const _idx = timeSlotsForDay.indexOf(slot);
+      const idx0 = next[0] ? timeSlotsForDay.indexOf(next[0]) : -1;
+      const idx1 = next[1] ? timeSlotsForDay.indexOf(next[1]) : -1;
       const isConsecutive =
         next.length === 1 ||
         (next.length === 2 &&
-          Math.abs(
-            timeSlotsForDay.indexOf(next[1]) - timeSlotsForDay.indexOf(next[0])
-          ) === 1);
+          idx0 !== -1 &&
+          idx1 !== -1 &&
+          Math.abs(idx1 - idx0) === 1);
       if (!isConsecutive) return prev;
       return next;
     });
@@ -225,7 +229,7 @@ export default function PublicFieldReservePage() {
   const confirmReservationAsUser = () => {
     if (!canComplete || !field || !selectedDate) return;
     const startDate = new Date(selectedDate);
-    const [h, m] = selectedSlots[0].split(":").map(Number);
+    const [h = 0, m = 0] = selectedSlots[0]!.split(":").map(Number);
     startDate.setHours(h, m, 0, 0);
     const endDate = new Date(startDate);
     endDate.setHours(startDate.getHours() + totalHours, 0, 0, 0);
@@ -244,7 +248,7 @@ export default function PublicFieldReservePage() {
   }) => {
     if (!canComplete || !field || !selectedDate) return;
     const startDate = new Date(selectedDate);
-    const [h, m] = selectedSlots[0].split(":").map(Number);
+    const [h = 0, m = 0] = selectedSlots[0]!.split(":").map(Number);
     startDate.setHours(h, m, 0, 0);
     const endDate = new Date(startDate);
     endDate.setHours(startDate.getHours() + totalHours, 0, 0, 0);
@@ -568,7 +572,7 @@ export default function PublicFieldReservePage() {
                   </span>
                   <span>
                     {selectedSlots.length > 0
-                      ? `${selectedSlots[0]}${selectedSlots[1] ? ` - ${selectedSlots[1]}` : ""} (${totalHours}h)`
+                      ? `${selectedSlots[0]!}${selectedSlots[1] ? ` - ${selectedSlots[1]}` : ""} (${totalHours}h)`
                       : t("notSelectedPlural")}
                   </span>
                 </div>
@@ -608,7 +612,7 @@ export default function PublicFieldReservePage() {
               {selectedSlots.length > 0 && (
                 <div className="space-y-1 text-sm">
                   <p>
-                    {selectedSlots[0]}
+                    {selectedSlots[0]!}
                     {selectedSlots[1] ? ` - ${selectedSlots[1]}` : ""} S/{" "}
                     {formatPrice(totalAmount)}
                   </p>
@@ -689,7 +693,7 @@ export default function PublicFieldReservePage() {
                 <div>
                   <p className="text-muted-foreground mb-0.5">Hora</p>
                   <p className="font-medium text-foreground">
-                    {selectedSlots[0]}
+                    {selectedSlots[0]!}
                     {selectedSlots[1] ? ` - ${selectedSlots[1]}` : ""}
                   </p>
                 </div>
@@ -869,7 +873,7 @@ export default function PublicFieldReservePage() {
             <div className="rounded-xl border border-border bg-muted/20 dark:bg-muted/10 p-4 space-y-2 text-sm">
               <div className="flex justify-between text-foreground">
                 <span>
-                  {t("courtRental")} ({selectedSlots[0]}
+                  {t("courtRental")} ({selectedSlots[0]!}
                   {selectedSlots[1] ? ` - ${selectedSlots[1]}` : ""})
                 </span>
                 <span>S/ {formatPrice(totalAmount)}</span>

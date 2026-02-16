@@ -98,7 +98,7 @@ export function ReservationDetailModal({
   const updateStatus = trpc.reservation.updateStatus.useMutation({
     onSuccess: () => {
       utils.reservation.getById.invalidate({ id });
-      utils.reservation.listForOwner.invalidate();
+      utils.reservation.listForTenant.invalidate();
       utils.reservation.listForAdmin.invalidate();
       toast.success("Estado de reserva actualizado");
       onStatusUpdated?.();

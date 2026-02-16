@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { trpc } from "@/utils/trpc";
+import { trpc } from "@/hooks/useTRPC";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Calendar, ChevronRight } from "lucide-react";
@@ -15,10 +15,7 @@ import Link from "next/link";
 
 export function OwnerNextReservations() {
   const { data: upcoming, isLoading } =
-    trpc.reservation.getUpcomingForOwner.useQuery(
-      { limit: 5 },
-      { enabled: true }
-    );
+    trpc.reservation.getUpcomingForOwner.useQuery({ limit: 5 });
 
   if (isLoading) {
     return (

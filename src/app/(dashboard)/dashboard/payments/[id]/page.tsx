@@ -5,16 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/hooks/useTRPC";
 import { formatPrice } from "@/lib/utils";
+import type { PaymentStatus } from "@prisma/client";
 import { ArrowLeft, CheckCircle2, CreditCard, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 
-const STATUS_LABELS: Record<string, string> = {
+const STATUS_LABELS: Record<PaymentStatus, string> = {
   PENDING: "Pendiente",
   PAID: "Pagado",
   CANCELLED: "Cancelado",
   REFUNDED: "Reembolsado",
+  FAILED: "Fallido",
 };
 
 export default function PaymentDetailPage() {
@@ -119,7 +121,8 @@ export default function PaymentDetailPage() {
                 Estado
               </p>
               <Badge variant="outline" className="mt-1">
-                {STATUS_LABELS[payment.status] || payment.status}
+                {STATUS_LABELS[payment.status as PaymentStatus] ||
+                  payment.status}
               </Badge>
             </div>
             <div>
@@ -131,13 +134,16 @@ export default function PaymentDetailPage() {
             <div>
               <p className="text-sm font-medium text-muted-foreground">Fecha</p>
               <p className="text-base">
-                {new Date(payment.createdAt).toLocaleDateString("es-PE", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {new Date(payment.createdAt as string).toLocaleDateString(
+                  "es-PE",
+                  {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }
+                )}
               </p>
             </div>
           </div>
@@ -171,30 +177,27 @@ export default function PaymentDetailPage() {
               Fecha y Hora
             </p>
             <p className="text-base">
-              {new Date(payment.reservation.startDate).toLocaleDateString(
-                "es-PE",
-                {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                }
-              )}{" "}
+              {new Date(
+                payment.reservation.startDate as string
+              ).toLocaleDateString("es-PE", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}{" "}
               -{" "}
-              {new Date(payment.reservation.startDate).toLocaleTimeString(
-                "es-PE",
-                {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }
-              )}{" "}
+              {new Date(
+                payment.reservation.startDate as string
+              ).toLocaleTimeString("es-PE", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}{" "}
               a{" "}
-              {new Date(payment.reservation.endDate).toLocaleTimeString(
-                "es-PE",
-                {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }
-              )}
+              {new Date(
+                payment.reservation.endDate as string
+              ).toLocaleTimeString("es-PE", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </p>
           </div>
         </CardContent>

@@ -21,7 +21,7 @@ type StaffMember = {
   email: string;
   phone: string | null;
   roles: Array<{ name: string; isActive: boolean }>;
-  createdAt: Date;
+  createdAt: string;
 };
 
 export default function StaffPage() {
@@ -53,7 +53,7 @@ export default function StaffPage() {
       key: "phone",
       title: "Teléfono",
       width: "140px",
-      render: (value) => value || "-",
+      render: (value) => (value != null && value !== "" ? String(value) : "-"),
     },
     {
       key: "roles",
@@ -76,7 +76,7 @@ export default function StaffPage() {
       title: "Añadido",
       width: "130px",
       render: (value) =>
-        new Date(value as Date).toLocaleDateString("es-PE", {
+        new Date(value as string).toLocaleDateString("es-PE", {
           day: "2-digit",
           month: "short",
           year: "numeric",

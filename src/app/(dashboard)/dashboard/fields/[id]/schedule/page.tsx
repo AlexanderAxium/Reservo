@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { trpc } from "@/hooks/useTRPC";
+import type { WeekDay } from "@prisma/client";
 import { ArrowLeft, Calendar, Edit, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -93,14 +94,14 @@ export default function FieldSchedulePage() {
   const handleSave = (day: string, startHour: string, endHour: string) => {
     if (editingSchedule) {
       updateSchedule.mutate({
-        id: editingSchedule.id,
+        scheduleId: editingSchedule.id,
         startHour,
         endHour,
       });
     } else {
       createSchedule.mutate({
         fieldId,
-        day,
+        day: day as WeekDay,
         startHour,
         endHour,
       });
@@ -119,7 +120,7 @@ export default function FieldSchedulePage() {
 
   const handleDelete = (id: string) => {
     if (confirm("¿Estás seguro de eliminar este horario?")) {
-      deleteSchedule.mutate({ id });
+      deleteSchedule.mutate({ scheduleId: id });
     }
   };
 

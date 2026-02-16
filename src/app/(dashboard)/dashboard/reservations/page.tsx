@@ -11,12 +11,13 @@ import {
 import { usePagination } from "@/hooks/usePagination";
 import { trpc } from "@/hooks/useTRPC";
 import { formatPrice } from "@/lib/utils";
+import type { ReservationStatus, Sport } from "@prisma/client";
 import { Calendar, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-const STATUS_LABELS: Record<string, string> = {
+const STATUS_LABELS: Record<ReservationStatus, string> = {
   PENDING: "Pendiente",
   CONFIRMED: "Confirmada",
   CANCELLED: "Cancelada",
@@ -26,14 +27,14 @@ const STATUS_LABELS: Record<string, string> = {
 
 type Reservation = {
   id: string;
-  startDate: Date;
-  endDate: Date;
-  status: string;
-  amount: number;
+  startDate: string;
+  endDate: string;
+  status: ReservationStatus;
+  amount: string;
   field: {
     id: string;
     name: string;
-    sport: string;
+    sport: Sport;
   };
   user: {
     id: string;
@@ -42,11 +43,11 @@ type Reservation = {
   } | null;
   guestName: string | null;
   guestEmail: string | null;
-  createdAt: Date;
+  createdAt: string;
 };
 
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
+function StatusBadge({ status }: { status: ReservationStatus }) {
+  const colors: Record<ReservationStatus, string> = {
     CONFIRMED: "bg-emerald-500/10 text-emerald-600 border-emerald-500/50",
     COMPLETED: "bg-emerald-500/10 text-emerald-600 border-emerald-500/50",
     PENDING: "bg-amber-500/10 text-amber-600 border-amber-500/50",
@@ -67,17 +68,13 @@ export default function ReservationsPage() {
     defaultLimit: 20,
   });
 
-  const [statusFilter, setStatusFilter] = useState<string>("");
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<"" | ReservationStatus>("");
 
   const { data, isLoading, error } = trpc.reservation.listForTenant.useQuery({
     page,
     limit,
     search: search || undefined,
-    status: statusFilter || undefined,
-    startDate: startDate || undefined,
-    endDate: endDate || undefined,
+    status: statusFilter === "" ? undefined : statusFilter,
   });
 
   const columns: TableColumn<Reservation>[] = [
@@ -112,14 +109,14 @@ export default function ReservationsPage() {
       title: "Fecha",
       width: "130px",
       render: (value) =>
-        new Date(value as Date).toLocaleDateString("es-PE", {
+        new Date(value as string).toLocaleDateString("es-PE", {
           day: "2-digit",
           month: "short",
           year: "numeric",
         }),
     },
     {
-      key: "startDate",
+      key: "schedule",
       title: "Horario",
       width: "120px",
       render: (_, record) => (
@@ -146,14 +143,14 @@ export default function ReservationsPage() {
       key: "status",
       title: "Estado",
       width: "120px",
-      render: (value) => <StatusBadge status={value as string} />,
+      render: (value) => <StatusBadge status={value as ReservationStatus} />,
     },
     {
       key: "createdAt",
       title: "Creada",
       width: "110px",
       render: (value) =>
-        new Date(value as Date).toLocaleDateString("es-PE", {
+        new Date(value as string).toLocaleDateString("es-PE", {
           day: "2-digit",
           month: "short",
         }),
@@ -192,7 +189,7 @@ export default function ReservationsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -205,7 +202,7 @@ export default function ReservationsPage() {
         <select
           value={statusFilter}
           onChange={(e) => {
-            setStatusFilter(e.target.value);
+            setStatusFilter(e.target.value as "" | ReservationStatus);
             setPage(1);
           }}
           className="px-3 py-2 border rounded-md"
@@ -217,24 +214,6 @@ export default function ReservationsPage() {
           <option value="CANCELLED">Cancelada</option>
           <option value="NO_SHOW">No asistió</option>
         </select>
-        <Input
-          type="date"
-          placeholder="Desde"
-          value={startDate}
-          onChange={(e) => {
-            setStartDate(e.target.value);
-            setPage(1);
-          }}
-        />
-        <Input
-          type="date"
-          placeholder="Hasta"
-          value={endDate}
-          onChange={(e) => {
-            setEndDate(e.target.value);
-            setPage(1);
-          }}
-        />
       </div>
 
       <ScrollableTable

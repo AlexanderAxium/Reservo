@@ -43,14 +43,9 @@ export default function ReservationCalendarPage() {
   const reservations =
     reservationsData?.data.map((r) => ({
       id: r.id,
-      startDate: r.startDate.toISOString(),
-      endDate: r.endDate.toISOString(),
-      status: r.status as
-        | "PENDING"
-        | "CONFIRMED"
-        | "CANCELLED"
-        | "COMPLETED"
-        | "NO_SHOW",
+      startDate: String(r.startDate),
+      endDate: String(r.endDate),
+      status: r.status,
       amount: Number(r.amount),
       clientName: r.user?.name || r.guestName || "Invitado",
     })) || [];

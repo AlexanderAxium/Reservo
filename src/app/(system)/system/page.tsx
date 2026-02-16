@@ -38,7 +38,7 @@ export default function SystemDashboard() {
     {
       title: "Total Organizations",
       value: globalMetrics?.totalTenants || 0,
-      subtitle: `${globalMetrics?.activeTenants || 0} active`,
+      subtitle: `${globalMetrics?.totalTenants || 0} total`,
       icon: Building2,
       color: "text-blue-600",
       bgColor: "bg-blue-50 dark:bg-blue-950",
@@ -63,7 +63,7 @@ export default function SystemDashboard() {
     },
     {
       title: "Total Revenue",
-      value: `S/ ${(globalMetrics?.totalRevenue || 0).toLocaleString()}`,
+      value: `S/ ${(globalMetrics?.revenue || 0).toLocaleString()}`,
       subtitle: "Platform revenue",
       icon: DollarSign,
       color: "text-emerald-600",
