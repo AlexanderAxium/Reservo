@@ -147,6 +147,168 @@ export const sendVerificationEmail = async (email: string, url: string) => {
   await sendMail(email, "Confirma tu cuenta - CanchaLibre", htmlContent);
 };
 
+export const sendStaffInvitationEmail = async (
+  email: string,
+  name: string,
+  tempPassword: string,
+  tenantName: string
+) => {
+  const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://canchalibre.com"}/signin`;
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Invitación al equipo</title>
+      <style>
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          line-height: 1.6;
+          color: #333;
+          max-width: 600px;
+          margin: 0 auto;
+          padding: 20px;
+          background-color: #f8fafc;
+        }
+        .container {
+          background: white;
+          border-radius: 12px;
+          padding: 40px;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+          text-align: center;
+          margin-bottom: 30px;
+        }
+        .logo {
+          font-size: 28px;
+          font-weight: bold;
+          color: #059669;
+          margin-bottom: 10px;
+        }
+        .title {
+          font-size: 24px;
+          color: #1f2937;
+          margin: 0;
+        }
+        .content {
+          margin-bottom: 30px;
+        }
+        .button {
+          display: inline-block;
+          background: #059669;
+          color: white;
+          padding: 14px 28px;
+          text-decoration: none;
+          border-radius: 8px;
+          font-weight: 600;
+          text-align: center;
+          margin: 20px 0;
+        }
+        .button:hover {
+          background: #047857;
+        }
+        .credentials {
+          background: #f0fdf4;
+          border: 1px solid #86efac;
+          border-radius: 8px;
+          padding: 20px;
+          margin: 20px 0;
+        }
+        .credentials h3 {
+          margin-top: 0;
+          color: #166534;
+        }
+        .credential-item {
+          display: flex;
+          justify-content: space-between;
+          padding: 8px 0;
+          border-bottom: 1px solid #dcfce7;
+        }
+        .credential-item:last-child {
+          border-bottom: none;
+        }
+        .credential-label {
+          color: #166534;
+          font-weight: 600;
+        }
+        .credential-value {
+          font-family: monospace;
+          background: #dcfce7;
+          padding: 2px 8px;
+          border-radius: 4px;
+          color: #166534;
+        }
+        .footer {
+          text-align: center;
+          color: #6b7280;
+          font-size: 14px;
+          margin-top: 30px;
+          padding-top: 20px;
+          border-top: 1px solid #e5e7eb;
+        }
+        .warning {
+          background: #fef3c7;
+          border: 1px solid #f59e0b;
+          border-radius: 6px;
+          padding: 12px;
+          margin: 20px 0;
+          color: #92400e;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div class="logo">CanchaLibre</div>
+          <h1 class="title">Te han invitado al equipo</h1>
+        </div>
+
+        <div class="content">
+          <p>¡Hola ${name}! 👋</p>
+          <p>Has sido invitado/a a formar parte del equipo de <strong>${tenantName}</strong> en CanchaLibre. Ya puedes acceder al panel de administración para gestionar reservas y canchas.</p>
+
+          <div class="credentials">
+            <h3>🔑 Tus credenciales de acceso:</h3>
+            <div class="credential-item">
+              <span class="credential-label">Email:</span>
+              <span class="credential-value">${email}</span>
+            </div>
+            <div class="credential-item">
+              <span class="credential-label">Contraseña temporal:</span>
+              <span class="credential-value">${tempPassword}</span>
+            </div>
+          </div>
+
+          <div style="text-align: center;">
+            <a href="${loginUrl}" class="button">🚀 Iniciar sesión</a>
+          </div>
+
+          <div class="warning">
+            <strong>⚠️ Importante:</strong> Por seguridad, te recomendamos cambiar tu contraseña temporal después de iniciar sesión por primera vez.
+          </div>
+
+          <p>Si el botón no funciona, puedes copiar y pegar este enlace en tu navegador:</p>
+          <p style="word-break: break-all; background: #f3f4f6; padding: 10px; border-radius: 4px; font-family: monospace;">${loginUrl}</p>
+        </div>
+
+        <div class="footer">
+          <p>Si no esperabas esta invitación, puedes ignorar este email.</p>
+          <p>© ${new Date().getFullYear()} CanchaLibre. Todos los derechos reservados.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await sendMail(
+    email,
+    `Te han invitado al equipo de ${tenantName} - CanchaLibre`,
+    htmlContent
+  );
+};
+
 export const sendResetPasswordEmail = async (email: string, url: string) => {
   const htmlContent = `
     <!DOCTYPE html>

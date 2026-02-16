@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { trpc } from "@/utils/trpc";
+import { trpc } from "@/hooks/useTRPC";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Calendar, ChevronRight } from "lucide-react";
@@ -15,10 +15,7 @@ import Link from "next/link";
 
 export function OwnerNextReservations() {
   const { data: upcoming, isLoading } =
-    trpc.reservation.getUpcomingForOwner.useQuery(
-      { limit: 5 },
-      { enabled: true }
-    );
+    trpc.reservation.getUpcomingForOwner.useQuery({ limit: 5 });
 
   if (isLoading) {
     return (
@@ -48,7 +45,7 @@ export function OwnerNextReservations() {
         </CardHeader>
         <CardContent>
           <Link
-            href="/dashboard/owner/reservations"
+            href="/dashboard/reservations"
             className="text-sm text-primary hover:underline"
           >
             Ver todas las reservas
@@ -88,7 +85,7 @@ export function OwnerNextReservations() {
           ))}
         </ul>
         <Link
-          href="/dashboard/owner/reservations"
+          href="/dashboard/reservations"
           className="mt-3 block text-center text-sm text-primary hover:underline"
         >
           Ver todas las reservas

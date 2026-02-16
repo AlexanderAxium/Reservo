@@ -76,6 +76,7 @@ export interface ScrollableTableProps<T = Record<string, unknown>> {
   // Empty state
   emptyMessage?: string;
   emptyIcon?: ReactNode;
+  emptyAction?: ReactNode;
 
   // Selection
   selectable?: boolean;
@@ -119,6 +120,7 @@ export function ScrollableTable<T = Record<string, unknown>>({
   // Empty state
   emptyMessage = "No hay datos disponibles",
   emptyIcon,
+  emptyAction,
 
   // Selection
   selectable = false,
@@ -201,7 +203,7 @@ export function ScrollableTable<T = Record<string, unknown>>({
                   {selectable && <Skeleton className="h-4 w-4 rounded" />}
                   {columns.map((column, index) => (
                     <Skeleton
-                      key={`header-${column.key || index}`}
+                      key={`header-${column.key ?? index}-${index}`}
                       className="h-4 flex-1 max-w-[120px]"
                     />
                   ))}
@@ -219,7 +221,7 @@ export function ScrollableTable<T = Record<string, unknown>>({
                     {selectable && <Skeleton className="h-4 w-4 rounded" />}
                     {columns.map((column, colIndex) => (
                       <Skeleton
-                        key={`skeleton-cell-${rowIndex}-${column.key || colIndex}`}
+                        key={`skeleton-cell-${rowIndex}-${column.key ?? colIndex}-${colIndex}`}
                         className="h-4 flex-1"
                         style={{
                           maxWidth: column.width || "120px",
@@ -262,9 +264,11 @@ export function ScrollableTable<T = Record<string, unknown>>({
                   )}
 
                   {/* Data Columns */}
-                  {columns.map((column) => (
+                  {columns.map((column, index) => (
                     <TableHead
-                      key={column.key}
+                      key={
+                        column.key ? `${column.key}-${index}` : `col-${index}`
+                      }
                       className={`px-6 py-2.5 text-left text-xs font-normal text-muted-foreground/70 uppercase tracking-wide ${column.headerClassName || ""}`}
                       style={{ width: column.width }}
                     >
@@ -296,9 +300,12 @@ export function ScrollableTable<T = Record<string, unknown>>({
                       }
                       className="px-6 py-8 text-center text-muted-foreground"
                     >
-                      <div className="flex flex-col items-center">
-                        {emptyIcon && <div className="mb-4">{emptyIcon}</div>}
+                      <div className="flex flex-col items-center gap-3">
+                        {emptyIcon && <div>{emptyIcon}</div>}
                         <p>{emptyMessage}</p>
+                        {emptyAction && (
+                          <div className="mt-1">{emptyAction}</div>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -327,7 +334,7 @@ export function ScrollableTable<T = Record<string, unknown>>({
                         )}
 
                         {/* Data Cells */}
-                        {columns.map((column) => {
+                        {columns.map((column, colIndex) => {
                           const value = (record as Record<string, unknown>)[
                             column.key
                           ];
@@ -361,7 +368,11 @@ export function ScrollableTable<T = Record<string, unknown>>({
 
                           return (
                             <TableCell
-                              key={column.key}
+                              key={
+                                column.key
+                                  ? `${column.key}-${colIndex}`
+                                  : `cell-${colIndex}`
+                              }
                               className={`px-6 py-3 whitespace-nowrap text-base text-muted-foreground ${column.className || ""}`}
                             >
                               {renderContent()}

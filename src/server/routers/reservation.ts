@@ -7,8 +7,13 @@ import {
   createPaginatedResponse,
   paginationInputSchema,
 } from "../../lib/pagination";
-import { hasRole, isAdmin } from "../../services/rbacService";
-import { protectedProcedure, router } from "../trpc";
+import { isSysAdmin, isTenantAdmin } from "../../services/rbacService";
+import {
+  protectedProcedure,
+  router,
+  tenantAdminProcedure,
+  tenantStaffProcedure,
+} from "../trpc";
 
 const IdSchema = z.union([z.string().uuid(), z.string().cuid()]);
 
@@ -21,8 +26,8 @@ const ReservationStatusEnum = z.enum([
 ]);
 
 export const reservationRouter = router({
-  /** Lista reservas de las canchas del owner (solo owner) */
-  listForOwner: protectedProcedure
+  /** Lista reservas de todas las canchas del tenant (TENANT_STAFF o superior) */
+  listForTenant: tenantStaffProcedure
     .input(
       paginationInputSchema
         .extend({
@@ -32,26 +37,22 @@ export const reservationRouter = router({
         .optional()
     )
     .query(async ({ input, ctx }) => {
-      if (!ctx.user?.id || !ctx.user.tenantId) {
+      if (!ctx.user.tenantId) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "Usuario no autenticado",
-        });
-      }
-      const isOwner = await hasRole(ctx.user.id, "owner", ctx.user.tenantId);
-      if (!isOwner) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Solo los dueños de canchas pueden ver sus reservas",
+          message: "Usuario sin tenant asignado",
         });
       }
 
       const { page = 1, limit = 10, status, fieldId } = input ?? {};
       const offset = calculateOffset(page, limit);
 
+      // SYS_ADMIN puede ver reservas de todos los tenants, otros solo su tenant
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+
       const where = {
         field: {
-          ownerId: ctx.user.id,
+          ...(!isSys && { tenantId: ctx.user.tenantId }),
           ...(fieldId && { id: fieldId }),
         },
         ...(status && { status }),
@@ -89,76 +90,31 @@ export const reservationRouter = router({
       return createPaginatedResponse(reservations, total, page, limit);
     }),
 
-  /** Estadísticas del mes para el owner (reservas e ingresos). */
-  getOwnerStats: protectedProcedure.query(async ({ ctx }) => {
-    if (!ctx.user?.id || !ctx.user.tenantId) {
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "Usuario no autenticado",
-      });
-    }
-    const isOwner = await hasRole(ctx.user.id, "owner", ctx.user.tenantId);
-    if (!isOwner) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "Solo los dueños de canchas pueden ver estas estadísticas",
-      });
-    }
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(
-      now.getFullYear(),
-      now.getMonth() + 1,
-      0,
-      23,
-      59,
-      59,
-      999
-    );
-    const where = {
-      field: { ownerId: ctx.user.id },
-      startDate: { gte: startOfMonth, lte: endOfMonth },
-    };
-    const [monthlyReservations, revenueResult] = await Promise.all([
-      prisma.reservation.count({ where }),
-      prisma.reservation.aggregate({
-        where: {
-          ...where,
-          status: { in: ["CONFIRMED", "COMPLETED"] },
-        },
-        _sum: { amount: true },
-      }),
-    ]);
-    const monthlyRevenue = Number(revenueResult._sum.amount ?? 0);
-    return { monthlyReservations, monthlyRevenue };
-  }),
-
-  /** Próximas reservas del owner (hoy en adelante, orden por fecha). */
-  getUpcomingForOwner: protectedProcedure
-    .input(z.object({ limit: z.number().min(1).max(20).optional() }).optional())
+  /** Próximas reservas del tenant (para widget owner dashboard) */
+  getUpcomingForOwner: tenantStaffProcedure
+    .input(
+      z.object({ limit: z.number().int().positive().optional() }).optional()
+    )
     .query(async ({ input, ctx }) => {
-      if (!ctx.user?.id || !ctx.user.tenantId) {
+      if (!ctx.user.tenantId) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "Usuario no autenticado",
-        });
-      }
-      const isOwner = await hasRole(ctx.user.id, "owner", ctx.user.tenantId);
-      if (!isOwner) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Solo los dueños de canchas pueden ver sus reservas",
+          message: "Usuario sin tenant asignado",
         });
       }
       const limit = input?.limit ?? 5;
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      const now = new Date();
       const reservations = await prisma.reservation.findMany({
         where: {
-          field: { ownerId: ctx.user.id },
-          startDate: { gte: new Date() },
-          status: { notIn: ["CANCELLED"] },
+          field: {
+            ...(!isSys && { tenantId: ctx.user.tenantId }),
+          },
+          startDate: { gte: now },
+          status: { in: ["PENDING", "CONFIRMED"] },
         },
         include: {
-          field: { select: { id: true, name: true, sport: true } },
+          field: { select: { id: true, name: true } },
           user: { select: { id: true, name: true, email: true } },
         },
         orderBy: { startDate: "asc" },
@@ -167,113 +123,90 @@ export const reservationRouter = router({
       return reservations;
     }),
 
-  /** Cantidad de reservas pendientes de confirmar (owner). */
-  getOwnerPendingCount: protectedProcedure.query(async ({ ctx }) => {
-    if (!ctx.user?.id || !ctx.user.tenantId) {
+  /** Cantidad de reservas PENDING del tenant (para alerta owner dashboard) */
+  getOwnerPendingCount: tenantStaffProcedure.query(async ({ ctx }) => {
+    if (!ctx.user.tenantId) {
       throw new TRPCError({
         code: "UNAUTHORIZED",
-        message: "Usuario no autenticado",
+        message: "Usuario sin tenant asignado",
       });
     }
-    const isOwner = await hasRole(ctx.user.id, "owner", ctx.user.tenantId);
-    if (!isOwner) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "Solo los dueños de canchas pueden ver este dato",
-      });
-    }
+    const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
     return prisma.reservation.count({
       where: {
-        field: { ownerId: ctx.user.id },
+        field: {
+          ...(!isSys && { tenantId: ctx.user.tenantId }),
+        },
         status: "PENDING",
       },
     });
   }),
 
-  /** Ingresos y cantidad de reservas por cancha (solo CONFIRMED/COMPLETED). Incluye total y mes actual. */
-  getOwnerRevenueByField: protectedProcedure.query(async ({ ctx }) => {
-    if (!ctx.user?.id || !ctx.user.tenantId) {
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "Usuario no autenticado",
-      });
-    }
-    const isOwner = await hasRole(ctx.user.id, "owner", ctx.user.tenantId);
-    if (!isOwner) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "Solo los dueños de canchas pueden ver estas métricas",
-      });
-    }
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(
-      now.getFullYear(),
-      now.getMonth() + 1,
-      0,
-      23,
-      59,
-      59,
-      999
-    );
+  /** Mis reservas como cliente (protectedProcedure) */
+  myReservations: protectedProcedure
+    .input(
+      paginationInputSchema
+        .extend({
+          status: ReservationStatusEnum.optional(),
+          startDate: z.string().datetime().optional(),
+          endDate: z.string().datetime().optional(),
+        })
+        .optional()
+    )
+    .query(async ({ input, ctx }) => {
+      const { page = 1, limit = 10, status, startDate, endDate } = input ?? {};
+      const offset = calculateOffset(page, limit);
 
-    const [fields, totalByField, monthlyByField] = await Promise.all([
-      prisma.field.findMany({
-        where: { ownerId: ctx.user.id },
-        select: { id: true, name: true, sport: true },
-        orderBy: { name: "asc" },
-      }),
-      prisma.reservation.groupBy({
-        by: ["fieldId"],
-        where: {
-          field: { ownerId: ctx.user.id },
-          status: { in: ["CONFIRMED", "COMPLETED"] },
-        },
-        _sum: { amount: true },
-        _count: true,
-      }),
-      prisma.reservation.groupBy({
-        by: ["fieldId"],
-        where: {
-          field: { ownerId: ctx.user.id },
-          status: { in: ["CONFIRMED", "COMPLETED"] },
-          startDate: { gte: startOfMonth, lte: endOfMonth },
-        },
-        _sum: { amount: true },
-        _count: true,
-      }),
-    ]);
-
-    const totalMap = new Map(
-      totalByField.map((r) => [
-        r.fieldId,
-        { revenue: Number(r._sum.amount ?? 0), count: r._count },
-      ])
-    );
-    const monthlyMap = new Map(
-      monthlyByField.map((r) => [
-        r.fieldId,
-        { revenue: Number(r._sum.amount ?? 0), count: r._count },
-      ])
-    );
-
-    return fields.map((field) => {
-      const total = totalMap.get(field.id) ?? { revenue: 0, count: 0 };
-      const monthly = monthlyMap.get(field.id) ?? { revenue: 0, count: 0 };
-      return {
-        fieldId: field.id,
-        fieldName: field.name,
-        sport: field.sport,
-        totalRevenue: total.revenue,
-        totalReservations: total.count,
-        monthlyRevenue: monthly.revenue,
-        monthlyReservations: monthly.count,
+      const where = {
+        OR: [
+          { userId: ctx.user.id }, // Reservas del usuario autenticado
+          { guestEmail: ctx.user.email }, // Reservas como invitado con mismo email
+        ],
+        ...(status && { status }),
+        ...(startDate && { startDate: { gte: new Date(startDate) } }),
+        ...(endDate && { endDate: { lte: new Date(endDate) } }),
       };
-    });
-  }),
 
-  /** Lista todas las reservas del tenant (admin / super admin) */
-  listForAdmin: protectedProcedure
+      const [reservations, total] = await Promise.all([
+        prisma.reservation.findMany({
+          where,
+          include: {
+            field: {
+              select: {
+                id: true,
+                name: true,
+                sport: true,
+                address: true,
+                district: true,
+                sportCenter: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+            payments: {
+              select: {
+                id: true,
+                amount: true,
+                status: true,
+                createdAt: true,
+              },
+            },
+          },
+          orderBy: { startDate: "desc" },
+          skip: offset,
+          take: limit,
+        }),
+        prisma.reservation.count({ where }),
+      ]);
+
+      return createPaginatedResponse(reservations, total, page, limit);
+    }),
+
+  /** Lista todas las reservas del tenant (TENANT_ADMIN o superior) - Alias for backward compatibility */
+  listForAdmin: tenantAdminProcedure
     .input(
       paginationInputSchema
         .extend({
@@ -284,26 +217,22 @@ export const reservationRouter = router({
         .optional()
     )
     .query(async ({ input, ctx }) => {
-      if (!ctx.user?.id || !ctx.user.tenantId) {
+      if (!ctx.user.tenantId) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "Usuario no autenticado",
-        });
-      }
-      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!userIsAdmin) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Solo administradores pueden ver todas las reservas",
+          message: "Usuario sin tenant asignado",
         });
       }
 
       const { page = 1, limit = 10, status, fieldId, ownerId } = input ?? {};
       const offset = calculateOffset(page, limit);
 
+      // SYS_ADMIN puede ver reservas de todos los tenants
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+
       const where = {
         field: {
-          owner: { tenantId: ctx.user.tenantId },
+          ...(!isSys && { tenantId: ctx.user.tenantId }),
           ...(fieldId && { id: fieldId }),
           ...(ownerId && { ownerId }),
         },
@@ -350,17 +279,67 @@ export const reservationRouter = router({
       return createPaginatedResponse(reservations, total, page, limit);
     }),
 
-  /** Obtener una reserva por ID con todos los detalles. Owner de la cancha o admin. */
+  /** Lista reservas de un usuario (cliente) por userId - TENANT_STAFF o superior */
+  listByUser: tenantStaffProcedure
+    .input(paginationInputSchema.extend({ userId: IdSchema }).optional())
+    .query(async ({ input, ctx }) => {
+      if (!ctx.user.tenantId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario sin tenant asignado",
+        });
+      }
+      if (!input?.userId) {
+        return createPaginatedResponse([], 0, 1, 10);
+      }
+
+      const { page = 1, limit = 100, userId } = input;
+      const offset = calculateOffset(page, limit);
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+
+      const where = {
+        userId,
+        field: {
+          ...(!isSys && { tenantId: ctx.user.tenantId }),
+        },
+      };
+
+      const [reservations, total] = await Promise.all([
+        prisma.reservation.findMany({
+          where,
+          include: {
+            field: {
+              select: {
+                id: true,
+                name: true,
+                sport: true,
+                address: true,
+                district: true,
+              },
+            },
+            payments: {
+              select: {
+                id: true,
+                amount: true,
+                status: true,
+                createdAt: true,
+              },
+            },
+          },
+          orderBy: { startDate: "desc" },
+          skip: offset,
+          take: limit,
+        }),
+        prisma.reservation.count({ where }),
+      ]);
+
+      return createPaginatedResponse(reservations, total, page, limit);
+    }),
+
+  /** Obtener una reserva por ID con todos los detalles (tenant staff o dueño de la reserva) */
   getById: protectedProcedure
     .input(z.object({ id: IdSchema }))
     .query(async ({ input, ctx }) => {
-      if (!ctx.user?.id || !ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario no autenticado",
-        });
-      }
-
       const reservation = await prisma.reservation.findUnique({
         where: { id: input.id },
         include: {
@@ -372,6 +351,7 @@ export const reservationRouter = router({
               address: true,
               district: true,
               city: true,
+              tenantId: true,
               ownerId: true,
               owner: {
                 select: {
@@ -379,7 +359,6 @@ export const reservationRouter = router({
                   name: true,
                   email: true,
                   phone: true,
-                  tenantId: true,
                 },
               },
             },
@@ -413,27 +392,24 @@ export const reservationRouter = router({
         });
       }
 
-      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
-      const isOwnerOfField = reservation.field.ownerId === ctx.user.id;
-      const sameTenant = reservation.field.owner.tenantId === ctx.user.tenantId;
+      // Usuario puede ver sus propias reservas o si es staff del tenant
+      const isOwnReservation = reservation.userId === ctx.user.id;
+      const isSys = ctx.user.tenantId
+        ? await isSysAdmin(ctx.user.id, ctx.user.tenantId)
+        : false;
+      const isSameTenant = reservation.field.tenantId === ctx.user.tenantId;
 
-      if (!userIsAdmin && !isOwnerOfField) {
+      if (!isOwnReservation && !isSys && !isSameTenant) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permiso para ver esta reserva",
-        });
-      }
-      if (userIsAdmin && !sameTenant) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "La reserva no pertenece a tu tenant",
         });
       }
 
       return reservation;
     }),
 
-  /** Slots disponibles de 1h para una cancha en una fecha (excluye horas ya ocupadas). */
+  /** Slots disponibles de 1h para una cancha en una fecha (protectedProcedure - cualquier usuario) */
   getAvailableSlots: protectedProcedure
     .input(
       z.object({
@@ -443,20 +419,12 @@ export const reservationRouter = router({
           .regex(/^\d{4}-\d{2}-\d{2}$/, "Formato fecha: YYYY-MM-DD"),
       })
     )
-    .query(async ({ input, ctx }) => {
-      if (!ctx.user?.id || !ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario no autenticado",
-        });
-      }
-
+    .query(async ({ input }) => {
       const field = await prisma.field.findUnique({
         where: { id: input.fieldId },
         select: {
           id: true,
-          ownerId: true,
-          owner: { select: { tenantId: true } },
+          tenantId: true,
           schedules: {
             select: { day: true, startHour: true, endHour: true },
           },
@@ -467,22 +435,6 @@ export const reservationRouter = router({
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Cancha no encontrada",
-        });
-      }
-
-      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
-      const isOwnerOfField = field.ownerId === ctx.user.id;
-      const sameTenant = field.owner.tenantId === ctx.user.tenantId;
-      if (!userIsAdmin && !isOwnerOfField) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "No tienes permiso para ver disponibilidad de esta cancha",
-        });
-      }
-      if (userIsAdmin && !sameTenant) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "La cancha no pertenece a tu tenant",
         });
       }
 
@@ -503,12 +455,12 @@ export const reservationRouter = router({
       const startHour = schedule?.startHour ?? "08:00";
       const endHour = schedule?.endHour ?? "22:00";
 
-      const [startH, startM] = startHour.split(":").map(Number);
-      const [endH, endM] = endHour.split(":").map(Number);
+      const [startH = 0, startM = 0] = startHour.split(":").map(Number);
+      const [endH = 0, endM = 0] = endHour.split(":").map(Number);
       const dayStart = new Date(date);
-      dayStart.setHours(startH, startM ?? 0, 0, 0);
+      dayStart.setHours(startH, startM, 0, 0);
       const dayEnd = new Date(date);
-      dayEnd.setHours(endH, endM ?? 0, 0, 0);
+      dayEnd.setHours(endH, endM, 0, 0);
 
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
@@ -572,8 +524,8 @@ export const reservationRouter = router({
       return slots;
     }),
 
-  /** Crear reserva manual (admin o owner de la cancha). Monto se calcula automáticamente: precio cancha × horas (1 o 2). */
-  createManual: protectedProcedure
+  /** Crear reserva manual (TENANT_STAFF o superior). Monto se calcula automáticamente: precio cancha × horas. */
+  createManual: tenantStaffProcedure
     .input(
       z.object({
         fieldId: IdSchema,
@@ -587,10 +539,10 @@ export const reservationRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user?.id || !ctx.user.tenantId) {
+      if (!ctx.user.tenantId) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "Usuario no autenticado",
+          message: "Usuario sin tenant asignado",
         });
       }
 
@@ -599,8 +551,7 @@ export const reservationRouter = router({
         select: {
           id: true,
           price: true,
-          ownerId: true,
-          owner: { select: { tenantId: true } },
+          tenantId: true,
         },
       });
 
@@ -611,20 +562,12 @@ export const reservationRouter = router({
         });
       }
 
-      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
-      const isOwnerOfField = field.ownerId === ctx.user.id;
-      const sameTenant = field.owner.tenantId === ctx.user.tenantId;
-
-      if (!userIsAdmin && !isOwnerOfField) {
+      // SYS_ADMIN puede crear reservas en cualquier cancha, otros solo en su tenant
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      if (!isSys && field.tenantId !== ctx.user.tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permiso para crear reservas en esta cancha",
-        });
-      }
-      if (userIsAdmin && !sameTenant) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "La cancha no pertenece a tu tenant",
         });
       }
 
@@ -711,19 +654,19 @@ export const reservationRouter = router({
       return reservation;
     }),
 
-  /** Actualizar estado de una reserva (confirmar o cancelar). Owner de la cancha o admin. */
-  updateStatus: protectedProcedure
+  /** Actualizar estado de una reserva (confirmar o cancelar). TENANT_STAFF o superior. */
+  updateStatus: tenantStaffProcedure
     .input(
       z.object({
         id: IdSchema,
-        status: z.enum(["CONFIRMED", "CANCELLED"]),
+        status: z.enum(["CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"]),
       })
     )
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user?.id || !ctx.user.tenantId) {
+      if (!ctx.user.tenantId) {
         throw new TRPCError({
           code: "UNAUTHORIZED",
-          message: "Usuario no autenticado",
+          message: "Usuario sin tenant asignado",
         });
       }
 
@@ -733,8 +676,7 @@ export const reservationRouter = router({
           field: {
             select: {
               id: true,
-              ownerId: true,
-              owner: { select: { tenantId: true } },
+              tenantId: true,
             },
           },
         },
@@ -747,20 +689,12 @@ export const reservationRouter = router({
         });
       }
 
-      const userIsAdmin = await isAdmin(ctx.user.id, ctx.user.tenantId);
-      const isOwnerOfField = reservation.field.ownerId === ctx.user.id;
-      const sameTenant = reservation.field.owner.tenantId === ctx.user.tenantId;
-
-      if (!userIsAdmin && !isOwnerOfField) {
+      // SYS_ADMIN puede modificar cualquier reserva, otros solo las de su tenant
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      if (!isSys && reservation.field.tenantId !== ctx.user.tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permiso para modificar esta reserva",
-        });
-      }
-      if (userIsAdmin && !sameTenant) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "La reserva no pertenece a tu tenant",
         });
       }
 

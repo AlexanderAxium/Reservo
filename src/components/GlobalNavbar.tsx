@@ -20,7 +20,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { useTranslation } from "@/hooks/useTranslation";
-import { useUser } from "@/hooks/useUser";
+import { USER_ROLE, useUser } from "@/hooks/useUser";
 import { getInitials } from "@/lib/utils/avatar";
 import { LayoutDashboard, LogOut, Menu, Settings, User } from "lucide-react";
 import Link from "next/link";
@@ -50,10 +50,10 @@ export default function GlobalNavbar() {
 
   const getDashboardUrl = useCallback(() => {
     switch (primaryRole) {
-      case "admin":
-      case "super_admin":
-      case "user":
-      case "viewer":
+      case USER_ROLE.SYS_ADMIN:
+      case USER_ROLE.TENANT_ADMIN:
+      case USER_ROLE.TENANT_STAFF:
+      case USER_ROLE.CLIENT:
         return "/dashboard";
       default:
         return "/dashboard";
@@ -117,6 +117,16 @@ export default function GlobalNavbar() {
                 }`}
               >
                 {t("fields")}
+              </Link>
+              <Link
+                href="/quiero-ser-parte"
+                className={`text-sm font-medium transition-colors ${
+                  isScrolled
+                    ? "text-gray-900 dark:text-foreground hover:text-emerald-600"
+                    : "text-slate-800 dark:text-white hover:text-emerald-600 dark:hover:text-emerald-400"
+                }`}
+              >
+                {t("joinUs")}
               </Link>
             </div>
 
@@ -270,6 +280,13 @@ export default function GlobalNavbar() {
                         className="rounded-lg px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
                       >
                         {t("fields")}
+                      </Link>
+                      <Link
+                        href="/quiero-ser-parte"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="rounded-lg px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                      >
+                        {t("joinUs")}
                       </Link>
                     </div>
                     <div className="mb-4 flex items-center gap-2 px-2">

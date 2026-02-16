@@ -169,6 +169,14 @@ export async function hasPermissionOrManage(
   resource: PermissionResource,
   tenantId: string
 ): Promise<boolean> {
+  // Tenant admins bypass all permission checks
+  const adminCheck = await isTenantAdmin(userId, tenantId);
+  if (adminCheck) return true;
+
+  // Sys admins also bypass
+  const sysCheck = await isSysAdmin(userId, tenantId);
+  if (sysCheck) return true;
+
   const permissions = await getUserPermissions(userId, tenantId);
 
   // Check if user has the specific permission
@@ -306,15 +314,28 @@ export async function getRBACContext(
 }
 
 /**
- * Assign role to user
+ * Assign role to user (with tenant validation)
  */
 export async function assignRole(
   userId: string,
   roleId: string,
   assignedBy?: string,
   expiresAt?: Date,
-  _tenantId?: string
+  tenantId?: string
 ): Promise<UserRole> {
+  if (tenantId) {
+    const [role, user] = await Promise.all([
+      prisma.role.findFirst({ where: { id: roleId, tenantId } }),
+      prisma.user.findFirst({ where: { id: userId, tenantId } }),
+    ]);
+    if (!role) {
+      throw new Error("Role not found in this tenant");
+    }
+    if (!user) {
+      throw new Error("User not found in this tenant");
+    }
+  }
+
   return await prisma.userRole.create({
     data: {
       userId,
@@ -329,13 +350,22 @@ export async function assignRole(
 }
 
 /**
- * Remove role from user
+ * Remove role from user (with tenant validation)
  */
 export async function removeRole(
   userId: string,
   roleId: string,
-  _tenantId?: string
+  tenantId?: string
 ): Promise<void> {
+  if (tenantId) {
+    const role = await prisma.role.findFirst({
+      where: { id: roleId, tenantId },
+    });
+    if (!role) {
+      throw new Error("Role not found in this tenant");
+    }
+  }
+
   await prisma.userRole.deleteMany({
     where: {
       userId,
@@ -423,13 +453,26 @@ export async function createPermission(
 }
 
 /**
- * Assign permission to role
+ * Assign permission to role (with tenant validation)
  */
 export async function assignPermissionToRole(
   roleId: string,
   permissionId: string,
-  _tenantId?: string
+  tenantId?: string
 ): Promise<void> {
+  if (tenantId) {
+    const [role, permission] = await Promise.all([
+      prisma.role.findFirst({ where: { id: roleId, tenantId } }),
+      prisma.permission.findFirst({ where: { id: permissionId, tenantId } }),
+    ]);
+    if (!role) {
+      throw new Error("Role not found in this tenant");
+    }
+    if (!permission) {
+      throw new Error("Permission not found in this tenant");
+    }
+  }
+
   await prisma.rolePermission.create({
     data: {
       roleId,
@@ -439,13 +482,26 @@ export async function assignPermissionToRole(
 }
 
 /**
- * Remove permission from role
+ * Remove permission from role (with tenant validation)
  */
 export async function removePermissionFromRole(
   roleId: string,
   permissionId: string,
-  _tenantId?: string
+  tenantId?: string
 ): Promise<void> {
+  if (tenantId) {
+    const [role, permission] = await Promise.all([
+      prisma.role.findFirst({ where: { id: roleId, tenantId } }),
+      prisma.permission.findFirst({ where: { id: permissionId, tenantId } }),
+    ]);
+    if (!role) {
+      throw new Error("Role not found in this tenant");
+    }
+    if (!permission) {
+      throw new Error("Permission not found in this tenant");
+    }
+  }
+
   await prisma.rolePermission.deleteMany({
     where: {
       roleId,
@@ -490,9 +546,9 @@ export async function getAllPermissions(
 }
 
 /**
- * Get permissions for a specific role
+ * Get permissions for a specific role (tenant-scoped)
  */
-export async function getRolePermissions(roleId: string, tenantId?: string) {
+export async function getRolePermissions(roleId: string, tenantId: string) {
   return await prisma.rolePermission.findMany({
     where: {
       roleId,
@@ -555,17 +611,71 @@ export async function getPermissionByActionAndResource(
 }
 
 /**
- * Check if user is super admin
+ * Check if user is SYS_ADMIN (global system administrator)
+ */
+export async function isSysAdmin(
+  userId: string,
+  tenantId: string
+): Promise<boolean> {
+  return await hasRole(userId, DEFAULT_ROLES.SYS_ADMIN, tenantId);
+}
+
+/**
+ * Check if user is TENANT_ADMIN (tenant administrator)
+ */
+export async function isTenantAdmin(
+  userId: string,
+  tenantId: string
+): Promise<boolean> {
+  return await hasRole(userId, DEFAULT_ROLES.TENANT_ADMIN, tenantId);
+}
+
+/**
+ * Check if user is TENANT_STAFF (tenant staff member)
+ */
+export async function isTenantStaff(
+  userId: string,
+  tenantId: string
+): Promise<boolean> {
+  return await hasRole(userId, DEFAULT_ROLES.TENANT_STAFF, tenantId);
+}
+
+/**
+ * Check if user is CLIENT (regular customer)
+ */
+export async function isClient(
+  userId: string,
+  tenantId: string
+): Promise<boolean> {
+  return await hasRole(userId, DEFAULT_ROLES.CLIENT, tenantId);
+}
+
+/**
+ * Check if user is a tenant member (TENANT_ADMIN or TENANT_STAFF)
+ */
+export async function isTenantMember(
+  userId: string,
+  tenantId: string
+): Promise<boolean> {
+  return await hasAnyRole(
+    userId,
+    [DEFAULT_ROLES.TENANT_ADMIN, DEFAULT_ROLES.TENANT_STAFF],
+    tenantId
+  );
+}
+
+/**
+ * @deprecated Use isSysAdmin instead
  */
 export async function isSuperAdmin(
   userId: string,
   tenantId: string
 ): Promise<boolean> {
-  return await hasRole(userId, DEFAULT_ROLES.SUPER_ADMIN, tenantId);
+  return await isSysAdmin(userId, tenantId);
 }
 
 /**
- * Check if user is admin
+ * @deprecated Use isTenantAdmin instead
  */
 export async function isAdmin(
   userId: string,
@@ -573,7 +683,7 @@ export async function isAdmin(
 ): Promise<boolean> {
   return await hasAnyRole(
     userId,
-    [DEFAULT_ROLES.SUPER_ADMIN, DEFAULT_ROLES.ADMIN],
+    [DEFAULT_ROLES.SYS_ADMIN, DEFAULT_ROLES.TENANT_ADMIN],
     tenantId
   );
 }

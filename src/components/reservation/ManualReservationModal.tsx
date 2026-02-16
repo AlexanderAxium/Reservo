@@ -26,8 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { trpc } from "@/hooks/useTRPC";
 import { cn } from "@/lib/utils";
-import { trpc } from "@/utils/trpc";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, startOfDay } from "date-fns";
 import { es } from "date-fns/locale";
@@ -149,7 +149,7 @@ export function ManualReservationModal({
   const createManual = trpc.reservation.createManual.useMutation({
     onSuccess: () => {
       utils.reservation.listForAdmin.invalidate();
-      utils.reservation.listForOwner.invalidate();
+      utils.reservation.listForTenant.invalidate();
       toast.success("Reserva creada correctamente");
       form.reset();
       onOpenChange(false);

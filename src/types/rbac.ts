@@ -17,6 +17,10 @@ export enum PermissionResource {
   FIELD = "FIELD",
   RESERVATION = "RESERVATION",
   REVIEW = "REVIEW",
+  TENANT = "TENANT",
+  STAFF = "STAFF",
+  METRICS = "METRICS",
+  SETTINGS = "SETTINGS",
   PAYMENT = "PAYMENT",
 }
 
@@ -89,11 +93,13 @@ export interface RBACContext {
 
 // Default roles
 export const DEFAULT_ROLES = {
-  SUPER_ADMIN: "super_admin",
-  ADMIN: "admin",
-  USER: "user",
-  OWNER: "owner",
-  VIEWER: "viewer",
+  SYS_ADMIN: "sys_admin",
+  TENANT_ADMIN: "tenant_admin",
+  TENANT_STAFF: "tenant_staff",
+  CLIENT: "client",
+  // Deprecated aliases for backward compatibility
+  SUPER_ADMIN: "sys_admin",
+  ADMIN: "tenant_admin",
 } as const;
 
 // Default permissions

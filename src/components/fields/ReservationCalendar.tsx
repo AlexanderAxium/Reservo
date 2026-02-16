@@ -1,8 +1,21 @@
 "use client";
 
+import {
+  type FieldOption,
+  ManualReservationModal,
+} from "@/components/reservation/ManualReservationModal";
 import { ReservationDetailModal } from "@/components/reservation/ReservationDetailModal";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   addDays,
   addWeeks,
@@ -12,7 +25,13 @@ import {
   startOfWeek,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import {
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Search,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 const dayLabels: Record<string, string> = {
@@ -57,6 +76,8 @@ interface Schedule {
 
 interface ReservationCalendarProps {
   fieldId: string;
+  fieldName?: string;
+  fieldPrice?: number;
   schedules?: Schedule[];
   reservations?: Reservation[];
   /** Ruta base para enlaces al detalle del campo (owner o admin) */
@@ -64,16 +85,20 @@ interface ReservationCalendarProps {
 }
 
 export function ReservationCalendar({
-  fieldId: _fieldId,
+  fieldId,
+  fieldName,
+  fieldPrice,
   schedules = [],
   reservations = [],
   fieldHref,
 }: ReservationCalendarProps) {
   const [currentWeek, setCurrentWeek] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [selectedReservationId, setSelectedReservationId] = useState<
     string | null
   >(null);
+  const [manualModalOpen, setManualModalOpen] = useState(false);
 
   const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 }); // Lunes
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -114,28 +139,30 @@ export function ReservationCalendar({
     return map;
   }, [schedules]);
 
-  // Mapear reservas por día y hora
+  // Filtrar reservas por búsqueda y estado
+  const filteredReservations = useMemo(() => {
+    return reservations.filter((r) => {
+      if (statusFilter !== "ALL" && r.status !== statusFilter) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchesName = r.clientName?.toLowerCase().includes(q);
+        const matchesId = r.id.toLowerCase().includes(q);
+        if (!matchesName && !matchesId) return false;
+      }
+      return true;
+    });
+  }, [reservations, searchQuery, statusFilter]);
+
+  // Mapear reservas por fecha exacta y hora
   const reservationsBySlot = useMemo(() => {
-    const dayEnumFromDate = (date: Date): string => {
-      const day = format(date, "EEEE", { locale: es }).toUpperCase();
-      const dayMap: Record<string, string> = {
-        LUNES: "MONDAY",
-        MARTES: "TUESDAY",
-        MIÉRCOLES: "WEDNESDAY",
-        JUEVES: "THURSDAY",
-        VIERNES: "FRIDAY",
-        SÁBADO: "SATURDAY",
-        DOMINGO: "SUNDAY",
-      };
-      return dayMap[day] || day;
-    };
     const map = new Map<string, Reservation[]>();
-    reservations.forEach((reservation) => {
+    filteredReservations.forEach((reservation) => {
       try {
         const start = parseISO(reservation.startDate);
+        // Usar fecha exacta (yyyy-MM-dd) como clave en vez de solo el día de la semana
+        const dateKey = format(start, "yyyy-MM-dd");
         const startTime = format(start, "HH:mm");
-        const dayEnum = dayEnumFromDate(start);
-        const key = `${dayEnum}-${startTime}`;
+        const key = `${dateKey}-${startTime}`;
         if (!map.has(key)) {
           map.set(key, []);
         }
@@ -145,7 +172,7 @@ export function ReservationCalendar({
       }
     });
     return map;
-  }, [reservations]);
+  }, [filteredReservations]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -203,22 +230,38 @@ export function ReservationCalendar({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <CardTitle>Reservas</CardTitle>
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
                 placeholder="Buscar reservas..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 pr-3 py-1.5 text-sm border border-border rounded-md w-48 bg-background text-foreground placeholder:text-muted-foreground"
+                className="pl-8 w-48 h-9"
               />
             </div>
-            <select className="px-3 py-1.5 text-sm border border-border rounded-md bg-background text-foreground">
-              <option>Todos</option>
-            </select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[140px] h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Todos</SelectItem>
+                <SelectItem value="CONFIRMED">Confirmada</SelectItem>
+                <SelectItem value="PENDING">Pendiente</SelectItem>
+                <SelectItem value="CANCELLED">Cancelada</SelectItem>
+                <SelectItem value="COMPLETED">Completada</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => setManualModalOpen(true)}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Nueva reserva
+            </Button>
           </div>
         </div>
       </CardHeader>
@@ -245,9 +288,15 @@ export function ReservationCalendar({
           </Button>
         </div>
 
-        {/* Calendario */}
-        <div className="border border-border rounded-lg overflow-hidden">
-          <div className="grid grid-cols-8 border-b border-border bg-muted/40 dark:bg-muted/30">
+        {/* Calendario: columna Hora fija + 7 días con ancho mínimo para que el texto de reservas no se corte */}
+        <div className="border border-border rounded-lg overflow-x-auto">
+          <div
+            className="grid border-b border-border bg-muted/40 dark:bg-muted/30 min-w-[640px]"
+            style={{
+              gridTemplateColumns:
+                "minmax(3.5rem, auto) repeat(7, minmax(6rem, 1fr))",
+            }}
+          >
             <div className="p-2 font-medium text-sm text-foreground border-r border-border">
               Hora
             </div>
@@ -281,27 +330,31 @@ export function ReservationCalendar({
             })}
           </div>
 
-          <div className="max-h-[600px] overflow-y-auto">
+          <div className="max-h-[600px] overflow-y-auto min-w-[640px]">
             {timeSlots.map((time) => (
               <div
                 key={time}
-                className="grid grid-cols-8 border-b border-border last:border-b-0"
+                className="grid border-b border-border last:border-b-0 min-h-[44px]"
+                style={{
+                  gridTemplateColumns:
+                    "minmax(3.5rem, auto) repeat(7, minmax(6rem, 1fr))",
+                }}
               >
-                <div className="p-2 text-sm text-muted-foreground border-r border-border bg-muted/20 dark:bg-muted/10">
+                <div className="flex min-h-[44px] items-center p-2 text-sm text-muted-foreground border-r border-border bg-muted/20 dark:bg-muted/10 shrink-0">
                   {time}
                 </div>
                 {weekDays.map((day) => {
                   const dayEnum = getDayEnum(day);
-                  const _schedule = schedulesByDay.get(dayEnum);
+                  const dateKey = format(day, "yyyy-MM-dd");
                   const isAvailable = isTimeInSchedule(dayEnum, time);
-                  const reservationKey = `${dayEnum}-${time}`;
+                  const reservationKey = `${dateKey}-${time}`;
                   const slotReservations =
                     reservationsBySlot.get(reservationKey) || [];
 
                   return (
                     <div
                       key={format(day, "yyyy-MM-dd")}
-                      className={`p-1 border-r border-border last:border-r-0 min-h-[40px] ${
+                      className={`flex min-h-[44px] min-w-0 flex-col justify-start p-1 border-r border-border last:border-r-0 ${
                         isAvailable
                           ? "bg-slate-50/80 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-700/50"
                           : "bg-muted/30 dark:bg-muted/20"
@@ -314,7 +367,7 @@ export function ReservationCalendar({
                           ? `${reservation.clientName} · ${format(start, "HH:mm")}-${format(end, "HH:mm")}`
                           : `${format(start, "HH:mm")} - ${format(end, "HH:mm")}`;
                         const namePart = reservation.clientName
-                          ? `${(reservation.clientName as string).slice(0, 14)}${(reservation.clientName as string).length > 14 ? "…" : ""}`
+                          ? `${reservation.clientName.slice(0, 20)}${reservation.clientName.length > 20 ? "…" : ""}`
                           : null;
                         const shortLabel = namePart
                           ? `${namePart} ${format(start, "HH:mm")}`
@@ -326,9 +379,9 @@ export function ReservationCalendar({
                             onClick={() =>
                               setSelectedReservationId(reservation.id)
                             }
-                            className={`w-full text-left ${getStatusColor(
+                            className={`min-w-0 w-full text-left ${getStatusColor(
                               reservation.status
-                            )} text-white text-xs p-1.5 rounded mb-1 hover:opacity-90 transition-opacity truncate`}
+                            )} text-white text-xs p-1.5 rounded mb-1 hover:opacity-90 transition-opacity overflow-hidden`}
                             title={label}
                           >
                             <span className="block truncate font-medium">
@@ -355,46 +408,54 @@ export function ReservationCalendar({
           onStatusUpdated={() => setSelectedReservationId(null)}
         />
 
-        {/* Leyenda */}
-        <div className="mt-4 flex items-center gap-4 flex-wrap text-foreground">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-green-500" />
-            <span className="text-sm">Confirmada</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-yellow-500" />
-            <span className="text-sm">Pendiente</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-500" />
-            <span className="text-sm">Cancelada</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-gray-400" />
-            <span className="text-sm">Fuera de horario</span>
-          </div>
-        </div>
+        {fieldId && (
+          <ManualReservationModal
+            open={manualModalOpen}
+            onOpenChange={setManualModalOpen}
+            fields={
+              fieldName
+                ? [
+                    {
+                      id: fieldId,
+                      name: fieldName,
+                      price: fieldPrice ?? 0,
+                    } satisfies FieldOption,
+                  ]
+                : []
+            }
+          />
+        )}
 
-        {/* Consejos */}
-        <div className="mt-4 p-4 bg-muted/50 dark:bg-muted/30 rounded-lg border border-border">
-          <div className="flex items-start gap-2">
-            <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0 mt-0.5">
-              <span className="text-primary-foreground text-xs">✓</span>
-            </div>
-            <div>
-              <h4 className="font-medium text-foreground mb-2">
-                Consejos para reservar
-              </h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Haz clic en una reserva para ver el detalle completo</li>
-                <li>
-                  • Solo puedes reservar dentro de los horarios de atención
-                  configurados
-                </li>
-                <li>• Las reservas tienen una duración máxima de 2 horas</li>
-              </ul>
-            </div>
-          </div>
+        {/* Leyenda */}
+        <div className="mt-4 flex items-center gap-4 flex-wrap">
+          <Badge
+            variant="outline"
+            className="border-green-500/50 bg-green-500/10 text-green-600 dark:text-green-400"
+          >
+            <div className="w-2 h-2 rounded-full bg-green-500 mr-1.5" />
+            Confirmada
+          </Badge>
+          <Badge
+            variant="outline"
+            className="border-yellow-500/50 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400"
+          >
+            <div className="w-2 h-2 rounded-full bg-yellow-500 mr-1.5" />
+            Pendiente
+          </Badge>
+          <Badge
+            variant="outline"
+            className="border-red-500/50 bg-red-500/10 text-red-600 dark:text-red-400"
+          >
+            <div className="w-2 h-2 rounded-full bg-red-500 mr-1.5" />
+            Cancelada
+          </Badge>
+          <Badge
+            variant="outline"
+            className="border-blue-500/50 bg-blue-500/10 text-blue-600 dark:text-blue-400"
+          >
+            <div className="w-2 h-2 rounded-full bg-blue-500 mr-1.5" />
+            Completada
+          </Badge>
         </div>
       </CardContent>
     </Card>

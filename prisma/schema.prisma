@@ -42,6 +42,12 @@ model Tenant {
   cookiesUrl      String?
   complaintsUrl   String?
   isActive        Boolean      @default(true)
+  slug            String       @unique
+  plan            TenantPlan   @default(FREE)
+  maxFields       Int          @default(5)
+  maxUsers        Int          @default(10)
+  isVerified      Boolean      @default(false)
+  verifiedAt      DateTime?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
   users           User[]
@@ -49,6 +55,7 @@ model Tenant {
   roles           Role[]
   translations    Translation[]
   sportCenters    SportCenter[]
+  fields          Field[]
 
   @@map("tenants")
 }
@@ -223,6 +230,11 @@ enum PermissionResource {
   FIELD
   RESERVATION
   REVIEW
+  TENANT
+  STAFF
+  METRICS
+  SETTINGS
+  PAYMENT
 }
 
 // ================================
@@ -299,11 +311,18 @@ enum TranslationStatus {
 // ===========================================
 
 enum UserRoleType {
-  ADMIN
-  OWNER
+  SYS_ADMIN
+  TENANT_ADMIN
+  TENANT_STAFF
   CLIENT
 }
 
+enum TenantPlan {
+  FREE
+  BASIC
+  PROFESSIONAL
+  ENTERPRISE
+}
 
 enum Sport {
   FOOTBALL
@@ -402,11 +421,12 @@ model SportCenter {
 model Field {
   id            String   @id @default(uuid())
   name          String
+  slug          String   @unique
   sport         Sport
   price         Decimal  @db.Decimal(10, 2)
   available     Boolean  @default(true)
   images        String[] // Array de URLs de imágenes
-  
+
   // Ubicación de la cancha (Opción 7 - Híbrida)
   address       String
   city          String?  @default("Lima")
@@ -414,32 +434,38 @@ model Field {
   latitude      Decimal? @db.Decimal(10, 8)  // Latitud para geolocalización
   longitude     Decimal? @db.Decimal(11, 8)  // Longitud para geolocalización
   googleMapsUrl String?  // Link directo a Google Maps para navegación
-  
+
   // Descripción y detalles
   description   String?  @db.Text
   phone         String?
   email         String?
-  
+
   // Owner directo (cancha individual)
   ownerId       String
-  
+
   // SportCenter opcional (para escalabilidad futura)
   sportCenterId String?
-  
+
+  // Tenant association
+  tenantId      String?
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   // Foreign Keys
-  owner       User        @relation("OwnerFields", fields: [ownerId], references: [id], onDelete: Cascade)
+  owner       User         @relation("OwnerFields", fields: [ownerId], references: [id], onDelete: Cascade)
   sportCenter SportCenter? @relation(fields: [sportCenterId], references: [id], onDelete: SetNull)
+  tenant      Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   // Relations
   schedules     Schedule[]
   reservations  Reservation[]
   fieldFeatures FieldFeature[]
 
+  @@index([slug])
   @@index([ownerId])
   @@index([sportCenterId])
+  @@index([tenantId])
   @@index([sport])
   @@index([available])
   @@index([latitude, longitude])  // Para búsquedas por proximidad

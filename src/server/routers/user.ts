@@ -10,35 +10,54 @@ import {
   createSortOrder,
   paginationInputSchema,
 } from "../../lib/pagination";
-import { hasPermissionOrManage } from "../../services/rbacService";
+import { hasPermissionOrManage, isSysAdmin } from "../../services/rbacService";
 import { PermissionAction, PermissionResource } from "../../types/rbac";
 import { validateEmail } from "../../utils/validate";
-import { protectedProcedure, router } from "../trpc";
+import {
+  protectedProcedure,
+  router,
+  sysAdminProcedure,
+  tenantAdminProcedure,
+  tenantStaffProcedure,
+} from "../trpc";
 
 export const userRouter = router({
-  getAll: protectedProcedure
-    .input(paginationInputSchema.optional())
-    .query(async ({ input, ctx }) => {
-      if (!ctx.user?.tenantId) {
-        throw new Error("User tenant not found");
-      }
-
+  // Listar TODOS los usuarios (solo SYS_ADMIN - global)
+  getAll: sysAdminProcedure
+    .input(
+      paginationInputSchema
+        .extend({
+          tenantId: z.string().uuid().optional(),
+          role: z.string().optional(),
+        })
+        .optional()
+    )
+    .query(async ({ input }) => {
       const {
         page = 1,
         limit = 100,
         search,
         sortBy,
         sortOrder = "desc",
+        tenantId,
+        role: roleFilter,
       } = input || {};
       const offset = calculateOffset(page, limit);
 
       const searchFilter = createSearchFilter(search, ["email", "name"]);
       const orderBy = createSortOrder(sortBy, sortOrder);
 
-      // Add tenant filter
       const whereClause = {
         ...searchFilter,
-        tenantId: ctx.user.tenantId,
+        ...(tenantId && { tenantId }),
+        ...(roleFilter && {
+          userRoles: {
+            some: {
+              role: { name: roleFilter },
+              OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+            },
+          },
+        }),
       };
 
       const [users, total] = await Promise.all([
@@ -53,6 +72,9 @@ export const userRouter = router({
             tenantId: true,
             createdAt: true,
             updatedAt: true,
+            tenant: {
+              select: { name: true },
+            },
             userRoles: {
               where: {
                 OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
@@ -77,12 +99,89 @@ export const userRouter = router({
       return createPaginatedResponse(users, total, page, limit);
     }),
 
-  /** Lista solo usuarios con rol "user" (clientes) para reservas manuales, etc. */
-  getClients: protectedProcedure
+  // Listar staff del tenant (TENANT_ADMIN)
+  getStaff: tenantAdminProcedure
     .input(paginationInputSchema.optional())
     .query(async ({ input, ctx }) => {
-      if (!ctx.user?.tenantId) {
-        throw new Error("User tenant not found");
+      if (!ctx.user.tenantId) {
+        throw new Error("Usuario sin tenant asignado");
+      }
+
+      const {
+        page = 1,
+        limit = 100,
+        search,
+        sortBy,
+        sortOrder = "asc",
+      } = input || {};
+      const offset = calculateOffset(page, limit);
+      const searchFilter = createSearchFilter(search, ["email", "name"]);
+      const orderBy = createSortOrder(sortBy, sortOrder);
+
+      // SYS_ADMIN puede ver staff de todos los tenants con filtro opcional
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+
+      const whereClause = {
+        ...searchFilter,
+        ...(!isSys && { tenantId: ctx.user.tenantId }),
+        userRoles: {
+          some: {
+            role: {
+              name: { in: ["tenant_admin", "tenant_staff"] },
+              tenantId: ctx.user.tenantId,
+            },
+            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+          },
+        },
+      };
+
+      const [users, total] = await Promise.all([
+        prisma.user.findMany({
+          where: whereClause,
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            phone: true,
+            emailVerified: true,
+            createdAt: true,
+            userRoles: {
+              where: {
+                OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+              },
+              include: {
+                role: true,
+              },
+              orderBy: {
+                assignedAt: "desc",
+              },
+            },
+          },
+          orderBy,
+          skip: offset,
+          take: limit,
+        }),
+        prisma.user.count({ where: whereClause }),
+      ]);
+
+      const items = users.map(({ userRoles, ...u }) => ({
+        ...u,
+        roles: userRoles.map((ur) => ({
+          id: ur.role.id,
+          name: ur.role.name,
+          displayName: ur.role.displayName,
+          isActive: ur.role.isActive,
+        })),
+      }));
+      return createPaginatedResponse(items, total, page, limit);
+    }),
+
+  /** Lista clientes (rol CLIENT) del tenant (TENANT_STAFF o superior) */
+  getClients: tenantStaffProcedure
+    .input(paginationInputSchema.optional())
+    .query(async ({ input, ctx }) => {
+      if (!ctx.user.tenantId) {
+        throw new Error("Usuario sin tenant asignado");
       }
 
       const {
@@ -96,12 +195,15 @@ export const userRouter = router({
       const searchFilter = createSearchFilter(search, ["email", "name"]);
       const orderBy = createSortOrder(sortBy, sortOrder);
 
+      // SYS_ADMIN puede ver clientes de todos los tenants
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+
       const whereClause = {
         ...searchFilter,
-        tenantId: ctx.user.tenantId,
+        ...(!isSys && { tenantId: ctx.user.tenantId }),
         userRoles: {
           some: {
-            role: { name: "user" },
+            role: { name: "client" },
             OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
           },
         },
@@ -114,6 +216,9 @@ export const userRouter = router({
             id: true,
             email: true,
             name: true,
+            phone: true,
+            createdAt: true,
+            _count: { select: { reservations: true } },
           },
           orderBy,
           skip: offset,
@@ -123,6 +228,118 @@ export const userRouter = router({
       ]);
 
       return createPaginatedResponse(users, total, page, limit);
+    }),
+
+  // Invitar staff (crear usuario con rol TENANT_STAFF) - TENANT_ADMIN
+  inviteStaff: tenantAdminProcedure
+    .input(
+      z.object({
+        email: z.string().email("Email inválido"),
+        name: z.string().min(1, "Nombre requerido"),
+        phone: z.string().optional(),
+        sendInvite: z.boolean().optional().default(true),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = ctx.user.tenantId;
+      if (!tenantId) {
+        throw new Error("Usuario sin tenant asignado");
+      }
+
+      // Validate email
+      if (!validateEmail(input.email)) {
+        throw new Error("Email inválido");
+      }
+
+      // Check if email already exists
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          email: input.email,
+        },
+      });
+
+      if (existingUser) {
+        throw new Error("El email ya está registrado");
+      }
+
+      // Generate temporary password
+      const tempPassword = Math.random().toString(36).slice(-8);
+      const bcrypt = await import("bcryptjs");
+      const hashedPassword = await bcrypt.hash(tempPassword, 10);
+
+      // Create user and assign TENANT_STAFF role in transaction
+      const result = await prisma.$transaction(async (tx) => {
+        // 1. Create user
+        const newUser = await tx.user.create({
+          data: {
+            email: input.email,
+            username: `${input.email.split("@")[0]}_${Date.now()}`,
+            name: input.name,
+            phone: input.phone,
+            emailVerified: false,
+            tenantId,
+          },
+        });
+
+        // 2. Create account for Better Auth
+        await tx.account.create({
+          data: {
+            userId: newUser.id,
+            accountId: newUser.email,
+            providerId: "credential",
+            password: hashedPassword,
+          },
+        });
+
+        // 3. Find TENANT_STAFF role
+        const staffRole = await tx.role.findUnique({
+          where: {
+            name_tenantId: {
+              name: "tenant_staff",
+              tenantId,
+            },
+          },
+        });
+
+        if (!staffRole) {
+          throw new Error("Rol TENANT_STAFF no encontrado");
+        }
+
+        // 4. Assign role
+        await tx.userRole.create({
+          data: {
+            userId: newUser.id,
+            roleId: staffRole.id,
+            assignedBy: ctx.user.id,
+          },
+        });
+
+        return { user: newUser, tempPassword };
+      });
+
+      // Send invitation email with tempPassword if sendInvite is true
+      if (input.sendInvite) {
+        const { sendStaffInvitationEmail } = await import("../../lib/mailer");
+        const tenant = await prisma.tenant.findUnique({
+          where: { id: tenantId },
+          select: { name: true },
+        });
+        await sendStaffInvitationEmail(
+          input.email,
+          input.name,
+          result.tempPassword,
+          tenant?.name ?? "CanchaLibre"
+        ).catch((err) => {
+          console.error("[inviteStaff] Error sending invitation email:", err);
+        });
+      }
+
+      return {
+        user: result.user,
+        message: input.sendInvite
+          ? "Invitación enviada por email"
+          : `Usuario creado. Contraseña temporal: ${result.tempPassword}`,
+      };
     }),
 
   getById: protectedProcedure
@@ -148,10 +365,23 @@ export const userRouter = router({
           tenantId: true,
           createdAt: true,
           updatedAt: true,
+          userRoles: {
+            where: {
+              OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+            },
+            include: { role: true },
+          },
         },
       });
       if (!user) throw new Error("Usuario no encontrado");
-      return user;
+      const { userRoles, ...rest } = user;
+      const roles = userRoles.map((ur) => ({
+        id: ur.role.id,
+        name: ur.role.name,
+        displayName: ur.role.displayName,
+        isActive: ur.role.isActive,
+      }));
+      return { ...rest, roles };
     }),
 
   getProfile: protectedProcedure.query(async ({ ctx }) => {
@@ -189,6 +419,9 @@ export const userRouter = router({
             language: true,
           }).partial()
         )
+        .extend({
+          image: z.string().url().optional().nullable(),
+        })
     )
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user?.tenantId) {
@@ -227,6 +460,10 @@ export const userRouter = router({
         typeof input.phone === "string" ? input.phone : undefined;
       const languageValue =
         typeof input.language === "string" ? input.language : input.language;
+      const imageValue =
+        typeof input.image === "string" || input.image === null
+          ? input.image
+          : undefined;
 
       if (emailValue && !validateEmail(emailValue))
         throw new Error("Email inválido");
@@ -249,6 +486,7 @@ export const userRouter = router({
       if (emailValue !== undefined) updateData.email = emailValue;
       if (phoneValue !== undefined) updateData.phone = phoneValue;
       if (languageValue !== undefined) updateData.language = languageValue;
+      if (imageValue !== undefined) updateData.image = imageValue;
 
       // Handle password update if provided - passwords are stored in Account table
       if (input.password && input.password.trim() !== "") {
@@ -379,6 +617,7 @@ export const userRouter = router({
       const newUser = await prisma.user.create({
         data: {
           email: input.email,
+          username: `${input.email.split("@")[0]}_${Date.now()}`,
           name: input.name,
           phone: input.phone,
           language: input.language || "ES",

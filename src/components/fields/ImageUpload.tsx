@@ -2,26 +2,40 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Image as ImageIcon, Upload, X } from "lucide-react";
+import { trpc } from "@/hooks/useTRPC";
+import { Image as ImageIcon, Loader2, Upload, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+
+export type ImageUploadScope = "field" | "sport_center";
 
 interface ImageUploadProps {
   images: string[];
   onImagesChange: (images: string[]) => void;
+  scope: ImageUploadScope;
   maxImages?: number;
   accept?: string;
 }
 
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+
 export function ImageUpload({
   images,
   onImagesChange,
+  scope,
   maxImages = 10,
   accept = "image/*",
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [newImageUrl, setNewImageUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const getPresignedUrl = trpc.upload.getPresignedUrl.useMutation();
 
   const handleFileSelect = async (
     event: React.ChangeEvent<HTMLInputElement>
@@ -35,59 +49,51 @@ export function ImageUpload({
     }
 
     setUploading(true);
+    const newImageUrls: string[] = [];
 
     try {
-      const newImageUrls: string[] = [];
-
       for (let i = 0; i < files.length; i++) {
         const file = files.item(i);
-        if (!file) {
+        if (!file) continue;
+
+        if (
+          !file.type.startsWith("image/") ||
+          !ALLOWED_IMAGE_TYPES.includes(file.type)
+        ) {
+          toast.error(
+            `${file.name} no es una imagen válida (JPEG, PNG, WebP, GIF)`
+          );
           continue;
         }
-
-        // Validar tipo de archivo
-        if (!file.type.startsWith("image/")) {
-          toast.error(`${file.name} no es una imagen válida`);
-          continue;
-        }
-
-        // Validar tamaño (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
+        if (file.size > MAX_FILE_SIZE) {
           toast.error(`${file.name} es muy grande (máximo 5MB)`);
           continue;
         }
 
-        // Crear preview local mientras se sube
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const dataUrl = e.target?.result as string;
-          // Por ahora, usamos el data URL como preview
-          // En producción, esto se reemplazará con la URL de R2 después de subir
-          newImageUrls.push(dataUrl);
-        };
-        reader.readAsDataURL(file);
+        const { presignedUrl, fileUrl } = await getPresignedUrl.mutateAsync({
+          fileName: file.name,
+          fileType: file.type,
+          scope,
+        });
 
-        // TODO: Aquí se implementará la subida a R2
-        // Por ahora, simulamos la subida con un data URL
-        // En producción, esto debería ser:
-        // const formData = new FormData();
-        // formData.append('file', file);
-        // const response = await fetch('/api/upload', { method: 'POST', body: formData });
-        // const { url } = await response.json();
-        // newImageUrls.push(url);
+        const putResponse = await fetch(presignedUrl, {
+          method: "PUT",
+          body: file,
+          headers: { "Content-Type": file.type },
+        });
+
+        if (!putResponse.ok) {
+          toast.error(`Error subiendo ${file.name}`);
+          continue;
+        }
+        newImageUrls.push(fileUrl);
       }
 
-      // Esperar a que se lean todos los archivos
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Agregar las nuevas imágenes
-      onImagesChange([...images, ...newImageUrls]);
-      toast.success(`${files.length} imagen(es) agregada(s)`);
-
-      // Limpiar el input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+      if (newImageUrls.length > 0) {
+        onImagesChange([...images, ...newImageUrls]);
+        toast.success(`${newImageUrls.length} imagen(es) agregada(s)`);
       }
+      if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       console.error("Error al subir imágenes:", error);
       toast.error("Error al subir las imágenes");
@@ -137,7 +143,11 @@ export function ImageUpload({
           disabled={uploading || images.length >= maxImages}
           className="flex items-center gap-2"
         >
-          <Upload className="h-4 w-4" />
+          {uploading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Upload className="h-4 w-4" />
+          )}
           {uploading ? "Subiendo..." : "Subir Imágenes"}
         </Button>
         <input
