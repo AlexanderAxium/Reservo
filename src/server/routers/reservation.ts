@@ -227,6 +227,63 @@ export const reservationRouter = router({
       return createPaginatedResponse(reservations, total, page, limit);
     }),
 
+  /** Lista reservas de un usuario (cliente) por userId - TENANT_STAFF o superior */
+  listByUser: tenantStaffProcedure
+    .input(paginationInputSchema.extend({ userId: IdSchema }).optional())
+    .query(async ({ input, ctx }) => {
+      if (!ctx.user.tenantId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario sin tenant asignado",
+        });
+      }
+      if (!input?.userId) {
+        return createPaginatedResponse([], 0, 1, 10);
+      }
+
+      const { page = 1, limit = 100, userId } = input;
+      const offset = calculateOffset(page, limit);
+      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+
+      const where = {
+        userId,
+        field: {
+          ...(!isSys && { tenantId: ctx.user.tenantId }),
+        },
+      };
+
+      const [reservations, total] = await Promise.all([
+        prisma.reservation.findMany({
+          where,
+          include: {
+            field: {
+              select: {
+                id: true,
+                name: true,
+                sport: true,
+                address: true,
+                district: true,
+              },
+            },
+            payments: {
+              select: {
+                id: true,
+                amount: true,
+                status: true,
+                createdAt: true,
+              },
+            },
+          },
+          orderBy: { startDate: "desc" },
+          skip: offset,
+          take: limit,
+        }),
+        prisma.reservation.count({ where }),
+      ]);
+
+      return createPaginatedResponse(reservations, total, page, limit);
+    }),
+
   /** Obtener una reserva por ID con todos los detalles (tenant staff o dueño de la reserva) */
   getById: protectedProcedure
     .input(z.object({ id: IdSchema }))
@@ -346,8 +403,8 @@ export const reservationRouter = router({
       const startHour = schedule?.startHour ?? "08:00";
       const endHour = schedule?.endHour ?? "22:00";
 
-      const [startH, startM = 0] = startHour.split(":").map(Number);
-      const [endH, endM = 0] = endHour.split(":").map(Number);
+      const [startH = 0, startM = 0] = startHour.split(":").map(Number);
+      const [endH = 0, endM = 0] = endHour.split(":").map(Number);
       const dayStart = new Date(date);
       dayStart.setHours(startH, startM, 0, 0);
       const dayEnd = new Date(date);

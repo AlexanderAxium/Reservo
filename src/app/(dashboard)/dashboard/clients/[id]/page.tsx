@@ -29,15 +29,15 @@ const STATUS_LABELS: Record<string, string> = {
 
 type Reservation = {
   id: string;
-  startDate: Date;
-  endDate: Date;
+  startDate: string | Date;
+  endDate: string | Date;
   status: string;
-  amount: number;
+  amount: number | string;
   field: {
     name: string;
     sport: string;
   };
-  createdAt: Date;
+  createdAt: string | Date;
 };
 
 export default function ClientDetailPage() {
@@ -50,11 +50,12 @@ export default function ClientDetailPage() {
     }
   );
 
-  const { data: reservations = [], isLoading: reservationsLoading } =
+  const { data: reservationsResponse, isLoading: reservationsLoading } =
     trpc.reservation.listByUser.useQuery(
       { userId: clientId, page: 1, limit: 100 },
       { enabled: !!clientId }
     );
+  const reservations = reservationsResponse?.data ?? [];
 
   const columns: TableColumn<Reservation>[] = [
     {
@@ -104,7 +105,7 @@ export default function ClientDetailPage() {
       width: "120px",
       render: (value) => (
         <Badge variant="outline">
-          {STATUS_LABELS[value as string] || value}
+          {STATUS_LABELS[value as string] ?? String(value)}
         </Badge>
       ),
     },

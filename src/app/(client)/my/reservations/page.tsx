@@ -32,16 +32,16 @@ type ReservationStatusFilter =
 
 type Reservation = {
   id: string;
-  startDate: Date;
-  endDate: Date;
+  startDate: string | Date;
+  endDate: string | Date;
   status: string;
-  amount: number;
+  amount: number | string;
   field: {
     id: string;
     name: string;
     sport: string;
   };
-  createdAt: Date;
+  createdAt: string | Date;
 };
 
 function StatusBadge({ status }: { status: string }) {
