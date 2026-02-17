@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -29,10 +30,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { PERU_DEPARTMENTS } from "@/constants/peru";
 import { useTranslation } from "@/hooks/useTranslation";
 import { FeatureIcon } from "@/lib/feature-icons";
 import { trpc } from "@/utils/trpc";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { SurfaceType } from "@prisma/client";
 import { Save, Tag } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -45,13 +48,26 @@ import { z } from "zod";
 const getCreateFieldSchema = (t: (key: string) => string) =>
   z.object({
     name: z.string().min(1, t("fieldForm.nameRequired")),
-    sport: z.enum(["FOOTBALL", "TENNIS", "BASKETBALL", "VOLLEYBALL", "FUTSAL"]),
+    sport: z.enum([
+      "FOOTBALL",
+      "TENNIS",
+      "BASKETBALL",
+      "VOLLEYBALL",
+      "FUTSAL",
+      "PADEL",
+      "MULTI_PURPOSE",
+      "OTHER",
+    ]),
     price: z.number().positive(t("fieldForm.pricePositive")),
     available: z.boolean().default(true),
     images: z.array(z.string().url(t("fieldForm.invalidImageUrl"))).default([]),
     address: z.string().min(1, t("fieldForm.addressRequired")),
-    city: z.string().optional().default("Lima"),
+    department: z.string().optional().default("Lima"),
+    province: z.string().optional(),
     district: z.string().optional(),
+    surfaceType: z.string().optional(),
+    isIndoor: z.boolean().default(false),
+    hasLighting: z.boolean().default(true),
     latitude: z.number().min(-90).max(90).optional(),
     longitude: z.number().min(-180).max(180).optional(),
     googleMapsUrl: z
@@ -80,6 +96,18 @@ const getCreateFieldSchema = (t: (key: string) => string) =>
 
 type CreateFieldFormData = z.infer<ReturnType<typeof getCreateFieldSchema>>;
 
+const SURFACE_TYPES = [
+  { value: "NATURAL_GRASS", label: "Césped Natural" },
+  { value: "SYNTHETIC_GRASS", label: "Césped Sintético" },
+  { value: "CLAY", label: "Arcilla" },
+  { value: "HARD_COURT", label: "Cemento (Hard Court)" },
+  { value: "CONCRETE", label: "Concreto" },
+  { value: "PARQUET", label: "Parquet" },
+  { value: "SAND", label: "Arena" },
+  { value: "RUBBER", label: "Caucho" },
+  { value: "OTHER", label: "Otro" },
+];
+
 export default function NewOwnerFieldPage() {
   const router = useRouter();
   const { t } = useTranslation("dashboard");
@@ -99,8 +127,12 @@ export default function NewOwnerFieldPage() {
       available: true,
       images: [],
       address: "",
-      city: "Lima",
+      department: "Lima",
+      province: "",
       district: "",
+      surfaceType: "",
+      isIndoor: false,
+      hasLighting: true,
       latitude: undefined,
       longitude: undefined,
       googleMapsUrl: "",
@@ -129,6 +161,7 @@ export default function NewOwnerFieldPage() {
       email: data.email || undefined,
       googleMapsUrl: data.googleMapsUrl || undefined,
       sportCenterId: data.sportCenterId || undefined,
+      surfaceType: (data.surfaceType || undefined) as SurfaceType | undefined,
       features: data.features || [],
     });
   };
@@ -237,6 +270,15 @@ export default function NewOwnerFieldPage() {
                           <SelectItem value="FUTSAL">
                             {t("sports.FUTSAL")}
                           </SelectItem>
+                          <SelectItem value="PADEL">
+                            {t("sports.PADEL")}
+                          </SelectItem>
+                          <SelectItem value="MULTI_PURPOSE">
+                            {t("sports.MULTI_PURPOSE")}
+                          </SelectItem>
+                          <SelectItem value="OTHER">
+                            {t("sports.OTHER")}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -271,6 +313,34 @@ export default function NewOwnerFieldPage() {
 
                 <FormField
                   control={form.control}
+                  name="surfaceType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de superficie</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar superficie" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {SURFACE_TYPES.map((st) => (
+                            <SelectItem key={st.value} value={st.value}>
+                              {st.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="available"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
@@ -291,6 +361,44 @@ export default function NewOwnerFieldPage() {
                     </FormItem>
                   )}
                 />
+
+                <div className="flex flex-col gap-3">
+                  <FormField
+                    control={form.control}
+                    name="isIndoor"
+                    render={({ field }) => (
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="isIndoor"
+                          checked={field.value}
+                          onCheckedChange={(checked) =>
+                            field.onChange(!!checked)
+                          }
+                        />
+                        <Label htmlFor="isIndoor">Techada (indoor)</Label>
+                      </div>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="hasLighting"
+                    render={({ field }) => (
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="hasLighting"
+                          checked={field.value}
+                          onCheckedChange={(checked) =>
+                            field.onChange(!!checked)
+                          }
+                        />
+                        <Label htmlFor="hasLighting">
+                          Iluminación artificial
+                        </Label>
+                      </div>
+                    )}
+                  />
+                </div>
               </CardContent>
             </Card>
 
@@ -320,15 +428,40 @@ export default function NewOwnerFieldPage() {
 
                 <FormField
                   control={form.control}
-                  name="city"
+                  name="department"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t("fieldForm.cityLabel")}</FormLabel>
+                      <FormLabel>Departamento</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar departamento" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {PERU_DEPARTMENTS.map((dept) => (
+                            <SelectItem key={dept} value={dept}>
+                              {dept}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="province"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Provincia</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder={t("fieldForm.cityPlaceholder")}
-                          {...field}
-                        />
+                        <Input placeholder="Ingrese la provincia" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

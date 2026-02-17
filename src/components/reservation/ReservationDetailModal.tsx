@@ -36,6 +36,9 @@ const SPORT_LABELS: Record<string, string> = {
   BASKETBALL: "Básquet",
   VOLLEYBALL: "Vóley",
   FUTSAL: "Futsal",
+  PADEL: "Pádel",
+  MULTI_PURPOSE: "Multiuso",
+  OTHER: "Otro",
 };
 
 function StatusBadge({ status }: { status: string }) {

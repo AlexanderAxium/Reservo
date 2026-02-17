@@ -15,6 +15,9 @@ const SPORT_KEYS: Record<string, string> = {
   BASKETBALL: "basketball",
   VOLLEYBALL: "volleyball",
   FUTSAL: "futsal",
+  PADEL: "padel",
+  MULTI_PURPOSE: "multiPurpose",
+  OTHER: "other",
 };
 
 export function FeaturedFieldsSection() {
@@ -115,7 +118,7 @@ export function FeaturedFieldsSection() {
                         </h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1 mb-2">
                           <MapPin className="h-3.5 w-3.5" />
-                          {field.district ?? field.city ?? "Lima"}
+                          {field.district ?? field.department ?? "Lima"}
                         </p>
                         {field.description && (
                           <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-2">

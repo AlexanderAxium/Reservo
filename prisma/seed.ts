@@ -7,6 +7,7 @@ import {
   ReservationStatus,
   Sport,
   SportCenterStatus,
+  type SurfaceType,
   WeekDay,
 } from "@prisma/client";
 import { betterAuth } from "better-auth";
@@ -137,7 +138,9 @@ async function main() {
       email: "reservas@reservo.com",
       phone: "+51 1 234 5678",
       address: "Av. Javier Prado Este 1234, San Isidro",
-      city: "Lima",
+      department: "Lima",
+      province: "Lima",
+      district: "San Isidro",
       country: "Peru",
       website: "https://myapp.com",
       facebookUrl: "https://facebook.com/myapp",
@@ -177,7 +180,7 @@ async function main() {
       email: "info@democorp.com",
       phone: "+1 (555) 999-8888",
       address: "456 Demo Avenue",
-      city: "San Francisco",
+      department: "California",
       country: "USA",
       website: "https://democorp.com",
       foundedYear: 2023,
@@ -289,12 +292,6 @@ async function main() {
       action: PermissionAction.MANAGE,
       resource: PermissionResource.RESERVATION,
     },
-
-    // Review permissions
-    { action: PermissionAction.CREATE, resource: PermissionResource.REVIEW },
-    { action: PermissionAction.READ, resource: PermissionResource.REVIEW },
-    { action: PermissionAction.UPDATE, resource: PermissionResource.REVIEW },
-    { action: PermissionAction.DELETE, resource: PermissionResource.REVIEW },
 
     // Tenant permissions
     { action: PermissionAction.CREATE, resource: PermissionResource.TENANT },
@@ -1009,7 +1006,7 @@ async function main() {
           id: string;
           address: string;
           district: string | null;
-          city: string | null;
+          department: string;
         }
       | undefined;
     let videna:
@@ -1017,7 +1014,7 @@ async function main() {
           id: string;
           address: string;
           district: string | null;
-          city: string | null;
+          department: string;
         }
       | undefined;
     let mariaReicheId: string | undefined;
@@ -1029,7 +1026,8 @@ async function main() {
           name: "Palacio de la Juventud",
           slug: "palacio-de-la-juventud",
           address: "Av. del Aire s/n, frente a Videna",
-          city: "Lima",
+          department: "Lima",
+          province: "Lima",
           district: "San Luis",
           description:
             "Complejo deportivo municipal con canchas de tenis, básquet y vóley. Instalaciones modernas, vestuarios y gradas. Ideal para torneos y práctica.",
@@ -1040,7 +1038,6 @@ async function main() {
           longitude: -77.0524,
           googleMapsUrl: "https://maps.google.com/?q=-12.0772,-77.0524",
           status: SportCenterStatus.ACTIVE,
-          rating: 4.5,
           images: [],
           ownerId: ownerUser.id,
         },
@@ -1056,7 +1053,8 @@ async function main() {
           name: "Villa Deportiva Nacional - VIDENA",
           slug: "videna",
           address: "Av. del Aire cdra 1",
-          city: "Lima",
+          department: "Lima",
+          province: "Lima",
           district: "San Luis",
           description:
             "Sede del Instituto Peruano del Deporte. Canchas de fútbol y futsal de nivel competitivo, césped sintético y tribunas.",
@@ -1066,7 +1064,6 @@ async function main() {
           longitude: -77.0518,
           googleMapsUrl: "https://maps.google.com/?q=-12.0785,-77.0518",
           status: SportCenterStatus.ACTIVE,
-          rating: 4.8,
           images: [],
           ownerId: ownerUser2.id,
         },
@@ -1080,7 +1077,8 @@ async function main() {
           name: "Complejo Deportivo María Reiche",
           slug: "complejo-maria-reiche",
           address: "Av. El Polo 305, Monterrico",
-          city: "Lima",
+          department: "Lima",
+          province: "Lima",
           district: "Santiago de Surco",
           description:
             "Complejo con canchas de tenis y vóley. Ambiente familiar, estacionamiento y cafetería.",
@@ -1090,7 +1088,6 @@ async function main() {
           longitude: -76.9765,
           googleMapsUrl: "https://maps.google.com/?q=-12.0842,-76.9765",
           status: SportCenterStatus.ACTIVE,
-          rating: 4.3,
           images: [],
           ownerId: ownerUser.id,
         },
@@ -1116,8 +1113,11 @@ async function main() {
       price: number;
       available: boolean;
       images: string[];
+      surfaceType?: SurfaceType;
+      isIndoor?: boolean;
+      hasLighting?: boolean;
       address: string;
-      city: string;
+      department: string;
       district: string;
       latitude: number;
       longitude: number;
@@ -1142,8 +1142,10 @@ async function main() {
           price: 55.0,
           available: true,
           images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+          surfaceType: "HARD_COURT",
+          hasLighting: true,
           address: baseAddr,
-          city: "Lima",
+          department: "Lima",
           district: "San Luis",
           latitude: baseLat,
           longitude: baseLng,
@@ -1162,8 +1164,10 @@ async function main() {
           price: 55.0,
           available: true,
           images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+          surfaceType: "CLAY",
+          hasLighting: true,
           address: baseAddr,
-          city: "Lima",
+          department: "Lima",
           district: "San Luis",
           latitude: baseLat,
           longitude: baseLng,
@@ -1181,8 +1185,11 @@ async function main() {
           price: 65.0,
           available: true,
           images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+          surfaceType: "PARQUET",
+          isIndoor: true,
+          hasLighting: true,
           address: baseAddr,
-          city: "Lima",
+          department: "Lima",
           district: "San Luis",
           latitude: baseLat,
           longitude: baseLng,
@@ -1201,8 +1208,11 @@ async function main() {
           price: 50.0,
           available: true,
           images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+          surfaceType: "PARQUET",
+          isIndoor: true,
+          hasLighting: true,
           address: baseAddr,
-          city: "Lima",
+          department: "Lima",
           district: "San Luis",
           latitude: baseLat,
           longitude: baseLng,
@@ -1229,8 +1239,10 @@ async function main() {
           price: 90.0,
           available: true,
           images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+          surfaceType: "SYNTHETIC_GRASS",
+          hasLighting: true,
           address: baseAddr,
-          city: "Lima",
+          department: "Lima",
           district: "San Luis",
           latitude: baseLat,
           longitude: baseLng,
@@ -1251,8 +1263,11 @@ async function main() {
           images: [
             "https://sport-12.com/wp-content/uploads/2022/02/Cancha-Chapultepec_cuadrado.jpg",
           ],
+          surfaceType: "SYNTHETIC_GRASS",
+          isIndoor: true,
+          hasLighting: true,
           address: baseAddr,
-          city: "Lima",
+          department: "Lima",
           district: "San Luis",
           latitude: baseLat,
           longitude: baseLng,
@@ -1279,8 +1294,10 @@ async function main() {
           price: 50.0,
           available: true,
           images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+          surfaceType: "HARD_COURT",
+          hasLighting: true,
           address: baseAddr,
-          city: "Lima",
+          department: "Lima",
           district: "Santiago de Surco",
           latitude: baseLat,
           longitude: baseLng,
@@ -1299,8 +1316,9 @@ async function main() {
           price: 45.0,
           available: true,
           images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+          surfaceType: "CONCRETE",
           address: baseAddr,
-          city: "Lima",
+          department: "Lima",
           district: "Santiago de Surco",
           latitude: baseLat,
           longitude: baseLng,
@@ -1323,8 +1341,10 @@ async function main() {
         price: 80.0,
         available: true,
         images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+        surfaceType: "SYNTHETIC_GRASS",
+        hasLighting: true,
         address: "Av. Javier Prado Este 4200",
-        city: "Lima",
+        department: "Lima",
         district: "San Isidro",
         latitude: -12.0969,
         longitude: -77.0338,
@@ -1344,8 +1364,11 @@ async function main() {
         images: [
           "https://sport-12.com/wp-content/uploads/2022/02/Cancha-Chapultepec_cuadrado.jpg",
         ],
+        surfaceType: "SYNTHETIC_GRASS",
+        isIndoor: true,
+        hasLighting: true,
         address: "Av. Larco 1234",
-        city: "Lima",
+        department: "Lima",
         district: "Miraflores",
         latitude: -12.1224,
         longitude: -77.0303,
@@ -1363,8 +1386,9 @@ async function main() {
         price: 75.0,
         available: true,
         images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+        surfaceType: "NATURAL_GRASS",
         address: "Av. La Molina 5678",
-        city: "Lima",
+        department: "Lima",
         district: "La Molina",
         latitude: -12.0759,
         longitude: -76.9475,
@@ -1384,8 +1408,10 @@ async function main() {
         images: [
           "https://sport-12.com/wp-content/uploads/2022/02/Cancha-Chapultepec_cuadrado.jpg",
         ],
+        surfaceType: "SYNTHETIC_GRASS",
+        hasLighting: true,
         address: "Jr. 28 de Julio 456",
-        city: "Lima",
+        department: "Lima",
         district: "Barranco",
         latitude: -12.1442,
         longitude: -77.0206,
@@ -1405,8 +1431,11 @@ async function main() {
         images: [
           "https://sport-12.com/wp-content/uploads/2022/02/Cancha-Chapultepec_cuadrado.jpg",
         ],
+        surfaceType: "SYNTHETIC_GRASS",
+        isIndoor: true,
+        hasLighting: true,
         address: "Av. Brasil 2345",
-        city: "Lima",
+        department: "Lima",
         district: "Jesús María",
         latitude: -12.0833,
         longitude: -77.0333,
@@ -1415,6 +1444,51 @@ async function main() {
           "Cancha de futsal techada con piso sintético. Estacionamiento disponible.",
         phone: "+51 987 654 328",
         email: "cancha8@reservo.com",
+        ownerId: ownerUser2.id,
+        tenantId: defaultTenant.id,
+      },
+      {
+        name: "Pádel Club - San Borja",
+        sport: Sport.PADEL,
+        price: 70.0,
+        available: true,
+        images: [
+          "https://sport-12.com/wp-content/uploads/2022/02/Cancha-Chapultepec_cuadrado.jpg",
+        ],
+        surfaceType: "SYNTHETIC_GRASS",
+        isIndoor: false,
+        hasLighting: true,
+        address: "Av. San Borja Norte 500",
+        department: "Lima",
+        district: "San Borja",
+        latitude: -12.1005,
+        longitude: -77.0036,
+        googleMapsUrl: "https://maps.google.com/?q=-12.1005,-77.0036",
+        description:
+          "Cancha de pádel con césped sintético y cristales. Iluminación LED.",
+        phone: "+51 987 654 330",
+        email: "padel@reservo.com",
+        ownerId: ownerUser.id,
+        tenantId: defaultTenant.id,
+      },
+      {
+        name: "Multicancha - Surquillo",
+        sport: Sport.MULTI_PURPOSE,
+        price: 55.0,
+        available: true,
+        images: ["https://donpotrero.com/img/posts/2/medidas_lg.jpg"],
+        surfaceType: "CONCRETE",
+        hasLighting: true,
+        address: "Av. Tomás Marsano 1200",
+        department: "Lima",
+        district: "Surquillo",
+        latitude: -12.1125,
+        longitude: -77.0167,
+        googleMapsUrl: "https://maps.google.com/?q=-12.1125,-77.0167",
+        description:
+          "Espacio polivalente para fútbol, básquet y vóley. Piso de concreto.",
+        phone: "+51 987 654 331",
+        email: "multi@reservo.com",
         ownerId: ownerUser2.id,
         tenantId: defaultTenant.id,
       }
@@ -1614,9 +1688,9 @@ async function main() {
           endDate: Date;
           amount: number;
           status: ReservationStatus;
-          createdByChatbot: boolean;
           userId: string;
           fieldId: string;
+          tenantId: string;
         }> = [];
 
         // Últimos 14 días: para que los gráficos del dashboard muestren datos
@@ -1644,9 +1718,9 @@ async function main() {
               endDate,
               amount: Number(price),
               status,
-              createdByChatbot: s % 4 === 0,
               userId: user.id,
               fieldId: field.id,
+              tenantId: defaultTenant.id,
             });
           }
         }
@@ -1680,9 +1754,9 @@ async function main() {
                 endDate,
                 amount: Number(price),
                 status,
-                createdByChatbot: s % 4 === 0,
                 userId: user.id,
                 fieldId: field.id,
+                tenantId: defaultTenant.id,
               });
             }
           }

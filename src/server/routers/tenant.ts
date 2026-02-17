@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { type Prisma, TenantPlan } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { prisma } from "../../lib/db";
@@ -19,7 +19,7 @@ import {
 } from "../trpc";
 import { requireTenantId } from "../utils/tenant";
 
-const TenantPlanEnum = z.enum(["FREE", "BASIC", "PROFESSIONAL", "ENTERPRISE"]);
+const TenantPlanEnum = z.nativeEnum(TenantPlan);
 
 const createTenantSchema = z.object({
   name: z.string().min(1, "Nombre requerido"),

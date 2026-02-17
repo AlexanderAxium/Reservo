@@ -1,7 +1,7 @@
 {
   "availableFields": "Available courts",
   "chooseFieldAndReserve": "Choose a court and book your slot",
-  "searchPlaceholder": "Search by name, city, district...",
+  "searchPlaceholder": "Search by name, department, district...",
   "loadingFields": "Loading courts...",
   "noFieldsFound": "No courts available found.",
   "independentField": "Independent court",
@@ -21,6 +21,9 @@
   "basketball": "Basketball",
   "volleyball": "Volleyball",
   "futsal": "Futsal",
+  "padel": "Padel",
+  "multiPurpose": "Multi-purpose",
+  "other": "Other",
 
   "loadingField": "Loading court...",
   "fieldNotFound": "Court not found",

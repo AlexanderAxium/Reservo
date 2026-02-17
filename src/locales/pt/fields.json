@@ -21,6 +21,9 @@
   "basketball": "Basquete",
   "volleyball": "Vôlei",
   "futsal": "Futsal",
+  "padel": "Padel",
+  "multiPurpose": "Multiuso",
+  "other": "Outro",
 
   "loadingField": "Carregando quadra...",
   "fieldNotFound": "Quadra não encontrada",

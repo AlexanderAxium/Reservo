@@ -75,7 +75,7 @@ export default function SportCenterDetailPage() {
               <p className="text-base">{sportCenter.address}</p>
               <p className="text-sm text-muted-foreground">
                 {sportCenter.district && `${sportCenter.district}, `}
-                {sportCenter.city}
+                {sportCenter.department}
               </p>
             </div>
           </div>

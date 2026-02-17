@@ -21,7 +21,10 @@
     "tennis": "Tênis",
     "basketball": "Basquete",
     "volleyball": "Vôlei",
-    "futsal": "Futsal"
+    "futsal": "Futsal",
+    "padel": "Padel",
+    "multiPurpose": "Multiuso",
+    "other": "Outro"
   },
   "howItWorks": {
     "title": "Como Funciona",

@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, ReservationStatus } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { prisma } from "../../lib/db";
@@ -19,13 +19,7 @@ import { requireTenantId } from "../utils/tenant";
 
 const IdSchema = z.union([z.string().uuid(), z.string().cuid()]);
 
-const ReservationStatusEnum = z.enum([
-  "PENDING",
-  "CONFIRMED",
-  "CANCELLED",
-  "COMPLETED",
-  "NO_SHOW",
-]);
+const ReservationStatusEnum = z.nativeEnum(ReservationStatus);
 
 export const reservationRouter = router({
   /** Lista reservas de todas las canchas del tenant (TENANT_STAFF o superior) */
@@ -304,8 +298,8 @@ export const reservationRouter = router({
               name: true,
               sport: true,
               address: true,
+              department: true,
               district: true,
-              city: true,
               tenantId: true,
               ownerId: true,
               owner: {
@@ -579,6 +573,7 @@ export const reservationRouter = router({
           endDate,
           amount: new Prisma.Decimal(amount),
           status: "PENDING",
+          tenantId: field.tenantId,
           userId: input.userId ?? null,
           guestName: isGuest ? (input.guestName?.trim() ?? null) : null,
           guestEmail: isGuest ? (input.guestEmail?.trim() ?? null) : null,
@@ -599,7 +594,12 @@ export const reservationRouter = router({
     .input(
       z.object({
         id: IdSchema,
-        status: z.enum(["CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"]),
+        status: z.enum([
+          ReservationStatus.CONFIRMED,
+          ReservationStatus.CANCELLED,
+          ReservationStatus.COMPLETED,
+          ReservationStatus.NO_SHOW,
+        ]),
       })
     )
     .mutation(async ({ input, ctx }) => {

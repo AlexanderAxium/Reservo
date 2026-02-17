@@ -24,7 +24,8 @@ const createSportCenterSchema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
   address: z.string().min(1, "La dirección es requerida"),
   district: z.string().optional(),
-  city: z.string().optional().default("Lima"),
+  department: z.string().optional().default("Lima"),
+  province: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   description: z.string().optional(),
@@ -37,7 +38,8 @@ const updateSportCenterSchema = z.object({
   name: z.string().min(1).optional(),
   address: z.string().min(1).optional(),
   district: z.string().optional(),
-  city: z.string().optional(),
+  department: z.string().optional(),
+  province: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email().optional().or(z.literal("")),
   description: z.string().optional(),
@@ -65,6 +67,7 @@ export const sportCenterRouter = router({
         "name",
         "address",
         "district",
+        "department",
         "description",
       ]);
       const orderBy = createSortOrder(sortBy, sortOrder, {
@@ -197,7 +200,8 @@ export const sportCenterRouter = router({
           slug: `${input.name.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`,
           address: input.address,
           district: input.district,
-          city: input.city,
+          department: input.department,
+          province: input.province,
           phone: input.phone,
           email: input.email || null,
           description: input.description,
@@ -276,7 +280,9 @@ export const sportCenterRouter = router({
       if (input.name !== undefined) updateData.name = input.name;
       if (input.address !== undefined) updateData.address = input.address;
       if (input.district !== undefined) updateData.district = input.district;
-      if (input.city !== undefined) updateData.city = input.city;
+      if (input.department !== undefined)
+        updateData.department = input.department;
+      if (input.province !== undefined) updateData.province = input.province;
       if (input.phone !== undefined) updateData.phone = input.phone;
       if (input.email !== undefined) updateData.email = input.email || null;
       if (input.description !== undefined)
@@ -383,7 +389,7 @@ export const sportCenterRouter = router({
           OR: [
             { name: { contains: search.trim(), mode: "insensitive" } },
             { district: { contains: search.trim(), mode: "insensitive" } },
-            { city: { contains: search.trim(), mode: "insensitive" } },
+            { department: { contains: search.trim(), mode: "insensitive" } },
           ],
         }),
       };
@@ -396,7 +402,8 @@ export const sportCenterRouter = router({
             name: true,
             address: true,
             district: true,
-            city: true,
+            department: true,
+            province: true,
             description: true,
             images: true,
             _count: {

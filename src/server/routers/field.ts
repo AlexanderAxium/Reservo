@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, Sport, SurfaceType, WeekDay } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { prisma } from "../../lib/db";
@@ -29,14 +29,10 @@ import { requireTenantId } from "../utils/tenant";
 // Usamos un schema único para evitar errores de "Invalid uuid".
 const IdSchema = z.union([z.string().uuid(), z.string().cuid()]);
 
-// Enum de deportes
-const SportEnum = z.enum([
-  "FOOTBALL",
-  "TENNIS",
-  "BASKETBALL",
-  "VOLLEYBALL",
-  "FUTSAL",
-]);
+// Zod schemas derivados de los enums de Prisma (se actualizan automáticamente al cambiar el schema)
+const SportEnum = z.nativeEnum(Sport);
+const SurfaceTypeEnum = z.nativeEnum(SurfaceType);
+const WeekDayEnum = z.nativeEnum(WeekDay);
 
 // Schema para crear una cancha
 const createFieldSchema = z.object({
@@ -46,7 +42,8 @@ const createFieldSchema = z.object({
   available: z.boolean().default(true),
   images: z.array(z.string().url("URL de imagen inválida")).default([]),
   address: z.string().min(1, "La dirección es requerida"),
-  city: z.string().optional().default("Lima"),
+  department: z.string().optional().default("Lima"),
+  province: z.string().optional(),
   district: z.string().optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
@@ -60,6 +57,9 @@ const createFieldSchema = z.object({
   email: z.string().email("Email inválido").optional().or(z.literal("")),
   sportCenterId: IdSchema.optional(),
   ownerId: IdSchema.optional(), // Solo para admin
+  surfaceType: SurfaceTypeEnum.optional(),
+  isIndoor: z.boolean().default(false),
+  hasLighting: z.boolean().default(true),
   features: z
     .array(
       z.object({
@@ -80,7 +80,8 @@ const updateFieldSchema = z.object({
   available: z.boolean().optional(),
   images: z.array(z.string().url()).optional(),
   address: z.string().min(1).optional(),
-  city: z.string().optional(),
+  department: z.string().optional(),
+  province: z.string().optional(),
   district: z.string().optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
@@ -90,6 +91,9 @@ const updateFieldSchema = z.object({
   email: z.string().email().optional().or(z.literal("")),
   sportCenterId: IdSchema.optional(),
   ownerId: IdSchema.optional(), // Solo para admin
+  surfaceType: SurfaceTypeEnum.optional(),
+  isIndoor: z.boolean().optional(),
+  hasLighting: z.boolean().optional(),
   features: z
     .array(
       z.object({
@@ -205,7 +209,8 @@ export const fieldRouter = router({
             available: input.available,
             images: input.images,
             address: input.address,
-            city: input.city,
+            department: input.department,
+            province: input.province,
             district: input.district,
             latitude: toDecimal(input.latitude),
             longitude: toDecimal(input.longitude),
@@ -216,6 +221,9 @@ export const fieldRouter = router({
             tenantId,
             ownerId: ownerId,
             sportCenterId: input.sportCenterId || null,
+            surfaceType: input.surfaceType,
+            isIndoor: input.isIndoor,
+            hasLighting: input.hasLighting,
           },
         });
 
@@ -298,6 +306,7 @@ export const fieldRouter = router({
       const searchFilter = createSearchFilter(search, [
         "name",
         "address",
+        "department",
         "district",
         "description",
       ]);
@@ -512,7 +521,9 @@ export const fieldRouter = router({
       if (input.available !== undefined) updateData.available = input.available;
       if (input.images !== undefined) updateData.images = input.images;
       if (input.address !== undefined) updateData.address = input.address;
-      if (input.city !== undefined) updateData.city = input.city;
+      if (input.department !== undefined)
+        updateData.department = input.department;
+      if (input.province !== undefined) updateData.province = input.province;
       if (input.district !== undefined) updateData.district = input.district;
       if (input.latitude !== undefined)
         updateData.latitude = toDecimal(input.latitude);
@@ -538,6 +549,11 @@ export const fieldRouter = router({
           };
         }
       }
+      if (input.surfaceType !== undefined)
+        updateData.surfaceType = input.surfaceType;
+      if (input.isIndoor !== undefined) updateData.isIndoor = input.isIndoor;
+      if (input.hasLighting !== undefined)
+        updateData.hasLighting = input.hasLighting;
 
       // Solo TENANT_ADMIN puede cambiar el owner
       if (input.ownerId !== undefined) {
@@ -773,15 +789,7 @@ export const fieldRouter = router({
         fieldId: IdSchema,
         schedules: z.array(
           z.object({
-            day: z.enum([
-              "MONDAY",
-              "TUESDAY",
-              "WEDNESDAY",
-              "THURSDAY",
-              "FRIDAY",
-              "SATURDAY",
-              "SUNDAY",
-            ]),
+            day: WeekDayEnum,
             startHour: z
               .string()
               .regex(
@@ -887,15 +895,7 @@ export const fieldRouter = router({
     .input(
       z.object({
         fieldId: IdSchema,
-        day: z.enum([
-          "MONDAY",
-          "TUESDAY",
-          "WEDNESDAY",
-          "THURSDAY",
-          "FRIDAY",
-          "SATURDAY",
-          "SUNDAY",
-        ]),
+        day: WeekDayEnum,
         startHour: z
           .string()
           .regex(
@@ -1111,7 +1111,7 @@ export const fieldRouter = router({
           OR: [
             { name: { contains: search.trim(), mode: "insensitive" } },
             { district: { contains: search.trim(), mode: "insensitive" } },
-            { city: { contains: search.trim(), mode: "insensitive" } },
+            { department: { contains: search.trim(), mode: "insensitive" } },
           ],
         }),
         ...(sport && { sport }),
@@ -1125,7 +1125,7 @@ export const fieldRouter = router({
             name: true,
             sport: true,
             price: true,
-            city: true,
+            department: true,
             district: true,
             description: true,
             images: true,

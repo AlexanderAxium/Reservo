@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { LIMA_DISTRICTS } from "@/constants/peru";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ArrowRight, Calendar, MapPin, Search } from "lucide-react";
 import Link from "next/link";
@@ -22,20 +23,10 @@ const SPORT_KEYS: Record<string, string> = {
   BASKETBALL: "basketball",
   VOLLEYBALL: "volleyball",
   FUTSAL: "futsal",
+  PADEL: "padel",
+  MULTI_PURPOSE: "multiPurpose",
+  OTHER: "other",
 };
-
-const DISTRICTS = [
-  "Lima",
-  "Miraflores",
-  "San Isidro",
-  "Surco",
-  "La Molina",
-  "Jesús María",
-  "Lince",
-  "Magdalena",
-  "Pueblo Libre",
-  "Barranco",
-];
 
 export function LandingHeroSection() {
   const { t } = useTranslation("home");
@@ -44,7 +35,16 @@ export function LandingHeroSection() {
   const sports = useMemo(
     () =>
       (
-        ["FOOTBALL", "TENNIS", "BASKETBALL", "VOLLEYBALL", "FUTSAL"] as const
+        [
+          "FOOTBALL",
+          "TENNIS",
+          "BASKETBALL",
+          "VOLLEYBALL",
+          "FUTSAL",
+          "PADEL",
+          "MULTI_PURPOSE",
+          "OTHER",
+        ] as const
       ).map((value) => ({ value, label: t(`sports.${SPORT_KEYS[value]}`) })),
     [t]
   );
@@ -143,7 +143,7 @@ export function LandingHeroSection() {
                     <SelectValue placeholder={t("hero.selectDistrict")} />
                   </SelectTrigger>
                   <SelectContent>
-                    {DISTRICTS.map((d) => (
+                    {LIMA_DISTRICTS.map((d) => (
                       <SelectItem key={d} value={d}>
                         {d}
                       </SelectItem>

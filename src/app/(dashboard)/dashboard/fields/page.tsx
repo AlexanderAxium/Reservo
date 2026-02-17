@@ -76,6 +76,9 @@ export default function FieldsPage() {
       | "BASKETBALL"
       | "VOLLEYBALL"
       | "FUTSAL"
+      | "PADEL"
+      | "MULTI_PURPOSE"
+      | "OTHER"
       | undefined,
     available: availableFilter,
   });
@@ -121,6 +124,9 @@ export default function FieldsPage() {
     BASKETBALL: t("sports.BASKETBALL"),
     VOLLEYBALL: t("sports.VOLLEYBALL"),
     FUTSAL: t("sports.FUTSAL"),
+    PADEL: t("sports.PADEL"),
+    MULTI_PURPOSE: t("sports.MULTI_PURPOSE"),
+    OTHER: t("sports.OTHER"),
   };
 
   // Compute KPIs from current page data
@@ -148,7 +154,7 @@ export default function FieldsPage() {
         sport: sportLabels[f.sport] || f.sport,
         address: f.address,
         district: f.district || "-",
-        city: f.city || "-",
+        department: f.department || "-",
         price: `S/ ${formatPrice(f.price)}`,
         available: f.available
           ? t("fieldsList.availableStatus")
@@ -206,6 +212,9 @@ export default function FieldsPage() {
               { label: t("sports.BASKETBALL"), value: "BASKETBALL" },
               { label: t("sports.VOLLEYBALL"), value: "VOLLEYBALL" },
               { label: t("sports.FUTSAL"), value: "FUTSAL" },
+              { label: t("sports.PADEL"), value: "PADEL" },
+              { label: t("sports.MULTI_PURPOSE"), value: "MULTI_PURPOSE" },
+              { label: t("sports.OTHER"), value: "OTHER" },
             ],
             onChange: (val) => {
               setSportFilter(val === "all" ? undefined : val);

@@ -6,9 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { LIMA_DISTRICTS, PERU_DEPARTMENTS } from "@/constants/peru";
 import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useEffect, useState } from "react";
@@ -21,7 +29,9 @@ export default function SettingsGeneralPage() {
     email: "",
     phone: "",
     address: "",
-    city: "",
+    department: "",
+    province: "",
+    district: "",
     website: "",
     description: "",
     logoUrl: null as string | null,
@@ -49,7 +59,9 @@ export default function SettingsGeneralPage() {
           email?: string | null;
           phone?: string | null;
           address?: string | null;
-          city?: string | null;
+          department?: string | null;
+          province?: string | null;
+          district?: string | null;
           website?: string | null;
           description?: string | null;
           logoUrl?: string | null;
@@ -60,7 +72,9 @@ export default function SettingsGeneralPage() {
           email: d.email || "",
           phone: d.phone || "",
           address: d.address || "",
-          city: d.city || "",
+          department: d.department || "",
+          province: d.province || "",
+          district: d.district || "",
           website: d.website || "",
           description: d.description || "",
           logoUrl: d.logoUrl ?? null,
@@ -77,7 +91,9 @@ export default function SettingsGeneralPage() {
       email: formData.email,
       phone: formData.phone,
       address: formData.address,
-      city: formData.city,
+      department: formData.department,
+      province: formData.province,
+      district: formData.district,
       website: formData.website,
       description: formData.description,
       logoUrl: formData.logoUrl,
@@ -212,18 +228,81 @@ export default function SettingsGeneralPage() {
                     />
                   </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="department">
+                        {t("settingsGeneral.departmentLabel")}
+                      </Label>
+                      <Select
+                        value={formData.department}
+                        onValueChange={(val) =>
+                          setFormData({
+                            ...formData,
+                            department: val,
+                            district: "",
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar departamento" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PERU_DEPARTMENTS.map((dept) => (
+                            <SelectItem key={dept} value={dept}>
+                              {dept}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="province">
+                        {t("settingsGeneral.provinceLabel")}
+                      </Label>
+                      <Input
+                        id="province"
+                        value={formData.province}
+                        onChange={(e) =>
+                          setFormData({ ...formData, province: e.target.value })
+                        }
+                        placeholder={t("settingsGeneral.provincePlaceholder")}
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="city">
-                      {t("settingsGeneral.cityLabel")}
+                    <Label htmlFor="district">
+                      {t("settingsGeneral.districtLabel")}
                     </Label>
-                    <Input
-                      id="city"
-                      value={formData.city}
-                      onChange={(e) =>
-                        setFormData({ ...formData, city: e.target.value })
-                      }
-                      placeholder={t("settingsGeneral.cityPlaceholder")}
-                    />
+                    {formData.department === "Lima" ? (
+                      <Select
+                        value={formData.district}
+                        onValueChange={(val) =>
+                          setFormData({ ...formData, district: val })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar distrito" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LIMA_DISTRICTS.map((dist) => (
+                            <SelectItem key={dist} value={dist}>
+                              {dist}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input
+                        id="district"
+                        value={formData.district}
+                        onChange={(e) =>
+                          setFormData({ ...formData, district: e.target.value })
+                        }
+                        placeholder={t("settingsGeneral.districtPlaceholder")}
+                      />
+                    )}
                   </div>
                 </div>
               </div>

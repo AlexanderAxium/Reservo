@@ -16,7 +16,6 @@ export enum PermissionResource {
   SPORT_CENTER = "SPORT_CENTER",
   FIELD = "FIELD",
   RESERVATION = "RESERVATION",
-  REVIEW = "REVIEW",
   TENANT = "TENANT",
   STAFF = "STAFF",
   METRICS = "METRICS",

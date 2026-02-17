@@ -40,6 +40,9 @@ type SportFilter =
   | "BASKETBALL"
   | "VOLLEYBALL"
   | "FUTSAL"
+  | "PADEL"
+  | "MULTI_PURPOSE"
+  | "OTHER"
   | undefined;
 
 const SPORT_KEYS: Record<string, string> = {
@@ -48,6 +51,9 @@ const SPORT_KEYS: Record<string, string> = {
   BASKETBALL: "basketball",
   VOLLEYBALL: "volleyball",
   FUTSAL: "futsal",
+  PADEL: "padel",
+  MULTI_PURPOSE: "multiPurpose",
+  OTHER: "other",
 };
 
 const SPORT_OPTIONS: { value: SportFilter; labelKey: string }[] = [
@@ -57,6 +63,9 @@ const SPORT_OPTIONS: { value: SportFilter; labelKey: string }[] = [
   { value: "BASKETBALL", labelKey: "basketball" },
   { value: "VOLLEYBALL", labelKey: "volleyball" },
   { value: "FUTSAL", labelKey: "futsal" },
+  { value: "PADEL", labelKey: "padel" },
+  { value: "MULTI_PURPOSE", labelKey: "multiPurpose" },
+  { value: "OTHER", labelKey: "other" },
 ];
 
 function FieldCardSkeleton() {
@@ -366,7 +375,7 @@ function PublicCanchasPageContent() {
                     "https://images.unsplash.com/photo-1575361204480-05e88e6e8b1f?w=800";
                   const locationName =
                     field.sportCenter?.name ?? t("independentField");
-                  const district = (field.district ?? field.city ?? "")
+                  const district = (field.district ?? field.department ?? "")
                     .toString()
                     .trim();
                   const price = Number(field.price);

@@ -7,6 +7,7 @@ export const fieldSelectBasic = {
   name: true,
   sport: true,
   address: true,
+  department: true,
   district: true,
 } as const;
 

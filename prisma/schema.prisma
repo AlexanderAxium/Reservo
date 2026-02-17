@@ -23,7 +23,9 @@ model Tenant {
   email           String?
   phone           String?
   address         String?
-  city            String?
+  department      String?      // Departamento del Perú (Lima, Arequipa, Cusco...)
+  province        String?      // Provincia
+  district        String?      // Distrito (Miraflores, Surco...)
   country         String?
   website         String?
   facebookUrl     String?
@@ -56,6 +58,7 @@ model Tenant {
   translations    Translation[]
   sportCenters    SportCenter[]
   fields          Field[]
+  reservations    Reservation[]
 
   @@map("tenants")
 }
@@ -229,7 +232,6 @@ enum PermissionResource {
   SPORT_CENTER
   FIELD
   RESERVATION
-  REVIEW
   TENANT
   STAFF
   METRICS
@@ -330,6 +332,21 @@ enum Sport {
   BASKETBALL
   VOLLEYBALL
   FUTSAL
+  PADEL
+  MULTI_PURPOSE
+  OTHER
+}
+
+enum SurfaceType {
+  NATURAL_GRASS
+  SYNTHETIC_GRASS
+  CLAY
+  HARD_COURT
+  CONCRETE
+  PARQUET
+  SAND
+  RUBBER
+  OTHER
 }
 
 enum WeekDay {
@@ -370,6 +387,9 @@ enum NotificationType {
   NEW_RESERVATION
   PAYMENT_TO_VERIFY
   RESERVATION_CONFIRMED
+  RESERVATION_CANCELLED
+  RESERVATION_REMINDER
+  PAYMENT_CONFIRMED
   SYSTEM_ALERT
 }
 
@@ -384,18 +404,18 @@ model SportCenter {
   name        String
   slug        String            @unique
   address     String
-  city        String?           @default("Lima")
+  department  String            @default("Lima") // Departamento del Perú
+  province    String?           // Provincia
   district    String?           // Distrito para filtrado rápido
   description String?           @db.Text
   phone       String?
   email       String?
   website     String?
-  latitude    Decimal?          @db.Decimal(10, 8)  // Latitud para geolocalización
-  longitude   Decimal?          @db.Decimal(11, 8)  // Longitud para geolocalización
-  googleMapsUrl String?         // Link directo a Google Maps para navegación
+  latitude    Decimal?          @db.Decimal(10, 8)
+  longitude   Decimal?          @db.Decimal(11, 8)
+  googleMapsUrl String?
   status      SportCenterStatus @default(PENDING)
-  rating      Decimal?          @db.Decimal(3, 2)
-  images      String[]          // Array de URLs de imágenes
+  images      String[]
   ownerId     String
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
@@ -405,52 +425,55 @@ model SportCenter {
   tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   // Relations
-  fields            Field[]  // Canchas que pertenecen a este centro (opcional)
+  fields            Field[]
   operatingSchedule OperatingSchedule[]
 
   @@index([ownerId])
   @@index([tenantId])
   @@index([status])
   @@index([slug])
-  @@index([latitude, longitude])  // Para búsquedas por proximidad
-  @@index([district])              // Para filtrar por distrito
+  @@index([department])
+  @@index([department, district])
+  @@index([latitude, longitude])
   @@map("sport_centers")
 }
 
 /// Field model
 model Field {
-  id            String   @id @default(uuid())
+  id            String       @id @default(uuid())
   name          String
-  slug          String   @unique
+  slug          String       @unique
   sport         Sport
-  price         Decimal  @db.Decimal(10, 2)
-  available     Boolean  @default(true)
-  images        String[] // Array de URLs de imágenes
+  price         Decimal      @db.Decimal(10, 2)
+  available     Boolean      @default(true)
+  images        String[]
 
-  // Ubicación de la cancha (Opción 7 - Híbrida)
+  // Características físicas del espacio
+  surfaceType   SurfaceType?
+  isIndoor      Boolean      @default(false)
+  hasLighting   Boolean      @default(true)
+
+  // Ubicación
   address       String
-  city          String?  @default("Lima")
-  district      String?  // Distrito para filtrado rápido
-  latitude      Decimal? @db.Decimal(10, 8)  // Latitud para geolocalización
-  longitude     Decimal? @db.Decimal(11, 8)  // Longitud para geolocalización
-  googleMapsUrl String?  // Link directo a Google Maps para navegación
+  department    String       @default("Lima") // Departamento del Perú
+  province      String?
+  district      String?
+  latitude      Decimal?     @db.Decimal(10, 8)
+  longitude     Decimal?     @db.Decimal(11, 8)
+  googleMapsUrl String?
 
   // Descripción y detalles
-  description   String?  @db.Text
+  description   String?      @db.Text
   phone         String?
   email         String?
 
-  // Owner directo (cancha individual)
+  // Ownership
   ownerId       String
-
-  // SportCenter opcional (para escalabilidad futura)
   sportCenterId String?
-
-  // Tenant association
   tenantId      String?
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   // Foreign Keys
   owner       User         @relation("OwnerFields", fields: [ownerId], references: [id], onDelete: Cascade)
@@ -468,8 +491,9 @@ model Field {
   @@index([tenantId])
   @@index([sport])
   @@index([available])
-  @@index([latitude, longitude])  // Para búsquedas por proximidad
-  @@index([district])              // Para filtrar por distrito
+  @@index([department])
+  @@index([department, district])
+  @@index([latitude, longitude])
   @@map("fields")
 }
 
@@ -498,9 +522,11 @@ model Reservation {
   endDate          DateTime
   amount           Decimal            @db.Decimal(10, 2)
   status           ReservationStatus  @default(PENDING)
-  createdByChatbot Boolean            @default(false)
-  userId           String?            // Opcional: reservas de invitados no tienen user
+  notes            String?            // Comentarios del cliente
+  userId           String?
   fieldId          String
+  tenantId         String?            // Denormalizado para reporting por tenant
+
   // Datos de invitado (cuando userId es null)
   guestName        String?
   guestEmail       String?
@@ -509,8 +535,9 @@ model Reservation {
   updatedAt        DateTime           @updatedAt
 
   // Foreign Keys
-  field Field @relation(fields: [fieldId], references: [id], onDelete: Cascade)
-  user  User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  field  Field   @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   // Relations
   payments Payment[]
@@ -518,7 +545,8 @@ model Reservation {
   @@index([fieldId])
   @@index([userId])
   @@index([status])
-  @@index([createdByChatbot])
+  @@index([tenantId])
+  @@index([fieldId, startDate, status])
   @@index([startDate, endDate])
   @@map("reservations")
 }

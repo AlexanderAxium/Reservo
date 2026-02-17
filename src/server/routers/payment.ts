@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { PaymentStatus, type Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { prisma } from "../../lib/db";
@@ -20,13 +20,7 @@ import { requireTenantId } from "../utils/tenant";
 
 const IdSchema = z.union([z.string().uuid(), z.string().cuid()]);
 
-const PaymentStatusEnum = z.enum([
-  "PENDING",
-  "PAID",
-  "FAILED",
-  "REFUNDED",
-  "CANCELLED",
-]);
+const PaymentStatusEnum = z.nativeEnum(PaymentStatus);
 
 export const paymentRouter = router({
   // Listar pagos de las reservas del tenant (TENANT_STAFF o superior)

@@ -1,7 +1,7 @@
 {
   "availableFields": "Canchas disponibles",
   "chooseFieldAndReserve": "Elige una cancha y reserva tu horario",
-  "searchPlaceholder": "Buscar por nombre, ciudad, distrito...",
+  "searchPlaceholder": "Buscar por nombre, departamento, distrito...",
   "loadingFields": "Cargando canchas...",
   "noFieldsFound": "No se encontraron canchas disponibles.",
   "independentField": "Cancha independiente",
@@ -21,6 +21,9 @@
   "basketball": "Básquet",
   "volleyball": "Vóley",
   "futsal": "Futsal",
+  "padel": "Pádel",
+  "multiPurpose": "Multiuso",
+  "other": "Otro",
 
   "loadingField": "Cargando cancha...",
   "fieldNotFound": "Cancha no encontrada",

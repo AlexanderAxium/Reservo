@@ -186,7 +186,7 @@ export default function TenantInfo() {
         {/* Address & Social Media */}
         <div className="space-y-4">
           {/* Address */}
-          {(tenant.address || tenant.city || tenant.country) && (
+          {(tenant.address || tenant.department || tenant.country) && (
             <div>
               <h4 className="text-sm font-medium text-foreground mb-3">
                 Dirección
@@ -195,7 +195,7 @@ export default function TenantInfo() {
                 <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-foreground leading-relaxed">
-                    {[tenant.address, tenant.city, tenant.country]
+                    {[tenant.address, tenant.department, tenant.country]
                       .filter(Boolean)
                       .join(", ")}
                   </p>

@@ -37,7 +37,7 @@ type SportCenter = {
   name: string;
   address: string;
   district?: string | null;
-  city: string | null;
+  department: string | null;
   phone?: string | null;
   email?: string | null;
   owner: {
@@ -97,7 +97,7 @@ export default function SportCentersPage() {
         name: c.name,
         address: c.address,
         district: c.district || "-",
-        city: c.city || "-",
+        department: c.department || "-",
         phone: c.phone || "-",
         owner: c.owner.name,
         ownerEmail: c.owner.email,
@@ -108,7 +108,7 @@ export default function SportCentersPage() {
         { key: "name", label: "Name" },
         { key: "address", label: "Address" },
         { key: "district", label: "District" },
-        { key: "city", label: "City" },
+        { key: "department", label: "Department" },
         { key: "phone", label: "Phone" },
         { key: "owner", label: "Owner" },
         { key: "ownerEmail", label: "Owner Email" },
@@ -126,7 +126,8 @@ export default function SportCentersPage() {
         <div>
           <p className="font-medium">{record.name}</p>
           <p className="text-xs text-muted-foreground">
-            {[record.district, record.city].filter(Boolean).join(", ") || "-"}
+            {[record.district, record.department].filter(Boolean).join(", ") ||
+              "-"}
           </p>
         </div>
       ),

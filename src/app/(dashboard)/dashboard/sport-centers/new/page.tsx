@@ -6,7 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { PERU_DEPARTMENTS } from "@/constants/peru";
 import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useRouter } from "next/navigation";
@@ -21,7 +29,8 @@ export default function NewSportCenterPage() {
     name: "",
     address: "",
     district: "",
-    city: "Lima",
+    department: "Lima",
+    province: "",
     phone: "",
     email: "",
     description: "",
@@ -67,15 +76,26 @@ export default function NewSportCenterPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="city">{t("sportCenterForm.cityLabel")}</Label>
-              <Input
-                id="city"
-                value={formData.city}
-                onChange={(e) =>
-                  setFormData({ ...formData, city: e.target.value })
+              <Label htmlFor="department">
+                {t("sportCenterForm.departmentLabel")}
+              </Label>
+              <Select
+                value={formData.department}
+                onValueChange={(val) =>
+                  setFormData({ ...formData, department: val })
                 }
-                placeholder={t("sportCenterForm.cityPlaceholder")}
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar departamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PERU_DEPARTMENTS.map((dept) => (
+                    <SelectItem key={dept} value={dept}>
+                      {dept}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -93,6 +113,20 @@ export default function NewSportCenterPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="province">
+                {t("sportCenterForm.provinceLabel")}
+              </Label>
+              <Input
+                id="province"
+                value={formData.province}
+                onChange={(e) =>
+                  setFormData({ ...formData, province: e.target.value })
+                }
+                placeholder={t("sportCenterForm.provincePlaceholder")}
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="district">
                 {t("sportCenterForm.districtLabel")}

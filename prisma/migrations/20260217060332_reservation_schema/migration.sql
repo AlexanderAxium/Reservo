@@ -1,15 +1,24 @@
 /*
   Warnings:
 
+  - You are about to drop the column `city` on the `tenants` table. All the data in the column will be lost.
   - A unique constraint covering the columns `[username]` on the table `User` will be added. If there are existing duplicate values, this will fail.
+  - A unique constraint covering the columns `[slug]` on the table `tenants` will be added. If there are existing duplicate values, this will fail.
   - Added the required column `username` to the `User` table without a default value. This is not possible if the table is not empty.
+  - Added the required column `slug` to the `tenants` table without a default value. This is not possible if the table is not empty.
 
 */
 -- CreateEnum
-CREATE TYPE "public"."UserRoleType" AS ENUM ('ADMIN', 'OWNER', 'CLIENT');
+CREATE TYPE "public"."UserRoleType" AS ENUM ('SYS_ADMIN', 'TENANT_ADMIN', 'TENANT_STAFF', 'CLIENT');
 
 -- CreateEnum
-CREATE TYPE "public"."Sport" AS ENUM ('FOOTBALL', 'TENNIS', 'BASKETBALL', 'VOLLEYBALL', 'FUTSAL');
+CREATE TYPE "public"."TenantPlan" AS ENUM ('FREE', 'BASIC', 'PROFESSIONAL', 'ENTERPRISE');
+
+-- CreateEnum
+CREATE TYPE "public"."Sport" AS ENUM ('FOOTBALL', 'TENNIS', 'BASKETBALL', 'VOLLEYBALL', 'FUTSAL', 'PADEL', 'MULTI_PURPOSE', 'OTHER');
+
+-- CreateEnum
+CREATE TYPE "public"."SurfaceType" AS ENUM ('NATURAL_GRASS', 'SYNTHETIC_GRASS', 'CLAY', 'HARD_COURT', 'CONCRETE', 'PARQUET', 'SAND', 'RUBBER', 'OTHER');
 
 -- CreateEnum
 CREATE TYPE "public"."WeekDay" AS ENUM ('MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY');
@@ -24,7 +33,7 @@ CREATE TYPE "public"."SportCenterStatus" AS ENUM ('ACTIVE', 'PENDING', 'REJECTED
 CREATE TYPE "public"."ReservationStatus" AS ENUM ('PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW');
 
 -- CreateEnum
-CREATE TYPE "public"."NotificationType" AS ENUM ('NEW_RESERVATION', 'PAYMENT_TO_VERIFY', 'RESERVATION_CONFIRMED', 'SYSTEM_ALERT');
+CREATE TYPE "public"."NotificationType" AS ENUM ('NEW_RESERVATION', 'PAYMENT_TO_VERIFY', 'RESERVATION_CONFIRMED', 'RESERVATION_CANCELLED', 'RESERVATION_REMINDER', 'PAYMENT_CONFIRMED', 'SYSTEM_ALERT');
 
 -- AlterEnum
 -- This migration adds more than one value to an enum.
@@ -37,7 +46,11 @@ CREATE TYPE "public"."NotificationType" AS ENUM ('NEW_RESERVATION', 'PAYMENT_TO_
 ALTER TYPE "public"."PermissionResource" ADD VALUE 'SPORT_CENTER';
 ALTER TYPE "public"."PermissionResource" ADD VALUE 'FIELD';
 ALTER TYPE "public"."PermissionResource" ADD VALUE 'RESERVATION';
-ALTER TYPE "public"."PermissionResource" ADD VALUE 'REVIEW';
+ALTER TYPE "public"."PermissionResource" ADD VALUE 'TENANT';
+ALTER TYPE "public"."PermissionResource" ADD VALUE 'STAFF';
+ALTER TYPE "public"."PermissionResource" ADD VALUE 'METRICS';
+ALTER TYPE "public"."PermissionResource" ADD VALUE 'SETTINGS';
+ALTER TYPE "public"."PermissionResource" ADD VALUE 'PAYMENT';
 
 -- DropIndex
 DROP INDEX "public"."user_roles_expiresAt_idx";
@@ -47,6 +60,18 @@ ALTER TABLE "public"."User" ADD COLUMN     "isActive" BOOLEAN NOT NULL DEFAULT t
 ADD COLUMN     "password" TEXT,
 ADD COLUMN     "username" TEXT NOT NULL;
 
+-- AlterTable
+ALTER TABLE "public"."tenants" DROP COLUMN "city",
+ADD COLUMN     "department" TEXT,
+ADD COLUMN     "district" TEXT,
+ADD COLUMN     "isVerified" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "maxFields" INTEGER NOT NULL DEFAULT 5,
+ADD COLUMN     "maxUsers" INTEGER NOT NULL DEFAULT 10,
+ADD COLUMN     "plan" "public"."TenantPlan" NOT NULL DEFAULT 'FREE',
+ADD COLUMN     "province" TEXT,
+ADD COLUMN     "slug" TEXT NOT NULL,
+ADD COLUMN     "verifiedAt" TIMESTAMP(3);
+
 -- CreateTable
 CREATE TABLE "public"."sport_centers" (
     "id" TEXT NOT NULL,
@@ -54,7 +79,8 @@ CREATE TABLE "public"."sport_centers" (
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "address" TEXT NOT NULL,
-    "city" TEXT DEFAULT 'Lima',
+    "department" TEXT NOT NULL DEFAULT 'Lima',
+    "province" TEXT,
     "district" TEXT,
     "description" TEXT,
     "phone" TEXT,
@@ -64,7 +90,6 @@ CREATE TABLE "public"."sport_centers" (
     "longitude" DECIMAL(11,8),
     "googleMapsUrl" TEXT,
     "status" "public"."SportCenterStatus" NOT NULL DEFAULT 'PENDING',
-    "rating" DECIMAL(3,2),
     "images" TEXT[],
     "ownerId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -77,12 +102,17 @@ CREATE TABLE "public"."sport_centers" (
 CREATE TABLE "public"."fields" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
     "sport" "public"."Sport" NOT NULL,
     "price" DECIMAL(10,2) NOT NULL,
     "available" BOOLEAN NOT NULL DEFAULT true,
     "images" TEXT[],
+    "surfaceType" "public"."SurfaceType",
+    "isIndoor" BOOLEAN NOT NULL DEFAULT false,
+    "hasLighting" BOOLEAN NOT NULL DEFAULT true,
     "address" TEXT NOT NULL,
-    "city" TEXT DEFAULT 'Lima',
+    "department" TEXT NOT NULL DEFAULT 'Lima',
+    "province" TEXT,
     "district" TEXT,
     "latitude" DECIMAL(10,8),
     "longitude" DECIMAL(11,8),
@@ -92,6 +122,7 @@ CREATE TABLE "public"."fields" (
     "email" TEXT,
     "ownerId" TEXT NOT NULL,
     "sportCenterId" TEXT,
+    "tenantId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -118,9 +149,10 @@ CREATE TABLE "public"."reservations" (
     "endDate" TIMESTAMP(3) NOT NULL,
     "amount" DECIMAL(10,2) NOT NULL,
     "status" "public"."ReservationStatus" NOT NULL DEFAULT 'PENDING',
-    "createdByChatbot" BOOLEAN NOT NULL DEFAULT false,
+    "notes" TEXT,
     "userId" TEXT,
     "fieldId" TEXT NOT NULL,
+    "tenantId" TEXT,
     "guestName" TEXT,
     "guestEmail" TEXT,
     "guestPhone" TEXT,
@@ -224,10 +256,19 @@ CREATE INDEX "sport_centers_status_idx" ON "public"."sport_centers"("status");
 CREATE INDEX "sport_centers_slug_idx" ON "public"."sport_centers"("slug");
 
 -- CreateIndex
+CREATE INDEX "sport_centers_department_idx" ON "public"."sport_centers"("department");
+
+-- CreateIndex
+CREATE INDEX "sport_centers_department_district_idx" ON "public"."sport_centers"("department", "district");
+
+-- CreateIndex
 CREATE INDEX "sport_centers_latitude_longitude_idx" ON "public"."sport_centers"("latitude", "longitude");
 
 -- CreateIndex
-CREATE INDEX "sport_centers_district_idx" ON "public"."sport_centers"("district");
+CREATE UNIQUE INDEX "fields_slug_key" ON "public"."fields"("slug");
+
+-- CreateIndex
+CREATE INDEX "fields_slug_idx" ON "public"."fields"("slug");
 
 -- CreateIndex
 CREATE INDEX "fields_ownerId_idx" ON "public"."fields"("ownerId");
@@ -236,16 +277,22 @@ CREATE INDEX "fields_ownerId_idx" ON "public"."fields"("ownerId");
 CREATE INDEX "fields_sportCenterId_idx" ON "public"."fields"("sportCenterId");
 
 -- CreateIndex
+CREATE INDEX "fields_tenantId_idx" ON "public"."fields"("tenantId");
+
+-- CreateIndex
 CREATE INDEX "fields_sport_idx" ON "public"."fields"("sport");
 
 -- CreateIndex
 CREATE INDEX "fields_available_idx" ON "public"."fields"("available");
 
 -- CreateIndex
-CREATE INDEX "fields_latitude_longitude_idx" ON "public"."fields"("latitude", "longitude");
+CREATE INDEX "fields_department_idx" ON "public"."fields"("department");
 
 -- CreateIndex
-CREATE INDEX "fields_district_idx" ON "public"."fields"("district");
+CREATE INDEX "fields_department_district_idx" ON "public"."fields"("department", "district");
+
+-- CreateIndex
+CREATE INDEX "fields_latitude_longitude_idx" ON "public"."fields"("latitude", "longitude");
 
 -- CreateIndex
 CREATE INDEX "schedules_fieldId_idx" ON "public"."schedules"("fieldId");
@@ -263,7 +310,10 @@ CREATE INDEX "reservations_userId_idx" ON "public"."reservations"("userId");
 CREATE INDEX "reservations_status_idx" ON "public"."reservations"("status");
 
 -- CreateIndex
-CREATE INDEX "reservations_createdByChatbot_idx" ON "public"."reservations"("createdByChatbot");
+CREATE INDEX "reservations_tenantId_idx" ON "public"."reservations"("tenantId");
+
+-- CreateIndex
+CREATE INDEX "reservations_fieldId_startDate_status_idx" ON "public"."reservations"("fieldId", "startDate", "status");
 
 -- CreateIndex
 CREATE INDEX "reservations_startDate_endDate_idx" ON "public"."reservations"("startDate", "endDate");
@@ -328,6 +378,9 @@ CREATE INDEX "User_username_idx" ON "public"."User"("username");
 -- CreateIndex
 CREATE INDEX "User_isActive_idx" ON "public"."User"("isActive");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "tenants_slug_key" ON "public"."tenants"("slug");
+
 -- AddForeignKey
 ALTER TABLE "public"."sport_centers" ADD CONSTRAINT "sport_centers_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "public"."User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
@@ -341,6 +394,9 @@ ALTER TABLE "public"."fields" ADD CONSTRAINT "fields_ownerId_fkey" FOREIGN KEY (
 ALTER TABLE "public"."fields" ADD CONSTRAINT "fields_sportCenterId_fkey" FOREIGN KEY ("sportCenterId") REFERENCES "public"."sport_centers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "public"."fields" ADD CONSTRAINT "fields_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "public"."tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "public"."schedules" ADD CONSTRAINT "schedules_fieldId_fkey" FOREIGN KEY ("fieldId") REFERENCES "public"."fields"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -348,6 +404,9 @@ ALTER TABLE "public"."reservations" ADD CONSTRAINT "reservations_fieldId_fkey" F
 
 -- AddForeignKey
 ALTER TABLE "public"."reservations" ADD CONSTRAINT "reservations_userId_fkey" FOREIGN KEY ("userId") REFERENCES "public"."User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "public"."reservations" ADD CONSTRAINT "reservations_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "public"."tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "public"."field_features" ADD CONSTRAINT "field_features_fieldId_fkey" FOREIGN KEY ("fieldId") REFERENCES "public"."fields"("id") ON DELETE CASCADE ON UPDATE CASCADE;

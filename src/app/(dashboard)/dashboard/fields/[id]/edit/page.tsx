@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -29,10 +30,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { PERU_DEPARTMENTS } from "@/constants/peru";
 import { useTranslation } from "@/hooks/useTranslation";
 import { FeatureIcon } from "@/lib/feature-icons";
 import { trpc } from "@/utils/trpc";
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { SurfaceType } from "@prisma/client";
 import { Save, Tag } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -45,14 +48,27 @@ const getUpdateFieldSchema = (t: (key: string) => string) =>
   z.object({
     name: z.string().min(1, t("fieldForm.nameRequired")).optional(),
     sport: z
-      .enum(["FOOTBALL", "TENNIS", "BASKETBALL", "VOLLEYBALL", "FUTSAL"])
+      .enum([
+        "FOOTBALL",
+        "TENNIS",
+        "BASKETBALL",
+        "VOLLEYBALL",
+        "FUTSAL",
+        "PADEL",
+        "MULTI_PURPOSE",
+        "OTHER",
+      ])
       .optional(),
     price: z.number().positive(t("fieldForm.pricePositive")).optional(),
     available: z.boolean().optional(),
     images: z.array(z.string().url(t("fieldForm.invalidImageUrl"))).optional(),
     address: z.string().min(1, t("fieldForm.addressRequired")).optional(),
-    city: z.string().optional(),
+    department: z.string().optional(),
+    province: z.string().optional(),
     district: z.string().optional(),
+    surfaceType: z.string().optional(),
+    isIndoor: z.boolean().optional(),
+    hasLighting: z.boolean().optional(),
     latitude: z.number().min(-90).max(90).optional(),
     longitude: z.number().min(-180).max(180).optional(),
     googleMapsUrl: z
@@ -80,6 +96,18 @@ const getUpdateFieldSchema = (t: (key: string) => string) =>
 
 type UpdateFieldFormData = z.infer<ReturnType<typeof getUpdateFieldSchema>>;
 
+const SURFACE_TYPES = [
+  { value: "NATURAL_GRASS", label: "Césped Natural" },
+  { value: "SYNTHETIC_GRASS", label: "Césped Sintético" },
+  { value: "CLAY", label: "Arcilla" },
+  { value: "HARD_COURT", label: "Cemento (Hard Court)" },
+  { value: "CONCRETE", label: "Concreto" },
+  { value: "PARQUET", label: "Parquet" },
+  { value: "SAND", label: "Arena" },
+  { value: "RUBBER", label: "Caucho" },
+  { value: "OTHER", label: "Otro" },
+];
+
 export default function EditOwnerFieldPage() {
   const params = useParams();
   const router = useRouter();
@@ -105,8 +133,12 @@ export default function EditOwnerFieldPage() {
       available: true,
       images: [],
       address: "",
-      city: "Lima",
+      department: "Lima",
+      province: "",
       district: "",
+      surfaceType: "",
+      isIndoor: false,
+      hasLighting: true,
       latitude: undefined,
       longitude: undefined,
       googleMapsUrl: "",
@@ -134,8 +166,14 @@ export default function EditOwnerFieldPage() {
         available: field.available,
         images: field.images,
         address: field.address,
-        city: field.city || "Lima",
+        department:
+          ((field as Record<string, unknown>).department as string) || "Lima",
+        province: ((field as Record<string, unknown>).province as string) || "",
         district: field.district || "",
+        surfaceType:
+          ((field as Record<string, unknown>).surfaceType as string) || "",
+        isIndoor: !!(field as Record<string, unknown>).isIndoor,
+        hasLighting: (field as Record<string, unknown>).hasLighting !== false,
         latitude: field.latitude ? Number(field.latitude) : undefined,
         longitude: field.longitude ? Number(field.longitude) : undefined,
         googleMapsUrl: field.googleMapsUrl || "",
@@ -167,6 +205,7 @@ export default function EditOwnerFieldPage() {
       email: data.email || undefined,
       googleMapsUrl: data.googleMapsUrl || undefined,
       sportCenterId: data.sportCenterId || undefined,
+      surfaceType: (data.surfaceType || undefined) as SurfaceType | undefined,
       features: data.features || [],
     });
   };
@@ -298,6 +337,15 @@ export default function EditOwnerFieldPage() {
                           <SelectItem value="FUTSAL">
                             {t("sports.FUTSAL")}
                           </SelectItem>
+                          <SelectItem value="PADEL">
+                            {t("sports.PADEL")}
+                          </SelectItem>
+                          <SelectItem value="MULTI_PURPOSE">
+                            {t("sports.MULTI_PURPOSE")}
+                          </SelectItem>
+                          <SelectItem value="OTHER">
+                            {t("sports.OTHER")}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -333,6 +381,34 @@ export default function EditOwnerFieldPage() {
 
                 <FormField
                   control={form.control}
+                  name="surfaceType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de superficie</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar superficie" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {SURFACE_TYPES.map((st) => (
+                            <SelectItem key={st.value} value={st.value}>
+                              {st.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="available"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
@@ -353,6 +429,44 @@ export default function EditOwnerFieldPage() {
                     </FormItem>
                   )}
                 />
+
+                <div className="flex flex-col gap-3">
+                  <FormField
+                    control={form.control}
+                    name="isIndoor"
+                    render={({ field }) => (
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="isIndoor"
+                          checked={field.value}
+                          onCheckedChange={(checked) =>
+                            field.onChange(!!checked)
+                          }
+                        />
+                        <Label htmlFor="isIndoor">Techada (indoor)</Label>
+                      </div>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="hasLighting"
+                    render={({ field }) => (
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="hasLighting"
+                          checked={field.value}
+                          onCheckedChange={(checked) =>
+                            field.onChange(!!checked)
+                          }
+                        />
+                        <Label htmlFor="hasLighting">
+                          Iluminación artificial
+                        </Label>
+                      </div>
+                    )}
+                  />
+                </div>
               </CardContent>
             </Card>
 
@@ -382,15 +496,40 @@ export default function EditOwnerFieldPage() {
 
                 <FormField
                   control={form.control}
-                  name="city"
+                  name="department"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t("fieldForm.cityLabel")}</FormLabel>
+                      <FormLabel>Departamento</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar departamento" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {PERU_DEPARTMENTS.map((dept) => (
+                            <SelectItem key={dept} value={dept}>
+                              {dept}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="province"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Provincia</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder={t("fieldForm.cityPlaceholder")}
-                          {...field}
-                        />
+                        <Input placeholder="Ingrese la provincia" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
