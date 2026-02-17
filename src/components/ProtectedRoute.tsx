@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuthContext } from "@/AuthContext";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -18,18 +19,12 @@ export default function ProtectedRoute({
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.push("/");
+      router.push("/signin");
     }
   }, [loading, isAuthenticated, router]);
 
   if (loading) {
-    return (
-      fallback || (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
-        </div>
-      )
-    );
+    return fallback || <LoadingSpinner fullScreen />;
   }
 
   if (!isAuthenticated) {

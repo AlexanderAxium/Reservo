@@ -1,5 +1,6 @@
 "use client";
 
+import { SESSION_MAX_AGE } from "@/constants/time";
 import { useRouter } from "next/navigation";
 import {
   type ReactNode,
@@ -41,7 +42,7 @@ function getCookie(name: string): string | null {
 }
 
 function setCookie(name: string, value: string) {
-  document.cookie = `${name}=${value}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+  document.cookie = `${name}=${value}; path=/; max-age=${SESSION_MAX_AGE}; SameSite=Lax`;
 }
 
 function deleteCookie(name: string) {

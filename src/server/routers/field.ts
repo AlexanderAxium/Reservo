@@ -23,6 +23,7 @@ import {
   tenantAdminProcedure,
   tenantStaffProcedure,
 } from "../trpc";
+import { requireTenantId } from "../utils/tenant";
 
 // IDs en este proyecto pueden ser UUID o CUID (ej: "cmkye...").
 // Usamos un schema único para evitar errores de "Invalid uuid".
@@ -110,12 +111,7 @@ export const fieldRouter = router({
   create: tenantAdminProcedure
     .input(createFieldSchema)
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       // Determinar el ownerId: admin puede especificar uno, sino usa el suyo
       const ownerId = input.ownerId || ctx.user.id;
@@ -133,7 +129,7 @@ export const fieldRouter = router({
           });
         }
 
-        if (ownerUser.tenantId !== ctx.user.tenantId) {
+        if (ownerUser.tenantId !== tenantId) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "El usuario propietario no pertenece al mismo tenant",
@@ -155,7 +151,7 @@ export const fieldRouter = router({
           });
         }
 
-        if (sportCenter.tenantId !== ctx.user.tenantId) {
+        if (sportCenter.tenantId !== tenantId) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "El centro deportivo no pertenece al mismo tenant",
@@ -217,7 +213,7 @@ export const fieldRouter = router({
             description: input.description,
             phone: input.phone,
             email: input.email || null,
-            tenantId: ctx.user.tenantId,
+            tenantId,
             ownerId: ownerId,
             sportCenterId: input.sportCenterId || null,
           },
@@ -285,12 +281,7 @@ export const fieldRouter = router({
         .optional()
     )
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const {
         page = 1,
@@ -318,10 +309,10 @@ export const fieldRouter = router({
       });
 
       // SYS_ADMIN puede ver canchas de todos los tenants, otros ven solo su tenant
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
 
       const whereClause: Prisma.FieldWhereInput = {
-        ...(!isSys && { tenantId: ctx.user.tenantId }), // Non-sys admins filter by tenant
+        ...(!isSys && { tenantId }), // Non-sys admins filter by tenant
         ...(ownerId && ownerId !== "" && { ownerId }), // Optional owner filter
         ...searchFilter,
         ...(sport && { sport }),
@@ -373,12 +364,7 @@ export const fieldRouter = router({
   getById: tenantStaffProcedure
     .input(z.object({ id: IdSchema }))
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const field = await prisma.field.findUnique({
         where: { id: input.id },
@@ -435,8 +421,8 @@ export const fieldRouter = router({
       }
 
       // SYS_ADMIN puede ver todas las canchas, otros solo las de su tenant
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!isSys && field.tenantId !== ctx.user.tenantId) {
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
+      if (!isSys && field.tenantId !== tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permisos para ver esta cancha",
@@ -450,12 +436,7 @@ export const fieldRouter = router({
   update: tenantAdminProcedure
     .input(updateFieldSchema)
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       // Verificar que la cancha existe
       const existingField = await prisma.field.findUnique({
@@ -471,8 +452,8 @@ export const fieldRouter = router({
       }
 
       // SYS_ADMIN puede actualizar cualquier cancha, TENANT_ADMIN solo las de su tenant
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!isSys && existingField.tenantId !== ctx.user.tenantId) {
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
+      if (!isSys && existingField.tenantId !== tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permisos para actualizar esta cancha",
@@ -492,7 +473,7 @@ export const fieldRouter = router({
           });
         }
 
-        if (!isSys && newOwner.tenantId !== ctx.user.tenantId) {
+        if (!isSys && newOwner.tenantId !== tenantId) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "El usuario propietario no pertenece al mismo tenant",
@@ -514,7 +495,7 @@ export const fieldRouter = router({
           });
         }
 
-        if (!isSys && sportCenter.tenantId !== ctx.user.tenantId) {
+        if (!isSys && sportCenter.tenantId !== tenantId) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "El centro deportivo no pertenece al mismo tenant",
@@ -651,12 +632,7 @@ export const fieldRouter = router({
   delete: tenantAdminProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       // Verificar que la cancha existe
       const existingField = await prisma.field.findUnique({
@@ -672,8 +648,8 @@ export const fieldRouter = router({
       }
 
       // SYS_ADMIN puede eliminar cualquier cancha, TENANT_ADMIN solo las de su tenant
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!isSys && existingField.tenantId !== ctx.user.tenantId) {
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
+      if (!isSys && existingField.tenantId !== tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permisos para eliminar esta cancha",
@@ -714,12 +690,7 @@ export const fieldRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const existingField = await prisma.field.findUnique({
         where: { id: input.id },
@@ -734,8 +705,8 @@ export const fieldRouter = router({
       }
 
       // SYS_ADMIN puede actualizar cualquier cancha, TENANT_ADMIN solo las de su tenant
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!isSys && existingField.tenantId !== ctx.user.tenantId) {
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
+      if (!isSys && existingField.tenantId !== tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permisos para actualizar esta cancha",
@@ -759,12 +730,7 @@ export const fieldRouter = router({
   getSchedules: tenantStaffProcedure
     .input(z.object({ fieldId: IdSchema }))
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const field = await prisma.field.findUnique({
         where: { id: input.fieldId },
@@ -782,8 +748,8 @@ export const fieldRouter = router({
       }
 
       // SYS_ADMIN puede ver horarios de cualquier cancha, otros solo las de su tenant
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!isSys && field.tenantId !== ctx.user.tenantId) {
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
+      if (!isSys && field.tenantId !== tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permisos para ver los horarios de esta cancha",
@@ -833,12 +799,7 @@ export const fieldRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const field = await prisma.field.findUnique({
         where: { id: input.fieldId },
@@ -856,8 +817,8 @@ export const fieldRouter = router({
       }
 
       // SYS_ADMIN puede actualizar cualquier cancha, TENANT_ADMIN solo las de su tenant
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!isSys && field.tenantId !== ctx.user.tenantId) {
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
+      if (!isSys && field.tenantId !== tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message:
@@ -950,12 +911,7 @@ export const fieldRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const field = await prisma.field.findUnique({
         where: { id: input.fieldId },
@@ -969,8 +925,8 @@ export const fieldRouter = router({
         });
       }
 
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!isSys && field.tenantId !== ctx.user.tenantId) {
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
+      if (!isSys && field.tenantId !== tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permisos para crear horarios en esta cancha",
@@ -1042,12 +998,7 @@ export const fieldRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const schedule = await prisma.schedule.findUnique({
         where: { id: input.scheduleId },
@@ -1065,8 +1016,8 @@ export const fieldRouter = router({
         });
       }
 
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!isSys && schedule.field.tenantId !== ctx.user.tenantId) {
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
+      if (!isSys && schedule.field.tenantId !== tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permisos para actualizar este horario",
@@ -1104,12 +1055,7 @@ export const fieldRouter = router({
   deleteSchedule: tenantAdminProcedure
     .input(z.object({ scheduleId: IdSchema }))
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const schedule = await prisma.schedule.findUnique({
         where: { id: input.scheduleId },
@@ -1127,8 +1073,8 @@ export const fieldRouter = router({
         });
       }
 
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!isSys && schedule.field.tenantId !== ctx.user.tenantId) {
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
+      if (!isSys && schedule.field.tenantId !== tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permisos para eliminar este horario",

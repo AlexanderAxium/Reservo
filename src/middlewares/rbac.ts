@@ -1,4 +1,5 @@
 import {
+  DEFAULT_ROLES,
   PermissionAction,
   type PermissionCheck,
   PermissionResource,
@@ -52,28 +53,36 @@ export function requireAnyRole(roleNames: string[]) {
  * Require system admin access (SYS_ADMIN)
  */
 export function requireSysAdmin() {
-  return requireRole("sys_admin");
+  return requireRole(DEFAULT_ROLES.SYS_ADMIN);
 }
 
 /**
  * Require tenant admin access (TENANT_ADMIN)
  */
 export function requireTenantAdmin() {
-  return requireAnyRole(["sys_admin", "tenant_admin"]);
+  return requireAnyRole([DEFAULT_ROLES.SYS_ADMIN, DEFAULT_ROLES.TENANT_ADMIN]);
 }
 
 /**
  * Require tenant staff access (TENANT_STAFF or higher)
  */
 export function requireTenantStaff() {
-  return requireAnyRole(["sys_admin", "tenant_admin", "tenant_staff"]);
+  return requireAnyRole([
+    DEFAULT_ROLES.SYS_ADMIN,
+    DEFAULT_ROLES.TENANT_ADMIN,
+    DEFAULT_ROLES.TENANT_STAFF,
+  ]);
 }
 
 /**
  * Require tenant member access (TENANT_ADMIN or TENANT_STAFF)
  */
 export function requireTenantMember() {
-  return requireAnyRole(["sys_admin", "tenant_admin", "tenant_staff"]);
+  return requireAnyRole([
+    DEFAULT_ROLES.SYS_ADMIN,
+    DEFAULT_ROLES.TENANT_ADMIN,
+    DEFAULT_ROLES.TENANT_STAFF,
+  ]);
 }
 
 /**

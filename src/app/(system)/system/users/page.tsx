@@ -13,6 +13,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
 import { exportToCsv } from "@/lib/export";
+import { DEFAULT_ROLES } from "@/types/rbac";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -144,10 +145,19 @@ export default function Users() {
             value: roleFilter,
             options: [
               { label: t("system.allRoles"), value: "all" },
-              { label: t("system.sysAdminRole"), value: "sys_admin" },
-              { label: t("system.tenantAdminRole"), value: "tenant_admin" },
-              { label: t("system.tenantStaffRole"), value: "tenant_staff" },
-              { label: t("system.clientRole"), value: "client" },
+              {
+                label: t("system.sysAdminRole"),
+                value: DEFAULT_ROLES.SYS_ADMIN,
+              },
+              {
+                label: t("system.tenantAdminRole"),
+                value: DEFAULT_ROLES.TENANT_ADMIN,
+              },
+              {
+                label: t("system.tenantStaffRole"),
+                value: DEFAULT_ROLES.TENANT_STAFF,
+              },
+              { label: t("system.clientRole"), value: DEFAULT_ROLES.CLIENT },
             ],
             onChange: setRoleFilter,
           },

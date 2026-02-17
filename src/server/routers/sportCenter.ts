@@ -16,6 +16,7 @@ import {
   tenantAdminProcedure,
   tenantStaffProcedure,
 } from "../trpc";
+import { requireTenantId } from "../utils/tenant";
 
 const IdSchema = z.union([z.string().uuid(), z.string().cuid()]);
 
@@ -49,12 +50,7 @@ export const sportCenterRouter = router({
   list: tenantStaffProcedure
     .input(paginationInputSchema.optional())
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const {
         page = 1,
@@ -78,10 +74,10 @@ export const sportCenterRouter = router({
       });
 
       // SYS_ADMIN puede ver todos los sport centers, otros solo los de su tenant
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
 
       const whereClause: Prisma.SportCenterWhereInput = {
-        ...(!isSys && { tenantId: ctx.user.tenantId }),
+        ...(!isSys && { tenantId }),
         ...searchFilter,
       };
 
@@ -118,12 +114,7 @@ export const sportCenterRouter = router({
   getById: tenantStaffProcedure
     .input(z.object({ id: IdSchema }))
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const sportCenter = await prisma.sportCenter.findUnique({
         where: { id: input.id },
@@ -159,8 +150,8 @@ export const sportCenterRouter = router({
       }
 
       // SYS_ADMIN puede ver cualquier sport center, otros solo los de su tenant
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!isSys && sportCenter.tenantId !== ctx.user.tenantId) {
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
+      if (!isSys && sportCenter.tenantId !== tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permisos para ver este centro deportivo",
@@ -174,12 +165,7 @@ export const sportCenterRouter = router({
   create: tenantAdminProcedure
     .input(createSportCenterSchema)
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       // Determinar el ownerId
       const ownerId = input.ownerId || ctx.user.id;
@@ -197,7 +183,7 @@ export const sportCenterRouter = router({
           });
         }
 
-        if (ownerUser.tenantId !== ctx.user.tenantId) {
+        if (ownerUser.tenantId !== tenantId) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "El usuario propietario no pertenece al mismo tenant",
@@ -216,7 +202,7 @@ export const sportCenterRouter = router({
           email: input.email || null,
           description: input.description,
           images: input.images,
-          tenantId: ctx.user.tenantId,
+          tenantId,
           ownerId: ownerId,
         },
         include: {
@@ -242,12 +228,7 @@ export const sportCenterRouter = router({
   update: tenantAdminProcedure
     .input(updateSportCenterSchema)
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const existingSportCenter = await prisma.sportCenter.findUnique({
         where: { id: input.id },
@@ -262,8 +243,8 @@ export const sportCenterRouter = router({
       }
 
       // SYS_ADMIN puede actualizar cualquier sport center, TENANT_ADMIN solo los de su tenant
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!isSys && existingSportCenter.tenantId !== ctx.user.tenantId) {
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
+      if (!isSys && existingSportCenter.tenantId !== tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permisos para actualizar este centro deportivo",
@@ -283,7 +264,7 @@ export const sportCenterRouter = router({
           });
         }
 
-        if (!isSys && newOwner.tenantId !== ctx.user.tenantId) {
+        if (!isSys && newOwner.tenantId !== tenantId) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "El usuario propietario no pertenece al mismo tenant",
@@ -333,12 +314,7 @@ export const sportCenterRouter = router({
   delete: tenantAdminProcedure
     .input(z.object({ id: IdSchema }))
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const existingSportCenter = await prisma.sportCenter.findUnique({
         where: { id: input.id },
@@ -361,8 +337,8 @@ export const sportCenterRouter = router({
       }
 
       // SYS_ADMIN puede eliminar cualquier sport center, TENANT_ADMIN solo los de su tenant
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!isSys && existingSportCenter.tenantId !== ctx.user.tenantId) {
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
+      if (!isSys && existingSportCenter.tenantId !== tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permisos para eliminar este centro deportivo",

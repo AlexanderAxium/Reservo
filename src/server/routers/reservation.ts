@@ -14,6 +14,8 @@ import {
   tenantAdminProcedure,
   tenantStaffProcedure,
 } from "../trpc";
+import { fieldSelectBasic, userSelectBasic } from "../utils/prisma-selects";
+import { requireTenantId } from "../utils/tenant";
 
 const IdSchema = z.union([z.string().uuid(), z.string().cuid()]);
 
@@ -37,22 +39,17 @@ export const reservationRouter = router({
         .optional()
     )
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const { page = 1, limit = 10, status, fieldId } = input ?? {};
       const offset = calculateOffset(page, limit);
 
       // SYS_ADMIN puede ver reservas de todos los tenants, otros solo su tenant
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
 
       const where = {
         field: {
-          ...(!isSys && { tenantId: ctx.user.tenantId }),
+          ...(!isSys && { tenantId }),
           ...(fieldId && { id: fieldId }),
         },
         ...(status && { status }),
@@ -62,22 +59,8 @@ export const reservationRouter = router({
         prisma.reservation.findMany({
           where,
           include: {
-            field: {
-              select: {
-                id: true,
-                name: true,
-                sport: true,
-                address: true,
-                district: true,
-              },
-            },
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
+            field: { select: fieldSelectBasic },
+            user: { select: userSelectBasic },
             _count: { select: { payments: true } },
           },
           orderBy: { startDate: "desc" },
@@ -96,19 +79,14 @@ export const reservationRouter = router({
       z.object({ limit: z.number().int().positive().optional() }).optional()
     )
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
       const limit = input?.limit ?? 5;
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
       const now = new Date();
       const reservations = await prisma.reservation.findMany({
         where: {
           field: {
-            ...(!isSys && { tenantId: ctx.user.tenantId }),
+            ...(!isSys && { tenantId }),
           },
           startDate: { gte: now },
           status: { in: ["PENDING", "CONFIRMED"] },
@@ -125,17 +103,12 @@ export const reservationRouter = router({
 
   /** Cantidad de reservas PENDING del tenant (para alerta owner dashboard) */
   getOwnerPendingCount: tenantStaffProcedure.query(async ({ ctx }) => {
-    if (!ctx.user.tenantId) {
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "Usuario sin tenant asignado",
-      });
-    }
-    const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+    const tenantId = requireTenantId(ctx.user.tenantId);
+    const isSys = await isSysAdmin(ctx.user.id, tenantId);
     return prisma.reservation.count({
       where: {
         field: {
-          ...(!isSys && { tenantId: ctx.user.tenantId }),
+          ...(!isSys && { tenantId }),
         },
         status: "PENDING",
       },
@@ -217,22 +190,17 @@ export const reservationRouter = router({
         .optional()
     )
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const { page = 1, limit = 10, status, fieldId, ownerId } = input ?? {};
       const offset = calculateOffset(page, limit);
 
       // SYS_ADMIN puede ver reservas de todos los tenants
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
 
       const where = {
         field: {
-          ...(!isSys && { tenantId: ctx.user.tenantId }),
+          ...(!isSys && { tenantId }),
           ...(fieldId && { id: fieldId }),
           ...(ownerId && { ownerId }),
         },
@@ -283,24 +251,19 @@ export const reservationRouter = router({
   listByUser: tenantStaffProcedure
     .input(paginationInputSchema.extend({ userId: IdSchema }).optional())
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
       if (!input?.userId) {
         return createPaginatedResponse([], 0, 1, 10);
       }
 
       const { page = 1, limit = 100, userId } = input;
       const offset = calculateOffset(page, limit);
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
 
       const where = {
         userId,
         field: {
-          ...(!isSys && { tenantId: ctx.user.tenantId }),
+          ...(!isSys && { tenantId }),
         },
       };
 
@@ -308,15 +271,7 @@ export const reservationRouter = router({
         prisma.reservation.findMany({
           where,
           include: {
-            field: {
-              select: {
-                id: true,
-                name: true,
-                sport: true,
-                address: true,
-                district: true,
-              },
-            },
+            field: { select: fieldSelectBasic },
             payments: {
               select: {
                 id: true,
@@ -539,12 +494,7 @@ export const reservationRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const field = await prisma.field.findUnique({
         where: { id: input.fieldId },
@@ -563,8 +513,8 @@ export const reservationRouter = router({
       }
 
       // SYS_ADMIN puede crear reservas en cualquier cancha, otros solo en su tenant
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!isSys && field.tenantId !== ctx.user.tenantId) {
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
+      if (!isSys && field.tenantId !== tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permiso para crear reservas en esta cancha",
@@ -635,18 +585,8 @@ export const reservationRouter = router({
           guestPhone: isGuest ? (input.guestPhone?.trim() ?? null) : null,
         },
         include: {
-          field: {
-            select: {
-              id: true,
-              name: true,
-              sport: true,
-              address: true,
-              district: true,
-            },
-          },
-          user: {
-            select: { id: true, name: true, email: true },
-          },
+          field: { select: fieldSelectBasic },
+          user: { select: userSelectBasic },
           _count: { select: { payments: true } },
         },
       });
@@ -663,12 +603,7 @@ export const reservationRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const reservation = await prisma.reservation.findUnique({
         where: { id: input.id },
@@ -690,8 +625,8 @@ export const reservationRouter = router({
       }
 
       // SYS_ADMIN puede modificar cualquier reserva, otros solo las de su tenant
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!isSys && reservation.field.tenantId !== ctx.user.tenantId) {
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
+      if (!isSys && reservation.field.tenantId !== tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permiso para modificar esta reserva",
@@ -702,18 +637,8 @@ export const reservationRouter = router({
         where: { id: input.id },
         data: { status: input.status },
         include: {
-          field: {
-            select: {
-              id: true,
-              name: true,
-              sport: true,
-              address: true,
-              district: true,
-            },
-          },
-          user: {
-            select: { id: true, name: true, email: true },
-          },
+          field: { select: fieldSelectBasic },
+          user: { select: userSelectBasic },
           _count: { select: { payments: true } },
         },
       });

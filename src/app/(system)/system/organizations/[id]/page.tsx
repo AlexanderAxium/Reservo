@@ -103,7 +103,7 @@ export default function OrganizationDetail({
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalFields || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {t("system.ofAllowed", { max: tenant.maxFields })}
+              {t("system.ofAllowed", { max: String(tenant.maxFields) })}
             </p>
           </CardContent>
         </Card>
@@ -118,7 +118,7 @@ export default function OrganizationDetail({
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalUsers || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {t("system.ofAllowed", { max: tenant.maxUsers })}
+              {t("system.ofAllowed", { max: String(tenant.maxUsers) })}
             </p>
           </CardContent>
         </Card>

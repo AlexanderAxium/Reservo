@@ -16,6 +16,7 @@ import {
   tenantAdminProcedure,
   tenantStaffProcedure,
 } from "../trpc";
+import { requireTenantId } from "../utils/tenant";
 
 const IdSchema = z.union([z.string().uuid(), z.string().cuid()]);
 
@@ -39,12 +40,7 @@ export const paymentRouter = router({
         .optional()
     )
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const {
         page = 1,
@@ -64,12 +60,12 @@ export const paymentRouter = router({
       });
 
       // SYS_ADMIN puede ver todos los pagos, otros solo los de su tenant
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
 
       const whereClause: Prisma.PaymentWhereInput = {
         reservation: {
           field: {
-            ...(!isSys && { tenantId: ctx.user.tenantId }),
+            ...(!isSys && { tenantId }),
           },
         },
         ...(status && { status }),
@@ -128,12 +124,7 @@ export const paymentRouter = router({
   getById: tenantStaffProcedure
     .input(z.object({ id: IdSchema }))
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const payment = await prisma.payment.findUnique({
         where: { id: input.id },
@@ -177,8 +168,8 @@ export const paymentRouter = router({
       }
 
       // SYS_ADMIN puede ver cualquier pago, otros solo los de su tenant
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!isSys && payment.reservation.field.tenantId !== ctx.user.tenantId) {
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
+      if (!isSys && payment.reservation.field.tenantId !== tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permisos para ver este pago",
@@ -192,12 +183,7 @@ export const paymentRouter = router({
   verify: tenantStaffProcedure
     .input(z.object({ id: IdSchema }))
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const payment = await prisma.payment.findUnique({
         where: { id: input.id },
@@ -223,8 +209,8 @@ export const paymentRouter = router({
       }
 
       // SYS_ADMIN puede verificar cualquier pago, otros solo los de su tenant
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!isSys && payment.reservation.field.tenantId !== ctx.user.tenantId) {
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
+      if (!isSys && payment.reservation.field.tenantId !== tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permisos para verificar este pago",
@@ -273,12 +259,7 @@ export const paymentRouter = router({
   refund: tenantAdminProcedure
     .input(z.object({ id: IdSchema }))
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const payment = await prisma.payment.findUnique({
         where: { id: input.id },
@@ -304,8 +285,8 @@ export const paymentRouter = router({
       }
 
       // SYS_ADMIN puede reembolsar cualquier pago, TENANT_ADMIN solo los de su tenant
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      if (!isSys && payment.reservation.field.tenantId !== ctx.user.tenantId) {
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
+      if (!isSys && payment.reservation.field.tenantId !== tenantId) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "No tienes permisos para reembolsar este pago",

@@ -1,5 +1,7 @@
 import { useAuthContext } from "@/AuthContext";
+import { STALE_TIME } from "@/constants/time";
 import {
+  DEFAULT_ROLES,
   PermissionAction,
   type PermissionCheck,
   PermissionResource,
@@ -15,7 +17,7 @@ export function useRBAC() {
     { userId: user?.id || "" },
     {
       enabled: !!user?.id,
-      staleTime: 5 * 60 * 1000, // 5 minutes cache
+      staleTime: STALE_TIME,
       refetchOnWindowFocus: false,
     }
   );
@@ -24,36 +26,32 @@ export function useRBAC() {
   const userRoles = rbacContext?.userRoles || [];
   const userPermissions = rbacContext?.permissions || [];
 
-  // New role flags
+  // Role flags
   const isSysAdmin = useMemo(() => {
     if (!userRoles.length) return false;
     return userRoles.some(
-      (role) =>
-        (role.name === "sys_admin" || role.name === "super_admin") &&
-        role.isActive
+      (role) => role.name === DEFAULT_ROLES.SYS_ADMIN && role.isActive
     );
   }, [userRoles]);
 
   const isTenantAdmin = useMemo(() => {
     if (!userRoles.length) return false;
     return userRoles.some(
-      (role) =>
-        (role.name === "tenant_admin" || role.name === "admin") && role.isActive
+      (role) => role.name === DEFAULT_ROLES.TENANT_ADMIN && role.isActive
     );
   }, [userRoles]);
 
   const isTenantStaff = useMemo(() => {
     if (!userRoles.length) return false;
     return userRoles.some(
-      (role) => role.name === "tenant_staff" && role.isActive
+      (role) => role.name === DEFAULT_ROLES.TENANT_STAFF && role.isActive
     );
   }, [userRoles]);
 
   const isClient = useMemo(() => {
     if (!userRoles.length) return false;
     return userRoles.some(
-      (role) =>
-        (role.name === "client" || role.name === "user") && role.isActive
+      (role) => role.name === DEFAULT_ROLES.CLIENT && role.isActive
     );
   }, [userRoles]);
 
@@ -61,12 +59,9 @@ export function useRBAC() {
     return isTenantAdmin || isTenantStaff || isSysAdmin;
   }, [isTenantAdmin, isTenantStaff, isSysAdmin]);
 
-  // Backward compatibility
   const isAdmin = useMemo(() => {
     return isSysAdmin || isTenantAdmin;
   }, [isSysAdmin, isTenantAdmin]);
-
-  const isSuperAdmin = isSysAdmin;
 
   const canManageUsers = useMemo(() => {
     if (!userPermissions.length) return false;
@@ -186,9 +181,7 @@ export function useRBAC() {
     isClient,
     isTenantMember,
 
-    // Backward compatibility
     isAdmin,
-    isSuperAdmin,
     canManageUsers,
     canManageRoles,
     canAccessAdmin,

@@ -2,13 +2,13 @@ import { Prisma } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { prisma } from "../../lib/db";
-import { isSysAdmin } from "../../services/rbacService";
 import {
   router,
   sysAdminProcedure,
   tenantAdminProcedure,
   tenantStaffProcedure,
 } from "../trpc";
+import { requireTenantId } from "../utils/tenant";
 
 const dateRangeSchema = z.object({
   startDate: z.string().datetime().optional(),
@@ -20,12 +20,7 @@ export const metricsRouter = router({
   tenantOverview: tenantAdminProcedure
     .input(dateRangeSchema.optional())
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const now = new Date();
       const startDate = input?.startDate
@@ -34,10 +29,6 @@ export const metricsRouter = router({
       const endDate = input?.endDate
         ? new Date(input.endDate)
         : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999); // Último día del mes
-
-      // Solo puede ver métricas de su propio tenant (SYS_ADMIN puede ver cualquiera)
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      const tenantId = isSys ? ctx.user.tenantId : ctx.user.tenantId;
 
       // Contar canchas activas
       const totalFields = await prisma.field.count({
@@ -109,12 +100,7 @@ export const metricsRouter = router({
       })
     )
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const endDate = new Date();
       const startDate = new Date();
@@ -123,7 +109,7 @@ export const metricsRouter = router({
 
       const reservations = await prisma.reservation.findMany({
         where: {
-          field: { tenantId: ctx.user.tenantId },
+          field: { tenantId },
           startDate: { gte: startDate, lte: endDate },
           status: { in: ["CONFIRMED", "COMPLETED", "PENDING"] },
         },
@@ -168,12 +154,7 @@ export const metricsRouter = router({
       })
     )
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const endDate = new Date();
       const startDate = new Date();
@@ -182,7 +163,7 @@ export const metricsRouter = router({
 
       const reservations = await prisma.reservation.findMany({
         where: {
-          field: { tenantId: ctx.user.tenantId },
+          field: { tenantId },
           startDate: { gte: startDate, lte: endDate },
           status: { in: ["CONFIRMED", "COMPLETED"] },
         },
@@ -224,21 +205,13 @@ export const metricsRouter = router({
       })
     )
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const now = new Date();
       const startDate = input.startDate
         ? new Date(input.startDate)
         : new Date(now.getFullYear(), now.getMonth() - 2, 1); // Últimos 3 meses
       const endDate = input.endDate ? new Date(input.endDate) : now;
-
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      const tenantId = isSys ? ctx.user.tenantId : ctx.user.tenantId;
 
       const reservations = await prisma.reservation.findMany({
         where: {
@@ -288,12 +261,7 @@ export const metricsRouter = router({
   occupancy: tenantAdminProcedure
     .input(dateRangeSchema.optional())
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const now = new Date();
       const startDate = input?.startDate
@@ -302,9 +270,6 @@ export const metricsRouter = router({
       const endDate = input?.endDate
         ? new Date(input.endDate)
         : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
-      const tenantId = isSys ? ctx.user.tenantId : ctx.user.tenantId;
 
       // Obtener todas las canchas del tenant
       const fields = await prisma.field.findMany({
@@ -536,12 +501,7 @@ export const metricsRouter = router({
         .optional()
     )
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const now = new Date();
       const currentEnd = input?.to ? new Date(input.to) : now;
@@ -553,8 +513,6 @@ export const metricsRouter = router({
       const periodDuration = currentEnd.getTime() - currentStart.getTime();
       const previousEnd = new Date(currentStart.getTime() - 1); // 1ms before current start
       const previousStart = new Date(previousEnd.getTime() - periodDuration);
-
-      const tenantId = ctx.user.tenantId;
 
       // Función helper para obtener métricas de un período
       const getPeriodMetrics = async (startDate: Date, endDate: Date) => {
@@ -635,12 +593,7 @@ export const metricsRouter = router({
         .optional()
     )
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const now = new Date();
       const endDate = input?.to ? new Date(input.to) : now;
@@ -651,7 +604,7 @@ export const metricsRouter = router({
       const reservations = await prisma.reservation.groupBy({
         by: ["status"],
         where: {
-          field: { tenantId: ctx.user.tenantId },
+          field: { tenantId },
           startDate: { gte: startDate, lte: endDate },
         },
         _count: true,
@@ -683,12 +636,7 @@ export const metricsRouter = router({
         .optional()
     )
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const weeks = input?.weeks ?? 8;
       const now = new Date();
@@ -698,7 +646,7 @@ export const metricsRouter = router({
 
       const reservations = await prisma.reservation.findMany({
         where: {
-          field: { tenantId: ctx.user.tenantId },
+          field: { tenantId },
           startDate: { gte: startDate, lte: now },
         },
         select: {
@@ -722,11 +670,11 @@ export const metricsRouter = router({
         weekStart.setHours(0, 0, 0, 0);
         const weekKey = weekStart.toISOString().split("T")[0] ?? "";
 
-        if (!weekMap.has(weekKey)) {
-          weekMap.set(weekKey, { confirmed: 0, pending: 0, cancelled: 0 });
+        let weekData = weekMap.get(weekKey);
+        if (!weekData) {
+          weekData = { confirmed: 0, pending: 0, cancelled: 0 };
+          weekMap.set(weekKey, weekData);
         }
-
-        const weekData = weekMap.get(weekKey)!;
         if (r.status === "CONFIRMED" || r.status === "COMPLETED") {
           weekData.confirmed += 1;
         } else if (r.status === "PENDING") {

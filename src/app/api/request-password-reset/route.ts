@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 
-const SITE_URL = process.env.SITE_URL || "http://localhost:3000";
+const SITE_URL = process.env.SITE_URL ?? "http://localhost:3000";
 
 /**
  * POST /api/request-password-reset

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const baseUrl = process.env.SITE_URL || "https://axium.com.pe";
+  const baseUrl = process.env.SITE_URL ?? "https://canchalibre.com";
 
   const staticPages = [
     { url: baseUrl, changeFrequency: "weekly" as const, priority: 1.0 },

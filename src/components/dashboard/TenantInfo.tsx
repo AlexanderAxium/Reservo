@@ -7,8 +7,8 @@ import { useRouter } from "next/navigation";
 
 export default function TenantInfo() {
   const router = useRouter();
-  const { isAdmin, isSuperAdmin } = useUser();
-  const canAccessSettings = isAdmin || isSuperAdmin;
+  const { isAdmin } = useUser();
+  const canAccessSettings = isAdmin;
 
   // Fetch tenant information
   const { data: tenant, isLoading } = trpc.companyInfo.get.useQuery();

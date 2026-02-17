@@ -1,8 +1,7 @@
 import {
   generateLocalBusinessSchema,
   generateOrganizationSchema,
-  generateServiceSchema,
-  generateSoftwareApplicationSchema,
+  generateSportsFacilitySchema,
   generateWebSiteSchema,
 } from "@/lib/structured-data";
 
@@ -27,7 +26,7 @@ export function StructuredData() {
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: Required for JSON-LD structured data
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(generateSoftwareApplicationSchema()),
+          __html: JSON.stringify(generateSportsFacilitySchema()),
         }}
       />
       <script
@@ -35,13 +34,6 @@ export function StructuredData() {
         // biome-ignore lint/security/noDangerouslySetInnerHtml: Required for JSON-LD structured data
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(generateLocalBusinessSchema()),
-        }}
-      />
-      <script
-        type="application/ld+json"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: Required for JSON-LD structured data
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(generateServiceSchema()),
         }}
       />
     </>

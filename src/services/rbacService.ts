@@ -665,30 +665,6 @@ export async function isTenantMember(
 }
 
 /**
- * @deprecated Use isSysAdmin instead
- */
-export async function isSuperAdmin(
-  userId: string,
-  tenantId: string
-): Promise<boolean> {
-  return await isSysAdmin(userId, tenantId);
-}
-
-/**
- * @deprecated Use isTenantAdmin instead
- */
-export async function isAdmin(
-  userId: string,
-  tenantId: string
-): Promise<boolean> {
-  return await hasAnyRole(
-    userId,
-    [DEFAULT_ROLES.SYS_ADMIN, DEFAULT_ROLES.TENANT_ADMIN],
-    tenantId
-  );
-}
-
-/**
  * Check if user can manage users
  */
 export async function canManageUsers(

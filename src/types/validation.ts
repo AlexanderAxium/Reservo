@@ -4,14 +4,15 @@
  */
 
 import { z } from "zod";
-import { LANGUAGE, USER_ROLE } from "./enums";
+import { LANGUAGE } from "./enums";
+import { DEFAULT_ROLES } from "./rbac";
 
 // User validation schemas
 export const userRoleSchema = z.enum([
-  USER_ROLE.SUPER_ADMIN,
-  USER_ROLE.ADMIN,
-  USER_ROLE.USER,
-  USER_ROLE.VIEWER,
+  DEFAULT_ROLES.SYS_ADMIN,
+  DEFAULT_ROLES.TENANT_ADMIN,
+  DEFAULT_ROLES.TENANT_STAFF,
+  DEFAULT_ROLES.CLIENT,
 ]);
 
 export const languageSchema = z.enum([LANGUAGE.EN, LANGUAGE.ES, LANGUAGE.PT]);
@@ -19,7 +20,7 @@ export const languageSchema = z.enum([LANGUAGE.EN, LANGUAGE.ES, LANGUAGE.PT]);
 // Common validation schemas
 export const positiveNumberSchema = z.number().positive();
 export const nonNegativeNumberSchema = z.number().min(0);
-export const emailSchema = z.string().email();
+export { emailSchema } from "@/utils/validate";
 export const passwordSchema = z.string().min(8);
 export const phoneSchema = z.string().regex(/^\+?[\d\s\-()]+$/);
 

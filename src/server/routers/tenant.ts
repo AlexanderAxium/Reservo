@@ -9,6 +9,7 @@ import {
   createSortOrder,
   paginationInputSchema,
 } from "../../lib/pagination";
+import { DEFAULT_ROLES } from "../../types/rbac";
 import { seedTenantRolesAndPermissions } from "../seedTenant";
 import {
   router,
@@ -16,6 +17,7 @@ import {
   tenantAdminProcedure,
   tenantStaffProcedure,
 } from "../trpc";
+import { requireTenantId } from "../utils/tenant";
 
 const TenantPlanEnum = z.enum(["FREE", "BASIC", "PROFESSIONAL", "ENTERPRISE"]);
 
@@ -217,7 +219,7 @@ export const tenantRouter = router({
         const tenantAdminRole = await tx.role.findUnique({
           where: {
             name_tenantId: {
-              name: "tenant_admin",
+              name: DEFAULT_ROLES.TENANT_ADMIN,
               tenantId: tenant.id,
             },
           },
@@ -256,7 +258,7 @@ export const tenantRouter = router({
       // TENANT_ADMIN solo puede actualizar su propio tenant
       if (ctx.user.tenantId !== input.id) {
         // Verificar si es SYS_ADMIN
-        if (!ctx.user.roles.includes("sys_admin")) {
+        if (!ctx.user.roles.includes(DEFAULT_ROLES.SYS_ADMIN)) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "Solo puedes actualizar tu propio tenant",
@@ -297,7 +299,7 @@ export const tenantRouter = router({
       // Solo SYS_ADMIN puede cambiar isVerified
       if (
         input.isVerified !== undefined &&
-        ctx.user.roles.includes("sys_admin")
+        ctx.user.roles.includes(DEFAULT_ROLES.SYS_ADMIN)
       ) {
         updateData.isVerified = input.isVerified;
         if (input.isVerified && !existingTenant.verifiedAt) {
@@ -361,15 +363,10 @@ export const tenantRouter = router({
 
   // Obtener mi tenant (TENANT_STAFF o superior)
   getMyTenant: tenantStaffProcedure.query(async ({ ctx }) => {
-    if (!ctx.user.tenantId) {
-      throw new TRPCError({
-        code: "UNAUTHORIZED",
-        message: "Usuario sin tenant asignado",
-      });
-    }
+    const tenantId = requireTenantId(ctx.user.tenantId);
 
     const tenant = await prisma.tenant.findUnique({
-      where: { id: ctx.user.tenantId },
+      where: { id: tenantId },
       include: {
         _count: {
           select: {
@@ -395,19 +392,13 @@ export const tenantRouter = router({
     .input(z.object({ id: z.string().uuid().optional() }).optional())
     .query(async ({ input, ctx }) => {
       // Si no se proporciona ID, usar el tenant del usuario
-      const tenantId = input?.id || ctx.user.tenantId;
-
-      if (!tenantId) {
-        throw new TRPCError({
-          code: "UNAUTHORIZED",
-          message: "Usuario sin tenant asignado",
-        });
-      }
+      const userTenantId = requireTenantId(ctx.user.tenantId);
+      const tenantId = input?.id || userTenantId;
 
       // TENANT_ADMIN solo puede ver stats de su propio tenant
       if (
-        tenantId !== ctx.user.tenantId &&
-        !ctx.user.roles.includes("sys_admin")
+        tenantId !== userTenantId &&
+        !ctx.user.roles.includes(DEFAULT_ROLES.SYS_ADMIN)
       ) {
         throw new TRPCError({
           code: "FORBIDDEN",

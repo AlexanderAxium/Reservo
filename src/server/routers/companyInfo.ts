@@ -1,9 +1,11 @@
 import { TenantUncheckedUpdateInputObjectZodSchema } from "@/lib/zod/schemas/objects/TenantUncheckedUpdateInput.schema";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { prisma } from "../../lib/db";
 import { hasPermissionOrManage } from "../../services/rbacService";
 import { PermissionAction, PermissionResource } from "../../types/rbac";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
+import { requireTenantId } from "../utils/tenant";
 
 export const companyInfoRouter = router({
   // Get company information (public - returns first active tenant or default)
@@ -116,28 +118,27 @@ export const companyInfoRouter = router({
         })
     )
     .mutation(async ({ input, ctx }) => {
-      if (!ctx.user?.tenantId) {
-        throw new Error("User tenant not found");
-      }
+      const tenantId = requireTenantId(ctx.user?.tenantId);
 
       // Verificar si el usuario tiene permiso para actualizar información de admin
-      // MANAGE siempre otorga todas las acciones
       const canUpdate = await hasPermissionOrManage(
         ctx.user.id,
         PermissionAction.UPDATE,
         PermissionResource.ADMIN,
-        ctx.user.tenantId
+        tenantId
       );
 
       if (!canUpdate) {
-        throw new Error(
-          "No tienes permisos para actualizar la información de la empresa"
-        );
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "No tienes permisos para actualizar la información de la empresa",
+        });
       }
 
       // Update tenant information
       const updatedTenant = await prisma.tenant.update({
-        where: { id: ctx.user.tenantId },
+        where: { id: tenantId },
         data: {
           ...input,
           updatedAt: new Date(),
@@ -148,28 +149,26 @@ export const companyInfoRouter = router({
 
   // Get company info for admin dashboard
   getForAdmin: protectedProcedure.query(async ({ ctx }) => {
-    if (!ctx.user?.tenantId) {
-      throw new Error("User tenant not found");
-    }
+    const tenantId = requireTenantId(ctx.user?.tenantId);
 
     // Verificar si el usuario tiene permiso para leer información de admin
-    // MANAGE siempre otorga todas las acciones
     const canRead = await hasPermissionOrManage(
       ctx.user.id,
       PermissionAction.READ,
       PermissionResource.ADMIN,
-      ctx.user.tenantId
+      tenantId
     );
 
     if (!canRead) {
-      throw new Error(
-        "No tienes permisos para ver la información de administración"
-      );
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "No tienes permisos para ver la información de administración",
+      });
     }
 
     const tenant = await prisma.tenant.findUnique({
       where: {
-        id: ctx.user.tenantId,
+        id: tenantId,
         isActive: true,
       },
     });

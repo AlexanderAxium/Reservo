@@ -2,12 +2,14 @@
 
 import { DashboardNavbar } from "@/components/dashboard/DashboardNavbar";
 import { ClientSidebar } from "@/components/layouts/ClientSidebar";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useRouteGuard } from "@/hooks/useRouteGuard";
+import { DEFAULT_ROLES } from "@/types/rbac";
 
 export default function ClientLayout({
   children,
@@ -15,15 +17,11 @@ export default function ClientLayout({
   children: React.ReactNode;
 }) {
   const { isLoading, isAuthorized, isAuthenticated } = useRouteGuard({
-    allowedRoles: ["client", "sys_admin"],
+    allowedRoles: [DEFAULT_ROLES.CLIENT, DEFAULT_ROLES.SYS_ADMIN],
   });
 
   if (isLoading || !isAuthenticated || !isAuthorized) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
-      </div>
-    );
+    return <LoadingSpinner fullScreen />;
   }
 
   return (

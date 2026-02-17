@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { DEFAULT_ROLES } from "@/types/rbac";
 import { initTRPC } from "@trpc/server";
 
 export interface Context {
@@ -72,13 +73,13 @@ export const createContext = async (opts: {
 
     // Determine primary role (highest priority)
     const rolePriority = [
-      "sys_admin",
-      "tenant_admin",
-      "tenant_staff",
-      "client",
+      DEFAULT_ROLES.SYS_ADMIN,
+      DEFAULT_ROLES.TENANT_ADMIN,
+      DEFAULT_ROLES.TENANT_STAFF,
+      DEFAULT_ROLES.CLIENT,
     ];
     const primaryRole =
-      rolePriority.find((role) => roles.includes(role)) || "client";
+      rolePriority.find((role) => roles.includes(role)) || DEFAULT_ROLES.CLIENT;
 
     const userData = {
       id: userWithTenant.id,
@@ -92,7 +93,7 @@ export const createContext = async (opts: {
 
     // SYS_ADMIN tenant impersonation via header
     const overrideTenantId = opts.req.headers.get("x-tenant-override");
-    if (overrideTenantId && roles.includes("sys_admin")) {
+    if (overrideTenantId && roles.includes(DEFAULT_ROLES.SYS_ADMIN)) {
       const overrideTenant = await prisma.tenant.findUnique({
         where: { id: overrideTenantId },
         select: { id: true, name: true, displayName: true },

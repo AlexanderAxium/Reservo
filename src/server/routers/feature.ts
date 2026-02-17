@@ -8,8 +8,7 @@ import {
   createSortOrder,
   paginationInputSchema,
 } from "../../lib/pagination";
-import { isAdmin } from "../../services/rbacService";
-import { adminProcedure, protectedProcedure, router } from "../trpc";
+import { protectedProcedure, router, tenantAdminProcedure } from "../trpc";
 
 // Schema para crear una feature
 const createFeatureSchema = z.object({
@@ -116,7 +115,7 @@ export const featureRouter = router({
     }),
 
   // Crear una nueva feature (solo admin)
-  create: adminProcedure
+  create: tenantAdminProcedure
     .input(createFeatureSchema)
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user?.tenantId) {
@@ -151,7 +150,7 @@ export const featureRouter = router({
     }),
 
   // Actualizar una feature (solo admin)
-  update: adminProcedure
+  update: tenantAdminProcedure
     .input(updateFeatureSchema)
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user?.tenantId) {
@@ -202,7 +201,7 @@ export const featureRouter = router({
     }),
 
   // Eliminar una feature (solo admin)
-  delete: adminProcedure
+  delete: tenantAdminProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user?.tenantId) {

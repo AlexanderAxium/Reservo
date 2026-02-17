@@ -91,16 +91,15 @@ export interface RBACContext {
   permissions: Permission[];
 }
 
-// Default roles
+// Default roles - single source of truth for role names
 export const DEFAULT_ROLES = {
   SYS_ADMIN: "sys_admin",
   TENANT_ADMIN: "tenant_admin",
   TENANT_STAFF: "tenant_staff",
   CLIENT: "client",
-  // Deprecated aliases for backward compatibility
-  SUPER_ADMIN: "sys_admin",
-  ADMIN: "tenant_admin",
 } as const;
+
+export type RoleName = (typeof DEFAULT_ROLES)[keyof typeof DEFAULT_ROLES];
 
 // Default permissions
 export const DEFAULT_PERMISSIONS = {

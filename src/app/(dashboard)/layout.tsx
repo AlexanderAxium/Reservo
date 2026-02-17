@@ -3,6 +3,7 @@
 import { DashboardNavbar } from "@/components/dashboard/DashboardNavbar";
 import { TenantPicker } from "@/components/dashboard/TenantPicker";
 import { TenantSidebar } from "@/components/layouts/TenantSidebar";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import {
   SidebarInset,
   SidebarProvider,
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { useRouteGuard } from "@/hooks/useRouteGuard";
+import { DEFAULT_ROLES } from "@/types/rbac";
 
 export default function DashboardLayout({
   children,
@@ -18,21 +20,21 @@ export default function DashboardLayout({
 }) {
   const { isLoading, isAuthorized, isAuthenticated, primaryRole } =
     useRouteGuard({
-      allowedRoles: ["tenant_admin", "tenant_staff", "sys_admin"],
+      allowedRoles: [
+        DEFAULT_ROLES.TENANT_ADMIN,
+        DEFAULT_ROLES.TENANT_STAFF,
+        DEFAULT_ROLES.SYS_ADMIN,
+      ],
     });
 
   const { isImpersonating } = useImpersonation();
 
   if (isLoading || !isAuthenticated || !isAuthorized) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
-      </div>
-    );
+    return <LoadingSpinner fullScreen />;
   }
 
   // sys_admin accessing /dashboard without selecting a tenant first
-  if (primaryRole === "sys_admin" && !isImpersonating) {
+  if (primaryRole === DEFAULT_ROLES.SYS_ADMIN && !isImpersonating) {
     return <TenantPicker />;
   }
 

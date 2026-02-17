@@ -34,7 +34,7 @@ export default function GlobalNavbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { user, isAuthenticated, signOut } = useAuthContext();
-  const { primaryRole, isAdmin, isSuperAdmin } = useUser();
+  const { primaryRole, isAdmin, isSysAdmin } = useUser();
   const router = useRouter();
   const { t } = useTranslation("common");
 
@@ -193,7 +193,7 @@ export default function GlobalNavbar() {
                           <User className="mr-2 h-4 w-4" />
                           <span>{t("profile")}</span>
                         </DropdownMenuItem>
-                        {(isSuperAdmin || isAdmin) && (
+                        {(isSysAdmin || isAdmin) && (
                           <DropdownMenuItem
                             onClick={() => router.push("/dashboard/settings")}
                           >
@@ -339,7 +339,7 @@ export default function GlobalNavbar() {
                           </div>
                         </button>
 
-                        {(isSuperAdmin || isAdmin) && (
+                        {(isSysAdmin || isAdmin) && (
                           <button
                             type="button"
                             onClick={() => {

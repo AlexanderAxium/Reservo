@@ -29,6 +29,7 @@ import {
 import { useRBAC } from "@/hooks/useRBAC";
 import { useTranslation } from "@/hooks/useTranslation";
 import { cn } from "@/lib/utils";
+import { getInitials } from "@/lib/utils/avatar";
 import { PermissionAction, PermissionResource } from "@/types/rbac";
 import {
   Calendar,
@@ -180,14 +181,7 @@ export function TenantSidebar() {
     setExpandedMenus((prev) => ({ ...prev, [href]: !prev[href] }));
   };
 
-  const userInitials = user?.name
-    ? user.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-    : "U";
+  const userInitials = getInitials(user?.name);
 
   const renderNavItem = (item: NavItem) => {
     const hasChildren = item.children && item.children.length > 0;

@@ -8,14 +8,14 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { REQUEST_TIMEOUT_MS } from "@/constants/time";
 import { useTranslation } from "@/hooks/useTranslation";
+import { EMAIL_REGEX } from "@/utils/validate";
 import { ArrowLeft, CheckCircle, Loader2, Mail } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
-
-const REQUEST_TIMEOUT_MS = 15000;
 
 type ForgotPasswordFormValues = {
   email: string;
@@ -42,8 +42,7 @@ export default function ForgotPasswordPage() {
 
   const onSubmit = async (data: ForgotPasswordFormValues) => {
     clearErrors();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.email)) {
+    if (!EMAIL_REGEX.test(data.email)) {
       setError("email", {
         type: "manual",
         message: t("validEmail") || "Ingresa un correo válido",

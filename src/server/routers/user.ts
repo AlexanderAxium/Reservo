@@ -1,6 +1,7 @@
 import { UserUncheckedCreateInputObjectZodSchema } from "@/lib/zod/schemas/objects/UserUncheckedCreateInput.schema";
 import { UserUncheckedUpdateInputObjectZodSchema } from "@/lib/zod/schemas/objects/UserUncheckedUpdateInput.schema";
 import type { Prisma } from "@prisma/client";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { prisma } from "../../lib/db";
 import {
@@ -11,7 +12,11 @@ import {
   paginationInputSchema,
 } from "../../lib/pagination";
 import { hasPermissionOrManage, isSysAdmin } from "../../services/rbacService";
-import { PermissionAction, PermissionResource } from "../../types/rbac";
+import {
+  DEFAULT_ROLES,
+  PermissionAction,
+  PermissionResource,
+} from "../../types/rbac";
 import { validateEmail } from "../../utils/validate";
 import {
   protectedProcedure,
@@ -20,6 +25,7 @@ import {
   tenantAdminProcedure,
   tenantStaffProcedure,
 } from "../trpc";
+import { requireTenantId } from "../utils/tenant";
 
 export const userRouter = router({
   // Listar TODOS los usuarios (solo SYS_ADMIN - global)
@@ -103,9 +109,7 @@ export const userRouter = router({
   getStaff: tenantAdminProcedure
     .input(paginationInputSchema.optional())
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new Error("Usuario sin tenant asignado");
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const {
         page = 1,
@@ -119,16 +123,18 @@ export const userRouter = router({
       const orderBy = createSortOrder(sortBy, sortOrder);
 
       // SYS_ADMIN puede ver staff de todos los tenants con filtro opcional
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
 
       const whereClause = {
         ...searchFilter,
-        ...(!isSys && { tenantId: ctx.user.tenantId }),
+        ...(!isSys && { tenantId }),
         userRoles: {
           some: {
             role: {
-              name: { in: ["tenant_admin", "tenant_staff"] },
-              tenantId: ctx.user.tenantId,
+              name: {
+                in: [DEFAULT_ROLES.TENANT_ADMIN, DEFAULT_ROLES.TENANT_STAFF],
+              },
+              tenantId,
             },
             OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
           },
@@ -180,9 +186,7 @@ export const userRouter = router({
   getClients: tenantStaffProcedure
     .input(paginationInputSchema.optional())
     .query(async ({ input, ctx }) => {
-      if (!ctx.user.tenantId) {
-        throw new Error("Usuario sin tenant asignado");
-      }
+      const tenantId = requireTenantId(ctx.user.tenantId);
 
       const {
         page = 1,
@@ -196,14 +200,14 @@ export const userRouter = router({
       const orderBy = createSortOrder(sortBy, sortOrder);
 
       // SYS_ADMIN puede ver clientes de todos los tenants
-      const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+      const isSys = await isSysAdmin(ctx.user.id, tenantId);
 
       const whereClause = {
         ...searchFilter,
-        ...(!isSys && { tenantId: ctx.user.tenantId }),
+        ...(!isSys && { tenantId }),
         userRoles: {
           some: {
-            role: { name: "client" },
+            role: { name: DEFAULT_ROLES.CLIENT },
             OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
           },
         },
@@ -243,12 +247,15 @@ export const userRouter = router({
     .mutation(async ({ input, ctx }) => {
       const tenantId = ctx.user.tenantId;
       if (!tenantId) {
-        throw new Error("Usuario sin tenant asignado");
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario sin tenant asignado",
+        });
       }
 
       // Validate email
       if (!validateEmail(input.email)) {
-        throw new Error("Email inválido");
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Email inválido" });
       }
 
       // Check if email already exists
@@ -259,7 +266,10 @@ export const userRouter = router({
       });
 
       if (existingUser) {
-        throw new Error("El email ya está registrado");
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "El email ya está registrado",
+        });
       }
 
       // Generate temporary password
@@ -295,14 +305,17 @@ export const userRouter = router({
         const staffRole = await tx.role.findUnique({
           where: {
             name_tenantId: {
-              name: "tenant_staff",
+              name: DEFAULT_ROLES.TENANT_STAFF,
               tenantId,
             },
           },
         });
 
         if (!staffRole) {
-          throw new Error("Rol TENANT_STAFF no encontrado");
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Rol TENANT_STAFF no encontrado",
+          });
         }
 
         // 4. Assign role
@@ -346,7 +359,10 @@ export const userRouter = router({
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {
       if (!ctx.user?.tenantId) {
-        throw new Error("User tenant not found");
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario sin tenant asignado",
+        });
       }
 
       const user = await prisma.user.findUnique({
@@ -373,7 +389,11 @@ export const userRouter = router({
           },
         },
       });
-      if (!user) throw new Error("Usuario no encontrado");
+      if (!user)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Usuario no encontrado",
+        });
       const { userRoles, ...rest } = user;
       const roles = userRoles.map((ur) => ({
         id: ur.role.id,
@@ -400,7 +420,11 @@ export const userRouter = router({
         updatedAt: true,
       },
     });
-    if (!user) throw new Error("Usuario no encontrado");
+    if (!user)
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Usuario no encontrado",
+      });
     return user;
   }),
 
@@ -425,7 +449,10 @@ export const userRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user?.tenantId) {
-        throw new Error("User tenant not found");
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario sin tenant asignado",
+        });
       }
 
       const targetUserId = input.id || ctx.user.id;
@@ -440,7 +467,10 @@ export const userRouter = router({
         );
 
         if (!canManageUsers) {
-          throw new Error("No tienes permisos para editar este usuario");
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "No tienes permisos para editar este usuario",
+          });
         }
       }
 
@@ -450,7 +480,11 @@ export const userRouter = router({
           tenantId: ctx.user.tenantId,
         },
       });
-      if (!user) throw new Error("Usuario no encontrado");
+      if (!user)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Usuario no encontrado",
+        });
 
       // Extract string values from input (handle union types from generated schema)
       const emailValue =
@@ -466,7 +500,7 @@ export const userRouter = router({
           : undefined;
 
       if (emailValue && !validateEmail(emailValue))
-        throw new Error("Email inválido");
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Email inválido" });
 
       // Check if email is already taken by another user in the same tenant
       if (emailValue && emailValue !== user.email) {
@@ -477,7 +511,11 @@ export const userRouter = router({
             id: { not: targetUserId },
           },
         });
-        if (existingUser) throw new Error("Email ya registrado en este tenant");
+        if (existingUser)
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Email ya registrado en este tenant",
+          });
       }
 
       // Prepare update data (exclude password - it's handled separately in Account table)
@@ -527,7 +565,10 @@ export const userRouter = router({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user?.tenantId) {
-        throw new Error("User tenant not found");
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario sin tenant asignado",
+        });
       }
 
       // Check permissions: users can delete themselves, admins can delete anyone
@@ -540,7 +581,10 @@ export const userRouter = router({
         );
 
         if (!canManageUsers) {
-          throw new Error("No tienes permisos para eliminar este usuario");
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "No tienes permisos para eliminar este usuario",
+          });
         }
       }
 
@@ -550,7 +594,11 @@ export const userRouter = router({
           tenantId: ctx.user.tenantId,
         },
       });
-      if (!user) throw new Error("Usuario no encontrado");
+      if (!user)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Usuario no encontrado",
+        });
 
       await prisma.user.delete({ where: { id: input.id } });
       return true;
@@ -578,7 +626,10 @@ export const userRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user?.tenantId) {
-        throw new Error("User tenant not found");
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario sin tenant asignado",
+        });
       }
 
       // Check permissions: only admins can create users
@@ -590,12 +641,15 @@ export const userRouter = router({
       );
 
       if (!canManageUsers) {
-        throw new Error("No tienes permisos para crear usuarios");
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "No tienes permisos para crear usuarios",
+        });
       }
 
       // Validate email format
       if (!validateEmail(input.email)) {
-        throw new Error("Email inválido");
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Email inválido" });
       }
 
       // Check if email already exists in this tenant
@@ -606,7 +660,10 @@ export const userRouter = router({
         },
       });
       if (existingUser) {
-        throw new Error("Email ya registrado en este tenant");
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Email ya registrado en este tenant",
+        });
       }
 
       // Hash password
@@ -662,7 +719,10 @@ export const userRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user?.tenantId) {
-        throw new Error("User tenant not found");
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario sin tenant asignado",
+        });
       }
 
       // Check permissions: only admins can assign roles
@@ -674,20 +734,31 @@ export const userRouter = router({
       );
 
       if (!canManageUsers) {
-        throw new Error("No tienes permisos para asignar roles");
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "No tienes permisos para asignar roles",
+        });
       }
 
       // Verify user exists
       const user = await prisma.user.findUnique({
         where: { id: input.userId },
       });
-      if (!user) throw new Error("Usuario no encontrado");
+      if (!user)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Usuario no encontrado",
+        });
 
       // Verify role exists
       const role = await prisma.role.findUnique({
         where: { id: input.roleId },
       });
-      if (!role) throw new Error("Rol no encontrado");
+      if (!role)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Rol no encontrado",
+        });
 
       // Check if user already has this role
       const existingUserRole = await prisma.userRole.findUnique({
@@ -700,7 +771,10 @@ export const userRouter = router({
       });
 
       if (existingUserRole) {
-        throw new Error("El usuario ya tiene este rol asignado");
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "El usuario ya tiene este rol asignado",
+        });
       }
 
       // Assign role
@@ -736,7 +810,10 @@ export const userRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       if (!ctx.user?.tenantId) {
-        throw new Error("User tenant not found");
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario sin tenant asignado",
+        });
       }
 
       // Check permissions: only admins can remove roles
@@ -748,7 +825,10 @@ export const userRouter = router({
       );
 
       if (!canManageUsers) {
-        throw new Error("No tienes permisos para remover roles");
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "No tienes permisos para remover roles",
+        });
       }
 
       // Verify the user role assignment exists
@@ -765,7 +845,10 @@ export const userRouter = router({
       });
 
       if (!userRole) {
-        throw new Error("El usuario no tiene este rol asignado");
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "El usuario no tiene este rol asignado",
+        });
       }
 
       // Prevent removing system roles if they're critical
@@ -792,7 +875,10 @@ export const userRouter = router({
     .input(z.object({ userId: z.string() }))
     .query(async ({ input, ctx }) => {
       if (!ctx.user?.tenantId) {
-        throw new Error("User tenant not found");
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario sin tenant asignado",
+        });
       }
 
       // Users can see their own roles, admins can see any user's roles
@@ -805,9 +891,10 @@ export const userRouter = router({
         );
 
         if (!canManageUsers) {
-          throw new Error(
-            "No tienes permisos para ver los roles de este usuario"
-          );
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "No tienes permisos para ver los roles de este usuario",
+          });
         }
       }
 

@@ -39,7 +39,7 @@ export function DashboardNavbar({
   basePath = "/dashboard",
 }: DashboardNavbarProps) {
   const { user, signOut } = useAuthContext();
-  const { primaryRole, isAdmin, isSuperAdmin } = useUser();
+  const { primaryRole, isAdmin, isSysAdmin } = useUser();
   const { impersonatedTenant, stopImpersonation, isImpersonating } =
     useImpersonation();
   const router = useRouter();
@@ -212,7 +212,7 @@ export function DashboardNavbar({
               <User className="mr-2 h-4 w-4" />
               <span>{t("profile")}</span>
             </DropdownMenuItem>
-            {(isSuperAdmin || isAdmin) && (
+            {(isSysAdmin || isAdmin) && (
               <DropdownMenuItem onClick={() => router.push(settingsPath)}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>{t("settings")}</span>

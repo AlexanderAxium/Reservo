@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 
 type SportFilter =
   | "FOOTBALL"
@@ -186,7 +186,7 @@ function FilterSidebar({
   );
 }
 
-export default function PublicCanchasPage() {
+function PublicCanchasPageContent() {
   const { t } = useTranslation("fields");
   const searchParams = useSearchParams();
   const initialSport = useMemo(
@@ -484,5 +484,28 @@ export default function PublicCanchasPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PublicCanchasPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background">
+          <section className="relative bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 overflow-hidden">
+            <div className="container mx-auto px-4 py-12 sm:py-16" />
+          </section>
+          <div className="container mx-auto px-4 py-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <FieldCardSkeleton key={`fallback-${i.toString()}`} />
+              ))}
+            </div>
+          </div>
+        </div>
+      }
+    >
+      <PublicCanchasPageContent />
+    </Suspense>
   );
 }

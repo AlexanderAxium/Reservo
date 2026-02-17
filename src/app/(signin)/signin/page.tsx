@@ -11,6 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useTranslation } from "@/hooks/useTranslation";
 import { authClient } from "@/lib/auth-client";
+import { EMAIL_REGEX } from "@/utils/validate";
 import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -48,9 +49,7 @@ export default function SignInPage() {
     setLoading(true);
     clearErrors();
 
-    // Validación básica de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.email)) {
+    if (!EMAIL_REGEX.test(data.email)) {
       setError("email", {
         type: "manual",
         message: t("validEmail"),

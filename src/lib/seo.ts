@@ -1,39 +1,36 @@
 import type { Metadata } from "next";
 
+const SITE_NAME = "CanchaLibre";
+const SITE_URL = process.env.SITE_URL ?? "https://canchalibre.com";
+
 export const defaultMetadata: Metadata = {
   title: {
-    default:
-      "AXIUM - Software Personalizado para Empresas | Desarrollo a Medida",
-    template: "%s | AXIUM",
+    default: "CanchaLibre - Reserva Canchas Deportivas Online",
+    template: `%s | ${SITE_NAME}`,
   },
   description:
-    "AXIUM desarrolla software personalizado para empresas en crecimiento y grandes organizaciones. Soluciones enterprise-grade, aplicaciones web y móviles, automatización de procesos e IA. Tu socio tecnológico en Perú.",
+    "CanchaLibre es la plataforma para reservar canchas deportivas de fútbol, tenis, basketball y más. Encuentra y reserva tu cancha ideal en segundos.",
   keywords: [
-    "software personalizado",
-    "desarrollo de software",
-    "aplicaciones web",
-    "aplicaciones móviles",
-    "automatización de procesos",
-    "inteligencia artificial",
-    "desarrollo enterprise",
-    "software a medida",
-    "desarrollo de software Perú",
-    "consultoría tecnológica",
-    "arquitectura de software",
-    "sistemas escalables",
-    "transformación digital",
-    "ingeniería de software",
-    "desarrollo de productos",
+    "reserva canchas",
+    "canchas deportivas",
+    "alquiler canchas",
+    "fútbol",
+    "tenis",
+    "basketball",
+    "reservas online",
+    "canchas cerca de mí",
+    "deportes",
+    "centros deportivos",
   ],
-  authors: [{ name: "AXIUM" }],
-  creator: "AXIUM",
-  publisher: "AXIUM",
+  authors: [{ name: SITE_NAME }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
-  metadataBase: new URL(process.env.SITE_URL || "https://axium.com.pe"),
+  metadataBase: new URL(SITE_URL),
   alternates: {
     canonical: "/",
   },
@@ -45,27 +42,27 @@ export const defaultMetadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "es_PE",
-    url: process.env.SITE_URL || "https://axium.com.pe",
-    title: "AXIUM - Software Personalizado para Empresas | Desarrollo a Medida",
+    url: SITE_URL,
+    title: "CanchaLibre - Reserva Canchas Deportivas Online",
     description:
-      "Desarrollamos software personalizado que transforma procesos manuales en sistemas eficientes y escalables. Soluciones enterprise-grade para empresas en crecimiento.",
-    siteName: "AXIUM",
+      "Encuentra y reserva canchas deportivas de fútbol, tenis, basketball y más. Tu plataforma de reservas deportivas.",
+    siteName: SITE_NAME,
     images: [
       {
         url: "/logo.png",
         width: 1200,
         height: 630,
-        alt: "AXIUM - Software Personalizado para Empresas",
+        alt: "CanchaLibre - Reserva Canchas Deportivas",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "AXIUM - Software Personalizado para Empresas",
+    title: "CanchaLibre - Reserva Canchas Deportivas Online",
     description:
-      "Desarrollamos software personalizado que transforma procesos manuales en sistemas eficientes y escalables.",
+      "Encuentra y reserva canchas deportivas de fútbol, tenis, basketball y más.",
     images: ["/logo.png"],
-    creator: "@axium",
+    creator: "@canchalibre",
   },
   robots: {
     index: true,
@@ -97,68 +94,51 @@ export function generateMetadata({
   image?: string;
 }): Metadata {
   return {
-    title: title ? `${title} | AXIUM` : defaultMetadata.title,
-    description: description || defaultMetadata.description,
-    keywords: keywords || defaultMetadata.keywords,
+    title: title ? `${title} | ${SITE_NAME}` : defaultMetadata.title,
+    description: description ?? defaultMetadata.description,
+    keywords: keywords ?? defaultMetadata.keywords,
     openGraph: {
       ...defaultMetadata.openGraph,
-      title: title || defaultMetadata.openGraph?.title,
-      description: description || defaultMetadata.openGraph?.description,
+      title: title ?? defaultMetadata.openGraph?.title,
+      description: description ?? defaultMetadata.openGraph?.description,
       images: image ? [{ url: image }] : defaultMetadata.openGraph?.images,
     },
     twitter: {
       ...defaultMetadata.twitter,
-      title: title || defaultMetadata.twitter?.title,
-      description: description || defaultMetadata.twitter?.description,
+      title: title ?? defaultMetadata.twitter?.title,
+      description: description ?? defaultMetadata.twitter?.description,
       images: image ? [image] : defaultMetadata.twitter?.images,
     },
   };
 }
 
-// Metadata específica para la página principal de AXIUM
 export const homePageMetadata: Metadata = {
-  title: "AXIUM - Software Personalizado para Empresas | Desarrollo a Medida",
+  title: "CanchaLibre - Reserva Canchas Deportivas Online",
   description:
-    "AXIUM desarrolla software personalizado para empresas en crecimiento y grandes organizaciones. Soluciones enterprise-grade, aplicaciones web y móviles, automatización de procesos e IA. Tu socio tecnológico en Perú.",
-  keywords: [
-    "software personalizado",
-    "desarrollo de software",
-    "aplicaciones web",
-    "aplicaciones móviles",
-    "automatización de procesos",
-    "inteligencia artificial",
-    "desarrollo enterprise",
-    "software a medida",
-    "desarrollo de software Perú",
-    "consultoría tecnológica",
-    "arquitectura de software",
-    "sistemas escalables",
-    "transformación digital",
-    "ingeniería de software",
-    "desarrollo de productos",
-  ],
+    "CanchaLibre es la plataforma para reservar canchas deportivas de fútbol, tenis, basketball y más. Encuentra y reserva tu cancha ideal en segundos.",
+  keywords: defaultMetadata.keywords as string[],
   openGraph: {
     type: "website",
     locale: "es_PE",
-    url: process.env.SITE_URL || "https://axium.com.pe",
-    title: "AXIUM - Software Personalizado para Empresas | Desarrollo a Medida",
+    url: SITE_URL,
+    title: "CanchaLibre - Reserva Canchas Deportivas Online",
     description:
-      "Desarrollamos software personalizado que transforma procesos manuales en sistemas eficientes y escalables. Soluciones enterprise-grade para empresas en crecimiento.",
-    siteName: "AXIUM",
+      "Encuentra y reserva canchas deportivas de fútbol, tenis, basketball y más. Tu plataforma de reservas deportivas.",
+    siteName: SITE_NAME,
     images: [
       {
         url: "/logo.png",
         width: 1200,
         height: 630,
-        alt: "AXIUM - Software Personalizado para Empresas",
+        alt: "CanchaLibre - Reserva Canchas Deportivas",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "AXIUM - Software Personalizado para Empresas",
+    title: "CanchaLibre - Reserva Canchas Deportivas Online",
     description:
-      "Desarrollamos software personalizado que transforma procesos manuales en sistemas eficientes y escalables.",
+      "Encuentra y reserva canchas deportivas de fútbol, tenis, basketball y más.",
     images: ["/logo.png"],
   },
 };

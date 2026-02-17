@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useTranslation } from "@/hooks/useTranslation";
 import { cn } from "@/lib/utils";
+import { getInitials } from "@/lib/utils/avatar";
 import {
   Building2,
   ChevronsUpDown,
@@ -60,14 +61,7 @@ export function SystemSidebar() {
     await signOut();
   };
 
-  const userInitials = user?.name
-    ? user.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-    : "SA";
+  const userInitials = getInitials(user?.name);
 
   const sections: NavSection[] = [
     {

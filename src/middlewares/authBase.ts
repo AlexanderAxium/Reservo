@@ -3,7 +3,7 @@ import {
   hasAllPermissions,
   hasAnyPermission,
   hasAnyRole,
-  hasPermission,
+  hasPermissionOrManage,
   hasRole,
 } from "@/services/rbacService";
 import type {
@@ -69,7 +69,7 @@ export function createPermissionMiddleware(
         );
       }
 
-      const userHasPermission = await hasPermission(
+      const userHasPermission = await hasPermissionOrManage(
         user.id,
         action,
         resource,

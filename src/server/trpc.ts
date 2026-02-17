@@ -1,3 +1,4 @@
+import { DEFAULT_ROLES } from "@/types/rbac";
 import { TRPCError } from "@trpc/server";
 import { isTenantAdmin, isTenantMember } from "../services/rbacService";
 import { t } from "./context";
@@ -39,7 +40,7 @@ export const tenantStaffProcedure = t.procedure.use(async ({ ctx, next }) => {
   }
 
   // sys_admin always passes (roles comes from real tenant, not impersonated)
-  const isSys = ctx.user.roles.includes("sys_admin");
+  const isSys = ctx.user.roles.includes(DEFAULT_ROLES.SYS_ADMIN);
 
   if (!isSys) {
     const isMember = await isTenantMember(ctx.user.id, ctx.user.tenantId);
@@ -76,7 +77,7 @@ export const tenantAdminProcedure = t.procedure.use(async ({ ctx, next }) => {
   }
 
   // sys_admin always passes (roles comes from real tenant, not impersonated)
-  const isSys = ctx.user.roles.includes("sys_admin");
+  const isSys = ctx.user.roles.includes(DEFAULT_ROLES.SYS_ADMIN);
 
   if (!isSys) {
     const isAdmin = await isTenantAdmin(ctx.user.id, ctx.user.tenantId);
@@ -106,7 +107,7 @@ export const sysAdminProcedure = t.procedure.use(async ({ ctx, next }) => {
   }
 
   // Use ctx.user.roles (always from real tenant, never affected by impersonation)
-  if (!ctx.user.roles.includes("sys_admin")) {
+  if (!ctx.user.roles.includes(DEFAULT_ROLES.SYS_ADMIN)) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "You must be a system administrator to access this resource",
@@ -120,13 +121,3 @@ export const sysAdminProcedure = t.procedure.use(async ({ ctx, next }) => {
     },
   });
 });
-
-/**
- * @deprecated Use tenantAdminProcedure instead
- */
-export const adminProcedure = tenantAdminProcedure;
-
-/**
- * @deprecated Use sysAdminProcedure instead
- */
-export const superAdminProcedure = sysAdminProcedure;

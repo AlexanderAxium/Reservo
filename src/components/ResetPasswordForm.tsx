@@ -8,13 +8,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { REQUEST_TIMEOUT_MS } from "@/constants/time";
 import { useTranslation } from "@/hooks/useTranslation";
+import { EMAIL_REGEX } from "@/utils/validate";
 import { Loader2 } from "lucide-react";
 import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
-
-const REQUEST_TIMEOUT_MS = 15000;
 
 type ResetPasswordFormValues = { email: string };
 
@@ -42,8 +42,7 @@ export default function ResetPasswordForm({
 
   const onSubmit = async (data: ResetPasswordFormValues) => {
     clearErrors();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(data.email)) {
+    if (!EMAIL_REGEX.test(data.email)) {
       setError("email", {
         type: "manual",
         message: t("validEmail") ?? "Ingresa un correo válido",

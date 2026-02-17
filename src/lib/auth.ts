@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { SESSION_MAX_AGE, SESSION_UPDATE_AGE } from "@/constants/time";
 import { prisma } from "@/lib/db";
 import { sendResetPasswordEmail, sendVerificationEmail } from "@/lib/mailer";
 import type { GoogleProfile } from "@/types/auth";
@@ -124,8 +125,8 @@ export const auth = betterAuth({
 
   socialProviders: {
     google: {
-      clientId: process.env.GOOGLE_CLIENT_ID || "dummy-client-id",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "dummy-client-secret",
+      clientId: process.env.GOOGLE_CLIENT_ID ?? "dummy-client-id",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "dummy-client-secret",
       mapProfileToUser: (profile: GoogleProfile) => {
         const name =
           profile.name ||
@@ -146,8 +147,8 @@ export const auth = betterAuth({
 
   session: {
     strategy: "jwt",
-    expiresIn: 60 * 60 * 24 * 7,
-    updateAge: 60 * 60 * 24,
+    expiresIn: SESSION_MAX_AGE,
+    updateAge: SESSION_UPDATE_AGE,
   },
 
   callbacks: {
@@ -176,9 +177,9 @@ export const auth = betterAuth({
     corsOrigin:
       process.env.NODE_ENV === "production"
         ? [
-            process.env.SITE_URL || "https://myapp.example.com",
-            "https://myapp.example.com",
-            "https://www.myapp.example.com",
+            process.env.SITE_URL ?? "https://canchalibre.com",
+            "https://canchalibre.com",
+            "https://www.canchalibre.com",
           ]
         : ["http://localhost:3000"],
   },

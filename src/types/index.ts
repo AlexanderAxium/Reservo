@@ -7,6 +7,7 @@
 export type * from "./auth";
 // Export all enums and types
 export * from "./enums";
+export { DEFAULT_ROLES } from "./rbac";
 export type * from "./rbac";
 export type * from "./request";
 export type * from "./response";
