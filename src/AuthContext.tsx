@@ -4,8 +4,10 @@ import type { AuthUser } from "@/types/user";
 import {
   type ReactNode,
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
@@ -70,12 +72,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     try {
       const { error } = await authClient.signIn.email({
         email,
         password,
-        callbackURL: "/",
+        callbackURL: "/auth/redirect",
         rememberMe: true,
       });
 
@@ -94,15 +96,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (_error) {
       return { success: false, error: "Error de red o servidor" };
     }
-  };
+  }, []);
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = useCallback(async () => {
     try {
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/",
+        callbackURL: "/auth/redirect",
         errorCallbackURL: "/signin",
-        newUserCallbackURL: "/",
+        newUserCallbackURL: "/auth/redirect",
       });
 
       // Refresh session after successful login
@@ -111,38 +113,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (_error) {
       // Error handled by Better Auth
     }
-  };
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
+      // Clear impersonation cookie so it doesn't leak into the next session
+      document.cookie = "x-tenant-override=; path=/; max-age=0; SameSite=Lax";
+      localStorage.removeItem("x-tenant-override-name");
+
       await authClient.signOut();
       const { data } = await authClient.getSession();
       setSession(data);
     } catch (_error) {
       // Error handled by Better Auth
     }
-  };
+  }, []);
 
-  const auth = {
-    user: session?.user
-      ? {
-          id: session.user.id,
-          email: session.user.email,
-          name: session.user.name || "",
-          phone: session.user.phone || null,
-          image: session.user.image || null,
-          emailVerified: session.user.emailVerified || false,
-          language: "es",
-          createdAt: session.user.createdAt,
-          updatedAt: session.user.updatedAt,
-        }
-      : null,
-    loading,
-    signIn,
-    signInWithGoogle,
-    signOut,
-    isAuthenticated: !!session?.user,
-  };
+  const user: AuthUser | null = useMemo(
+    () =>
+      session?.user
+        ? {
+            id: session.user.id,
+            email: session.user.email,
+            name: session.user.name || "",
+            phone: session.user.phone || null,
+            image: session.user.image || null,
+            emailVerified: session.user.emailVerified || false,
+            language: "es",
+            createdAt: session.user.createdAt,
+            updatedAt: session.user.updatedAt,
+          }
+        : null,
+    [session]
+  );
+
+  const isAuthenticated = !!user;
+
+  const auth = useMemo<AuthContextType>(
+    () => ({
+      user,
+      loading,
+      signIn,
+      signInWithGoogle,
+      signOut,
+      isAuthenticated,
+    }),
+    [user, loading, signIn, signInWithGoogle, signOut, isAuthenticated]
+  );
 
   return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
 }

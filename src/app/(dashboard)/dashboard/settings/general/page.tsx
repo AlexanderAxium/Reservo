@@ -1,10 +1,12 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { SingleImageUpload } from "@/components/dashboard/SingleImageUpload";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/hooks/useTRPC";
@@ -98,119 +100,156 @@ export default function SettingsGeneralPage() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">{t("settingsGeneral.title")}</h1>
-        <p className="text-muted-foreground">
-          {t("settingsGeneral.description")}
-        </p>
-      </div>
+      <PageHeader
+        title={t("settingsGeneral.title")}
+        description={t("settingsGeneral.description")}
+      />
 
       <Card className="p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
-          <SingleImageUpload
-            label={t("upload.logoLabel")}
-            value={formData.logoUrl}
-            onChange={(url) =>
-              setFormData({ ...formData, logoUrl: url ?? null })
-            }
-            scope="tenant_logo"
-            variant="logo"
-          />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="displayName">
-                {t("settingsGeneral.displayNameLabel")}
-              </Label>
-              <Input
-                id="displayName"
-                value={formData.displayName}
-                onChange={(e) =>
-                  setFormData({ ...formData, displayName: e.target.value })
-                }
-                placeholder={t("settingsGeneral.displayNamePlaceholder")}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">{t("settingsGeneral.emailLabel")}</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                placeholder={t("settingsGeneral.emailPlaceholder")}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="phone">{t("settingsGeneral.phoneLabel")}</Label>
-              <Input
-                id="phone"
-                value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
-                placeholder={t("settingsGeneral.phonePlaceholder")}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="website">
-                {t("settingsGeneral.websiteLabel")}
-              </Label>
-              <Input
-                id="website"
-                type="url"
-                value={formData.website}
-                onChange={(e) =>
-                  setFormData({ ...formData, website: e.target.value })
-                }
-                placeholder={t("settingsGeneral.websitePlaceholder")}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="address">{t("settingsGeneral.addressLabel")}</Label>
-            <Input
-              id="address"
-              value={formData.address}
-              onChange={(e) =>
-                setFormData({ ...formData, address: e.target.value })
+          <div>
+            <h3 className="text-lg font-semibold mb-4">
+              {t("settingsGeneral.branding")}
+            </h3>
+            <SingleImageUpload
+              label={t("upload.logoLabel")}
+              value={formData.logoUrl}
+              onChange={(url) =>
+                setFormData({ ...formData, logoUrl: url ?? null })
               }
-              placeholder={t("settingsGeneral.addressPlaceholder")}
+              scope="tenant_logo"
+              variant="logo"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="city">{t("settingsGeneral.cityLabel")}</Label>
-            <Input
-              id="city"
-              value={formData.city}
-              onChange={(e) =>
-                setFormData({ ...formData, city: e.target.value })
-              }
-              placeholder={t("settingsGeneral.cityPlaceholder")}
-            />
-          </div>
+          <Separator />
 
-          <div className="space-y-2">
-            <Label htmlFor="description">
-              {t("settingsGeneral.descriptionLabel")}
-            </Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              placeholder={t("settingsGeneral.descriptionPlaceholder")}
-              rows={4}
-            />
+          <div>
+            <h3 className="text-lg font-semibold mb-4">
+              {t("settingsGeneral.companyInfo")}
+            </h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="displayName">
+                    {t("settingsGeneral.displayNameLabel")}
+                  </Label>
+                  <Input
+                    id="displayName"
+                    value={formData.displayName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, displayName: e.target.value })
+                    }
+                    placeholder={t("settingsGeneral.displayNamePlaceholder")}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">
+                    {t("settingsGeneral.emailLabel")}
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    placeholder={t("settingsGeneral.emailPlaceholder")}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">
+                    {t("settingsGeneral.phoneLabel")}
+                  </Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
+                    placeholder={t("settingsGeneral.phonePlaceholder")}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="website">
+                    {t("settingsGeneral.websiteLabel")}
+                  </Label>
+                  <Input
+                    id="website"
+                    type="url"
+                    value={formData.website}
+                    onChange={(e) =>
+                      setFormData({ ...formData, website: e.target.value })
+                    }
+                    placeholder={t("settingsGeneral.websitePlaceholder")}
+                  />
+                </div>
+              </div>
+
+              <Separator className="my-6" />
+
+              <div>
+                <h3 className="text-lg font-semibold mb-4">
+                  {t("settingsGeneral.location")}
+                </h3>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="address">
+                      {t("settingsGeneral.addressLabel")}
+                    </Label>
+                    <Input
+                      id="address"
+                      value={formData.address}
+                      onChange={(e) =>
+                        setFormData({ ...formData, address: e.target.value })
+                      }
+                      placeholder={t("settingsGeneral.addressPlaceholder")}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="city">
+                      {t("settingsGeneral.cityLabel")}
+                    </Label>
+                    <Input
+                      id="city"
+                      value={formData.city}
+                      onChange={(e) =>
+                        setFormData({ ...formData, city: e.target.value })
+                      }
+                      placeholder={t("settingsGeneral.cityPlaceholder")}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator className="my-6" />
+
+              <div>
+                <h3 className="text-lg font-semibold mb-4">
+                  {t("settingsGeneral.descriptionSection")}
+                </h3>
+                <div className="space-y-2">
+                  <Label htmlFor="description">
+                    {t("settingsGeneral.descriptionLabel")}
+                  </Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                    placeholder={t("settingsGeneral.descriptionPlaceholder")}
+                    rows={4}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end">

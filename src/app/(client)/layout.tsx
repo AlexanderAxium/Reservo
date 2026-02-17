@@ -1,26 +1,24 @@
 "use client";
 
-import { useAuthContext } from "@/AuthContext";
-import { ClientNavbar } from "@/components/layouts/ClientNavbar";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { DashboardNavbar } from "@/components/dashboard/DashboardNavbar";
+import { ClientSidebar } from "@/components/layouts/ClientSidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { useRouteGuard } from "@/hooks/useRouteGuard";
 
 export default function ClientLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, loading } = useAuthContext();
-  const router = useRouter();
+  const { isLoading, isAuthorized, isAuthenticated } = useRouteGuard({
+    allowedRoles: ["client", "sys_admin"],
+  });
 
-  useEffect(() => {
-    if (loading) return;
-    if (!isAuthenticated) {
-      router.replace("/signin");
-    }
-  }, [isAuthenticated, loading, router]);
-
-  if (loading) {
+  if (isLoading || !isAuthenticated || !isAuthorized) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
@@ -28,14 +26,20 @@ export default function ClientLayout({
     );
   }
 
-  if (!isAuthenticated) {
-    return null;
-  }
-
   return (
-    <div className="min-h-screen bg-background">
-      <ClientNavbar />
-      <main className="container mx-auto">{children}</main>
-    </div>
+    <SidebarProvider>
+      <ClientSidebar />
+      <SidebarInset>
+        <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/70 backdrop-blur-md px-3 sm:px-4">
+          <SidebarTrigger className="-ml-1 h-8 w-8" />
+          <DashboardNavbar basePath="/my" />
+        </header>
+        <div className="flex flex-1 flex-col">
+          <div className="min-h-[100vh] flex-1 bg-background p-6 sm:p-8">
+            {children}
+          </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,8 +18,7 @@ import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatPrice } from "@/lib/utils";
 import type { PaymentStatus } from "@prisma/client";
-import { ArrowLeft, CheckCircle2, CreditCard, XCircle } from "lucide-react";
-import Link from "next/link";
+import { CheckCircle2, CreditCard, XCircle } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -99,23 +99,12 @@ export default function PaymentDetailPage() {
   const canRefund = payment.status === "PAID";
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/payments">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t("paymentDetail.back")}
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground">
-            {t("paymentDetail.title")}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {t("paymentDetail.description")}
-          </p>
-        </div>
-      </div>
+    <div className="p-6 space-y-6">
+      <PageHeader
+        title={t("paymentDetail.title")}
+        description={t("paymentDetail.description")}
+        backHref="/dashboard/payments"
+      />
 
       <Card>
         <CardHeader>
@@ -138,7 +127,7 @@ export default function PaymentDetailPage() {
               <p className="text-sm font-medium text-muted-foreground">
                 {t("paymentDetail.statusLabel")}
               </p>
-              <Badge variant="outline" className="mt-1">
+              <Badge variant="soft" className="mt-1">
                 {STATUS_LABELS[payment.status as PaymentStatus] ||
                   payment.status}
               </Badge>

@@ -1,10 +1,12 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { SingleImageUpload } from "@/components/dashboard/SingleImageUpload";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
@@ -87,12 +89,15 @@ export default function ProfilePage() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">{t("profilePage.title")}</h1>
-        <p className="text-muted-foreground">{t("profilePage.description")}</p>
-      </div>
+      <PageHeader
+        title={t("profilePage.title")}
+        description={t("profilePage.description")}
+      />
 
       <Card className="p-6">
+        <h3 className="text-lg font-semibold mb-4">
+          {t("profilePage.personalInfo")}
+        </h3>
         <form onSubmit={handleSubmit} className="space-y-6">
           <SingleImageUpload
             label={t("upload.avatarLabel")}
@@ -140,7 +145,9 @@ export default function ProfilePage() {
             />
           </div>
 
-          <div className="border-t pt-6">
+          <Separator className="my-6" />
+
+          <div>
             <h3 className="text-lg font-semibold mb-4">
               {t("profilePage.changePassword")}
             </h3>

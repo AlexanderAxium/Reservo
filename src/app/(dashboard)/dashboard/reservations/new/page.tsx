@@ -1,12 +1,10 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ManualReservationModal } from "@/components/reservation/ManualReservationModal";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -39,22 +37,11 @@ export default function NewReservationPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/reservations">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t("reservationNew.back")}
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground">
-            {t("reservationNew.title")}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {t("reservationNew.description")}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title={t("reservationNew.title")}
+        description={t("reservationNew.description")}
+        backHref="/dashboard/reservations"
+      />
 
       <Card>
         <CardContent className="p-6">

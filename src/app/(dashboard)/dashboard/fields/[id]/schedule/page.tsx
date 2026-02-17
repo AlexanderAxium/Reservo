@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ScheduleModal } from "@/components/fields/ScheduleModal";
 import {
   AlertDialog,
@@ -23,8 +24,7 @@ import {
 import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
 import type { WeekDay } from "@prisma/client";
-import { ArrowLeft, Calendar, Edit, Plus, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { Calendar, Edit, Plus, Trash2 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -171,26 +171,17 @@ export default function FieldSchedulePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href={`/dashboard/fields/${fieldId}`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t("fieldSchedule.back")}
+      <PageHeader
+        title={t("fieldSchedule.title", { name: field.name })}
+        description={t("fieldSchedule.description")}
+        backHref={`/dashboard/fields/${fieldId}`}
+        actions={
+          <Button onClick={handleOpenNew}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t("fieldSchedule.addSchedule")}
           </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground">
-            {t("fieldSchedule.title", { name: field.name })}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {t("fieldSchedule.description")}
-          </p>
-        </div>
-        <Button onClick={handleOpenNew}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t("fieldSchedule.addSchedule")}
-        </Button>
-      </div>
+        }
+      />
 
       <Card>
         <CardHeader>
@@ -239,7 +230,7 @@ export default function FieldSchedulePage() {
                           </Badge>
                         </div>
                       ) : (
-                        <Badge variant="secondary">
+                        <Badge variant="soft" className="text-muted-foreground">
                           {t("fieldSchedule.closed")}
                         </Badge>
                       )}

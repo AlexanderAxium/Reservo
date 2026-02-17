@@ -2,6 +2,7 @@
 
 import { useAuthContext } from "@/AuthContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Breadcrumb,
@@ -21,17 +22,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LanguageSelector } from "@/components/ui/language-selector";
+import { useImpersonation } from "@/hooks/useImpersonation";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useUser } from "@/hooks/useUser";
 import { cn } from "@/lib/utils";
-import { LogOut, Settings, User } from "lucide-react";
+import { ArrowLeft, Eye, LogOut, Settings, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import React from "react";
 
-export function DashboardNavbar() {
+interface DashboardNavbarProps {
+  basePath?: string;
+}
+
+export function DashboardNavbar({
+  basePath = "/dashboard",
+}: DashboardNavbarProps) {
   const { user, signOut } = useAuthContext();
   const { primaryRole, isAdmin, isSuperAdmin } = useUser();
+  const { impersonatedTenant, stopImpersonation, isImpersonating } =
+    useImpersonation();
   const router = useRouter();
   const pathname = usePathname();
   const { t } = useTranslation("common");
@@ -41,30 +51,43 @@ export function DashboardNavbar() {
     await signOut();
   };
 
-  // Generar breadcrumbs basados en la ruta actual
   const generateBreadcrumbs = () => {
     const segments = pathname.split("/").filter(Boolean);
+    const baseLabel =
+      basePath === "/system"
+        ? tDashboard("system.title")
+        : basePath === "/my"
+          ? tDashboard("nav.myAccount")
+          : t("dashboard");
     const breadcrumbs: Array<{ label: string; href: string }> = [
-      { label: t("dashboard"), href: "/dashboard" },
+      { label: baseLabel, href: basePath },
     ];
 
-    // Mapeo de rutas a traducciones
     const routeMap: Record<string, string> = {
       users: tDashboard("users"),
       roles: tDashboard("rolesPermissions"),
       settings: tDashboard("settings2"),
       profile: t("profile"),
+      organizations: tDashboard("nav.organizations"),
+      reservations: tDashboard("nav.reservations"),
+      fields: tDashboard("nav.fields"),
+      payments: tDashboard("nav.payments"),
+      clients: tDashboard("nav.clients"),
+      staff: tDashboard("staffPage.title"),
+      features: tDashboard("featuresPage.title"),
+      "sport-centers": tDashboard("nav.sportCenters"),
     };
 
+    const baseSegment = basePath.replace(/^\//, "");
+
     segments.forEach((segment, index) => {
-      if (segment === "dashboard") return;
+      if (segment === baseSegment) return;
 
       const href = `/${segments.slice(0, index + 1).join("/")}`;
       let label = routeMap[segment] || segment;
 
-      // Si es un ID (número o UUID), mostrar el nombre del recurso o "Detalle"
       if (index === segments.length - 1 && /^[0-9a-f-]+$/i.test(segment)) {
-        label = tDashboard("user") || "Detalle";
+        label = tDashboard("viewDetails");
       }
 
       breadcrumbs.push({ label, href });
@@ -75,8 +98,40 @@ export function DashboardNavbar() {
 
   const breadcrumbs = generateBreadcrumbs();
 
+  const profilePath =
+    basePath === "/system"
+      ? "/system/settings"
+      : basePath === "/my"
+        ? "/my/profile"
+        : "/dashboard/profile";
+
+  const settingsPath =
+    basePath === "/system"
+      ? "/system/settings"
+      : basePath === "/my"
+        ? "/my/settings"
+        : "/dashboard/settings";
+
   return (
     <div className="flex flex-1 items-center justify-between min-w-0 gap-4">
+      {/* Impersonation indicator (unified in header) */}
+      {isImpersonating && impersonatedTenant && basePath === "/dashboard" && (
+        <div className="flex items-center gap-2 shrink-0 rounded-lg border border-amber-500/30 bg-amber-500/10 dark:bg-amber-500/15 px-3 py-1.5">
+          <Eye className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+          <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
+            {tDashboard("system.viewingTenant")}: {impersonatedTenant.name}
+          </span>
+          <button
+            type="button"
+            onClick={stopImpersonation}
+            className="flex items-center gap-1 rounded-md bg-amber-600/20 dark:bg-amber-400/20 px-2 py-1 text-xs font-medium text-amber-800 dark:text-amber-200 transition-colors hover:bg-amber-600/30 dark:hover:bg-amber-400/30"
+          >
+            <ArrowLeft className="h-3 w-3" />
+            {tDashboard("system.returnToSystem")}
+          </button>
+        </div>
+      )}
+
       {/* Breadcrumbs */}
       <div className="min-w-0 flex-1">
         <Breadcrumb>
@@ -104,12 +159,10 @@ export function DashboardNavbar() {
         </Breadcrumb>
       </div>
 
-      {/* Right side - Language, Theme and User Menu */}
+      {/* Right side */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        {/* Language Selector */}
+        <NotificationBell />
         <LanguageSelector />
-
-        {/* Theme Toggle */}
         <ThemeToggle />
 
         {/* User Menu */}
@@ -155,14 +208,12 @@ export function DashboardNavbar() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
+            <DropdownMenuItem onClick={() => router.push(profilePath)}>
               <User className="mr-2 h-4 w-4" />
               <span>{t("profile")}</span>
             </DropdownMenuItem>
             {(isSuperAdmin || isAdmin) && (
-              <DropdownMenuItem
-                onClick={() => router.push("/dashboard/settings")}
-              >
+              <DropdownMenuItem onClick={() => router.push(settingsPath)}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>{t("settings")}</span>
               </DropdownMenuItem>

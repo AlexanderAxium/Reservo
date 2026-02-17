@@ -1,5 +1,9 @@
 "use client";
 
+import { EmptyState } from "@/components/dashboard/EmptyState";
+import { ExportButton } from "@/components/dashboard/ExportButton";
+import { FilterBar } from "@/components/dashboard/FilterBar";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,7 +15,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   ScrollableTable,
   type TableAction,
@@ -21,8 +24,9 @@ import { usePagination } from "@/hooks/usePagination";
 import { useRBAC } from "@/hooks/useRBAC";
 import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
+import { exportToCsv } from "@/lib/export";
 import { PermissionAction, PermissionResource } from "@/types/rbac";
-import { Plus, Search } from "lucide-react";
+import { MapPin, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -84,6 +88,34 @@ export default function SportCentersPage() {
       toast.error(error.message || t("sportCentersList.deleteError"));
     },
   });
+
+  // Export function
+  const handleExport = () => {
+    if (!data?.data || data.data.length === 0) return;
+    exportToCsv(
+      data.data.map((c) => ({
+        name: c.name,
+        address: c.address,
+        district: c.district || "-",
+        city: c.city || "-",
+        phone: c.phone || "-",
+        owner: c.owner.name,
+        ownerEmail: c.owner.email,
+        fields: c._count.fields,
+      })),
+      `sport-centers-${new Date().toISOString().split("T")[0]}`,
+      [
+        { key: "name", label: "Name" },
+        { key: "address", label: "Address" },
+        { key: "district", label: "District" },
+        { key: "city", label: "City" },
+        { key: "phone", label: "Phone" },
+        { key: "owner", label: "Owner" },
+        { key: "ownerEmail", label: "Owner Email" },
+        { key: "fields", label: "Fields" },
+      ]
+    );
+  };
 
   const columns: TableColumn<SportCenter>[] = [
     {
@@ -155,31 +187,30 @@ export default function SportCentersPage() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{t("sportCentersList.title")}</h1>
-          <p className="text-muted-foreground">
-            {t("sportCentersList.description")}
-          </p>
-        </div>
-        <Link href="/dashboard/sport-centers/new">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            {t("sportCentersList.newCenter")}
-          </Button>
-        </Link>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={t("sportCentersList.title")}
+        description={t("sportCentersList.description")}
+        actions={
+          <Link href="/dashboard/sport-centers/new">
+            <Button size="sm">
+              <Plus className="size-4" />
+              {t("sportCentersList.newCenter")}
+            </Button>
+          </Link>
+        }
+      />
 
-      <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder={t("sportCentersList.searchPlaceholder")}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
+      <FilterBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t("sportCentersList.searchPlaceholder")}
+      >
+        <ExportButton
+          onExportCsv={handleExport}
+          disabled={!data?.data || data.data.length === 0}
         />
-      </div>
+      </FilterBar>
 
       <ScrollableTable
         data={data?.data || []}
@@ -191,6 +222,7 @@ export default function SportCentersPage() {
         onPageChange={setPage}
         onPageSizeChange={setLimit}
         emptyMessage={t("sportCentersList.noSportCenters")}
+        emptyIcon={<MapPin className="size-12 text-muted-foreground" />}
       />
 
       <AlertDialog

@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,7 +17,7 @@ import { useRBAC } from "@/hooks/useRBAC";
 import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
 import { PermissionAction, PermissionResource } from "@/types/rbac";
-import { ArrowLeft, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -121,22 +122,11 @@ export default function EditRolePage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href={`/dashboard/roles/${roleId}`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t("roleEdit.back")}
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground">
-            {t("roleEdit.title", { name: role.displayName })}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {t("roleEdit.description")}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title={t("roleEdit.title", { name: role.displayName })}
+        description={t("roleEdit.description")}
+        backHref={`/dashboard/roles/${roleId}`}
+      />
 
       <Card className="max-w-xl">
         <CardHeader>

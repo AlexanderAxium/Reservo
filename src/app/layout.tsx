@@ -4,10 +4,10 @@ import "./globals.css";
 import { AuthProvider } from "@/AuthContext";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { LocaleSync } from "@/components/LocaleSync";
-import { RoleBasedRedirect } from "@/components/RoleBasedRedirect";
 import { StructuredData } from "@/components/StructuredData";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/toaster";
+import { ImpersonationProvider } from "@/hooks/useImpersonation";
 import { TRPCProvider } from "@/hooks/useTRPC";
 import { GA_TRACKING_ID } from "@/lib/analytics";
 import { defaultMetadata } from "@/lib/seo";
@@ -45,9 +45,11 @@ export default function RootLayout({
         >
           <AuthProvider>
             <TRPCProvider>
-              <LocaleSync />
-              <RoleBasedRedirect>{children}</RoleBasedRedirect>
-              <Toaster />
+              <ImpersonationProvider>
+                <LocaleSync />
+                {children}
+                <Toaster />
+              </ImpersonationProvider>
             </TRPCProvider>
           </AuthProvider>
         </ThemeProvider>

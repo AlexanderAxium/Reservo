@@ -1,28 +1,26 @@
 "use client";
 
+import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
+import { ExportButton } from "@/components/dashboard/ExportButton";
+import { FilterBar } from "@/components/dashboard/FilterBar";
+import { KpiCard } from "@/components/dashboard/KpiCard";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   ScrollableTable,
   type TableAction,
   type TableColumn,
 } from "@/components/ui/scrollable-table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { usePagination } from "@/hooks/usePagination";
 import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
+import { exportToCsv } from "@/lib/export";
 import { formatPrice } from "@/lib/utils";
 import type { PaymentStatus } from "@prisma/client";
-import { CreditCard, Search } from "lucide-react";
+import { subDays } from "date-fns";
+import { Clock, CreditCard, DollarSign, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 type Payment = {
   id: string;
@@ -61,7 +59,7 @@ function StatusBadge({
   };
 
   return (
-    <Badge variant="outline" className={colors[status] || ""}>
+    <Badge variant="soft" className={colors[status] || ""}>
       {labels[status] || status}
     </Badge>
   );
@@ -75,6 +73,10 @@ export default function PaymentsPage() {
   });
 
   const [statusFilter, setStatusFilter] = useState<"" | PaymentStatus>("");
+  const [dateRange, setDateRange] = useState({
+    from: subDays(new Date(), 30),
+    to: new Date(),
+  });
 
   const STATUS_LABELS: Record<PaymentStatus, string> = {
     PENDING: t("statuses.pending"),
@@ -90,6 +92,49 @@ export default function PaymentsPage() {
     search: search || undefined,
     status: statusFilter === "" ? undefined : statusFilter,
   });
+
+  // Compute KPIs from current page data
+  const kpiStats = useMemo(() => {
+    const payments = data?.data || [];
+    const totalRevenue = payments.reduce(
+      (sum, p) => sum + (Number(p.amount) || 0),
+      0
+    );
+    const pendingAmount = payments
+      .filter((p) => p.status === "PENDING")
+      .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    return {
+      total: payments.length,
+      revenue: totalRevenue,
+      pending: pendingAmount,
+    };
+  }, [data?.data]);
+
+  // Export function
+  const handleExport = () => {
+    if (!data?.data || data.data.length === 0) return;
+    exportToCsv(
+      data.data.map((p) => ({
+        client: p.reservation.user?.name || p.reservation.guestName || "Guest",
+        email: p.reservation.user?.email || "-",
+        field: p.reservation.field.name,
+        amount: `S/ ${formatPrice(Number(p.amount))}`,
+        method: p.paymentMethod?.name || "-",
+        status: STATUS_LABELS[p.status],
+        date: new Date(p.createdAt).toLocaleDateString("es-PE"),
+      })),
+      `payments-${new Date().toISOString().split("T")[0]}`,
+      [
+        { key: "client", label: t("paymentsList.csvClient") },
+        { key: "email", label: t("paymentsList.csvEmail") },
+        { key: "field", label: t("paymentsList.csvField") },
+        { key: "amount", label: t("paymentsList.csvAmount") },
+        { key: "method", label: t("paymentsList.csvMethod") },
+        { key: "status", label: t("paymentsList.csvStatus") },
+        { key: "date", label: t("paymentsList.csvDate") },
+      ]
+    );
+  };
 
   const columns: TableColumn<Payment>[] = [
     {
@@ -156,51 +201,59 @@ export default function PaymentsPage() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{t("paymentsList.title")}</h1>
-          <p className="text-muted-foreground">
-            {t("paymentsList.description")}
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={t("paymentsList.title")}
+        description={t("paymentsList.description")}
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={t("paymentsList.searchPlaceholder")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select
-          value={statusFilter || "__all__"}
-          onValueChange={(val) => {
-            setStatusFilter(val === "__all__" ? "" : (val as PaymentStatus));
-            setPage(1);
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">
-              {t("paymentsList.allStatuses")}
-            </SelectItem>
-            <SelectItem value="PENDING">{t("paymentsList.pending")}</SelectItem>
-            <SelectItem value="PAID">{t("paymentsList.paid")}</SelectItem>
-            <SelectItem value="CANCELLED">
-              {t("paymentsList.cancelled")}
-            </SelectItem>
-            <SelectItem value="REFUNDED">
-              {t("paymentsList.refunded")}
-            </SelectItem>
-            <SelectItem value="FAILED">{t("paymentsList.failed")}</SelectItem>
-          </SelectContent>
-        </Select>
+      <FilterBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t("paymentsList.searchPlaceholder")}
+        filters={[
+          {
+            key: "status",
+            label: t("paymentsList.allStatuses"),
+            value: statusFilter || "all",
+            options: [
+              { label: t("paymentsList.allStatuses"), value: "all" },
+              { label: t("paymentsList.pending"), value: "PENDING" },
+              { label: t("paymentsList.paid"), value: "PAID" },
+              { label: t("paymentsList.cancelled"), value: "CANCELLED" },
+              { label: t("paymentsList.refunded"), value: "REFUNDED" },
+              { label: t("paymentsList.failed"), value: "FAILED" },
+            ],
+            onChange: (val) => {
+              setStatusFilter(val === "all" ? "" : (val as PaymentStatus));
+              setPage(1);
+            },
+          },
+        ]}
+      >
+        <DateRangePicker dateRange={dateRange} onChange={setDateRange} />
+        <ExportButton
+          onExportCsv={handleExport}
+          disabled={!data?.data || data.data.length === 0}
+        />
+      </FilterBar>
+
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+        <KpiCard
+          title={t("paymentsList.totalPayments")}
+          value={kpiStats.total}
+          icon={CreditCard}
+        />
+        <KpiCard
+          title={t("paymentsList.totalRevenue")}
+          value={`S/ ${formatPrice(kpiStats.revenue)}`}
+          icon={TrendingUp}
+        />
+        <KpiCard
+          title={t("paymentsList.pendingAmount")}
+          value={`S/ ${formatPrice(kpiStats.pending)}`}
+          icon={Clock}
+        />
       </div>
 
       <ScrollableTable

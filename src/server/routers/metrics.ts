@@ -524,4 +524,226 @@ export const metricsRouter = router({
 
       return ranking;
     }),
+
+  // Vista general del tenant con tendencias (comparación con período anterior) - TENANT_STAFF
+  tenantOverviewWithTrends: tenantStaffProcedure
+    .input(
+      z
+        .object({
+          from: z.string().datetime().optional(),
+          to: z.string().datetime().optional(),
+        })
+        .optional()
+    )
+    .query(async ({ input, ctx }) => {
+      if (!ctx.user.tenantId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario sin tenant asignado",
+        });
+      }
+
+      const now = new Date();
+      const currentEnd = input?.to ? new Date(input.to) : now;
+      const currentStart = input?.from
+        ? new Date(input.from)
+        : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // Last 30 days
+
+      // Calcular período anterior (misma duración)
+      const periodDuration = currentEnd.getTime() - currentStart.getTime();
+      const previousEnd = new Date(currentStart.getTime() - 1); // 1ms before current start
+      const previousStart = new Date(previousEnd.getTime() - periodDuration);
+
+      const tenantId = ctx.user.tenantId;
+
+      // Función helper para obtener métricas de un período
+      const getPeriodMetrics = async (startDate: Date, endDate: Date) => {
+        // Contar canchas activas en el período
+        const activeFields = await prisma.field.count({
+          where: {
+            tenantId,
+            available: true,
+          },
+        });
+
+        // Obtener reservas del período
+        const reservations = await prisma.reservation.findMany({
+          where: {
+            field: { tenantId },
+            startDate: { gte: startDate, lte: endDate },
+          },
+          select: {
+            status: true,
+            amount: true,
+            userId: true,
+          },
+        });
+
+        const totalReservations = reservations.length;
+        const revenue = reservations
+          .filter((r) => r.status === "CONFIRMED" || r.status === "COMPLETED")
+          .reduce((sum, r) => sum + Number(r.amount), 0);
+
+        const pendingConfirmations = reservations.filter(
+          (r) => r.status === "PENDING"
+        ).length;
+
+        // Contar clientes únicos
+        const uniqueClientIds = new Set(
+          reservations.filter((r) => r.userId).map((r) => r.userId)
+        );
+        const uniqueClients = uniqueClientIds.size;
+
+        return {
+          totalReservations,
+          revenue,
+          activeFields,
+          pendingConfirmations,
+          uniqueClients,
+        };
+      };
+
+      const [current, previous] = await Promise.all([
+        getPeriodMetrics(currentStart, currentEnd),
+        getPeriodMetrics(previousStart, previousEnd),
+      ]);
+
+      return {
+        current,
+        previous,
+        period: {
+          current: {
+            from: currentStart.toISOString(),
+            to: currentEnd.toISOString(),
+          },
+          previous: {
+            from: previousStart.toISOString(),
+            to: previousEnd.toISOString(),
+          },
+        },
+      };
+    }),
+
+  // Reservas agrupadas por estado - TENANT_STAFF
+  reservationsByStatus: tenantStaffProcedure
+    .input(
+      z
+        .object({
+          from: z.string().datetime().optional(),
+          to: z.string().datetime().optional(),
+        })
+        .optional()
+    )
+    .query(async ({ input, ctx }) => {
+      if (!ctx.user.tenantId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario sin tenant asignado",
+        });
+      }
+
+      const now = new Date();
+      const endDate = input?.to ? new Date(input.to) : now;
+      const startDate = input?.from
+        ? new Date(input.from)
+        : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      const reservations = await prisma.reservation.groupBy({
+        by: ["status"],
+        where: {
+          field: { tenantId: ctx.user.tenantId },
+          startDate: { gte: startDate, lte: endDate },
+        },
+        _count: true,
+      });
+
+      // Mapeo de colores por estado
+      const statusColors: Record<string, string> = {
+        PENDING: "var(--color-chart-4)",
+        CONFIRMED: "var(--color-chart-1)",
+        COMPLETED: "var(--color-chart-2)",
+        CANCELLED: "var(--color-chart-5)",
+        NO_SHOW: "var(--color-chart-3)",
+      };
+
+      return reservations.map((r) => ({
+        status: r.status,
+        count: r._count,
+        color: statusColors[r.status] || "var(--color-chart-1)",
+      }));
+    }),
+
+  // Reservas agrupadas por semana - TENANT_STAFF
+  reservationsByWeek: tenantStaffProcedure
+    .input(
+      z
+        .object({
+          weeks: z.number().min(4).max(26).optional().default(8),
+        })
+        .optional()
+    )
+    .query(async ({ input, ctx }) => {
+      if (!ctx.user.tenantId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Usuario sin tenant asignado",
+        });
+      }
+
+      const weeks = input?.weeks ?? 8;
+      const now = new Date();
+      const startDate = new Date(
+        now.getTime() - weeks * 7 * 24 * 60 * 60 * 1000
+      );
+
+      const reservations = await prisma.reservation.findMany({
+        where: {
+          field: { tenantId: ctx.user.tenantId },
+          startDate: { gte: startDate, lte: now },
+        },
+        select: {
+          startDate: true,
+          status: true,
+        },
+      });
+
+      // Agrupar por semana
+      const weekMap = new Map<
+        string,
+        { confirmed: number; pending: number; cancelled: number }
+      >();
+
+      reservations.forEach((r) => {
+        const date = new Date(r.startDate);
+        // Get week start (Monday)
+        const day = date.getDay();
+        const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+        const weekStart = new Date(date.setDate(diff));
+        weekStart.setHours(0, 0, 0, 0);
+        const weekKey = weekStart.toISOString().split("T")[0] ?? "";
+
+        if (!weekMap.has(weekKey)) {
+          weekMap.set(weekKey, { confirmed: 0, pending: 0, cancelled: 0 });
+        }
+
+        const weekData = weekMap.get(weekKey)!;
+        if (r.status === "CONFIRMED" || r.status === "COMPLETED") {
+          weekData.confirmed += 1;
+        } else if (r.status === "PENDING") {
+          weekData.pending += 1;
+        } else if (r.status === "CANCELLED" || r.status === "NO_SHOW") {
+          weekData.cancelled += 1;
+        }
+      });
+
+      // Convertir a array y ordenar por fecha
+      return Array.from(weekMap.entries())
+        .map(([week, data]) => ({
+          week,
+          confirmed: data.confirmed,
+          pending: data.pending,
+          cancelled: data.cancelled,
+        }))
+        .sort((a, b) => a.week.localeCompare(b.week));
+    }),
 });

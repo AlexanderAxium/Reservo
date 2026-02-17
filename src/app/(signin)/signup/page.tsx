@@ -116,7 +116,7 @@ export default function SignUpPage() {
         email: data.email,
         password: data.password,
         name: data.name,
-        callbackURL: "/", // Let RoleBasedRedirect handle the redirection
+        callbackURL: "/auth/redirect",
       });
 
       if (error) {
@@ -132,8 +132,7 @@ export default function SignUpPage() {
               "Revisa tu email para confirmar tu cuenta.",
           }
         );
-        // Let RoleBasedRedirect handle the redirection based on user role
-        router.push("/");
+        router.push("/auth/redirect");
       }
     } catch (_error) {
       toast.error(t("networkError") || "Error de red o servidor");
@@ -146,9 +145,9 @@ export default function SignUpPage() {
     try {
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/dashboard",
+        callbackURL: "/auth/redirect",
         errorCallbackURL: "/signup",
-        newUserCallbackURL: "/dashboard",
+        newUserCallbackURL: "/auth/redirect",
       });
     } catch (_error) {
       toast.error(t("googleRedirectError") || "No se pudo redirigir a Google");

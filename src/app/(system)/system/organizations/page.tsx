@@ -1,26 +1,24 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
+import { ExportButton } from "@/components/dashboard/ExportButton";
+import { FilterBar } from "@/components/dashboard/FilterBar";
+import { KpiCard } from "@/components/dashboard/KpiCard";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   ScrollableTable,
   type TableAction,
   type TableColumn,
 } from "@/components/ui/scrollable-table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useImpersonation } from "@/hooks/useImpersonation";
 import { usePagination } from "@/hooks/usePagination";
 import { trpc } from "@/hooks/useTRPC";
-import { Plus, Search } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
+import { exportToCsv } from "@/lib/export";
+import { Building2, CheckCircle, Plus, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 type Tenant = {
   id: string;
@@ -36,7 +34,9 @@ type Tenant = {
 };
 
 export default function Organizations() {
+  const { t } = useTranslation("dashboard");
   const router = useRouter();
+  const { startImpersonation } = useImpersonation();
   const { page, limit, search, setPage, setLimit, setSearch } = usePagination({
     defaultLimit: 20,
   });
@@ -59,10 +59,48 @@ export default function Organizations() {
     return matchesPlan && matchesStatus;
   });
 
+  // Compute KPIs
+  const kpiStats = useMemo(() => {
+    const orgs = data?.data || [];
+    const active = orgs.filter((o) => o.isActive).length;
+    const totalUsers = orgs.reduce((sum, o) => sum + (o._count?.users || 0), 0);
+    return {
+      total: orgs.length,
+      active,
+      users: totalUsers,
+    };
+  }, [data?.data]);
+
+  // Export function
+  const handleExport = () => {
+    if (!filteredData || filteredData.length === 0) return;
+    exportToCsv(
+      filteredData.map((t) => ({
+        name: t.name,
+        slug: t.slug,
+        plan: t.plan.toUpperCase(),
+        status: t.isActive ? "Active" : "Inactive",
+        fields: t._count?.fields || 0,
+        users: t._count?.users || 0,
+        created: new Date(t.createdAt).toLocaleDateString(),
+      })),
+      `organizations-${new Date().toISOString().split("T")[0]}`,
+      [
+        { key: "name", label: "Name" },
+        { key: "slug", label: "Slug" },
+        { key: "plan", label: "Plan" },
+        { key: "status", label: "Status" },
+        { key: "fields", label: "Fields" },
+        { key: "users", label: "Users" },
+        { key: "created", label: "Created" },
+      ]
+    );
+  };
+
   const columns: TableColumn<Tenant>[] = [
     {
       key: "name",
-      title: "Name",
+      title: t("system.name"),
       width: "200px",
       render: (_, record) => (
         <div>
@@ -73,7 +111,7 @@ export default function Organizations() {
     },
     {
       key: "plan",
-      title: "Plan",
+      title: t("system.plan"),
       width: "100px",
       badge: (_, record) => ({
         label: record.plan.toUpperCase(),
@@ -82,28 +120,28 @@ export default function Organizations() {
     },
     {
       key: "isActive",
-      title: "Status",
+      title: t("system.status"),
       width: "100px",
       badge: (_, record) => ({
-        label: record.isActive ? "Active" : "Inactive",
+        label: record.isActive ? t("system.active") : t("system.inactive"),
         variant: record.isActive ? "default" : "secondary",
       }),
     },
     {
       key: "_count",
-      title: "Fields",
+      title: t("system.fields"),
       width: "80px",
       render: (_, record) => record._count?.fields || 0,
     },
     {
       key: "_count",
-      title: "Users",
+      title: t("system.users"),
       width: "80px",
       render: (_, record) => record._count?.users || 0,
     },
     {
       key: "createdAt",
-      title: "Created",
+      title: t("system.created"),
       width: "120px",
       render: (value) => new Date(value as string).toLocaleDateString(),
     },
@@ -111,11 +149,19 @@ export default function Organizations() {
 
   const actions: TableAction<Tenant>[] = [
     {
-      label: "View",
+      label: t("system.enterDashboard"),
+      onClick: (record) =>
+        startImpersonation({
+          id: record.id,
+          name: record.name,
+        }),
+    },
+    {
+      label: t("system.view"),
       onClick: (record) => router.push(`/system/organizations/${record.id}`),
     },
     {
-      label: "Edit",
+      label: t("system.edit"),
       onClick: (record) =>
         router.push(`/system/organizations/${record.id}/edit`),
     },
@@ -123,57 +169,74 @@ export default function Organizations() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Organizations</h1>
-          <p className="text-muted-foreground">
-            Manage all platform organizations, view stats, and configure plans.
-          </p>
-        </div>
-        <Link href="/system/organizations/new">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            New Organization
-          </Button>
-        </Link>
+      <PageHeader
+        title={t("system.organizations")}
+        description={t("system.organizationsDesc")}
+        actions={
+          <Link href="/system/organizations/new">
+            <Button size="sm">
+              <Plus className="size-4" />
+              {t("system.newOrganization")}
+            </Button>
+          </Link>
+        }
+      />
+
+      <FilterBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t("system.searchOrgsPlaceholder")}
+        filters={[
+          {
+            key: "plan",
+            label: t("system.plan"),
+            value: planFilter,
+            options: [
+              { label: t("system.allPlans"), value: "all" },
+              { label: t("system.free"), value: "FREE" },
+              { label: t("system.basic"), value: "BASIC" },
+              { label: t("system.professional"), value: "PROFESSIONAL" },
+              { label: t("system.enterprise"), value: "ENTERPRISE" },
+            ],
+            onChange: setPlanFilter,
+          },
+          {
+            key: "status",
+            label: t("system.status"),
+            value: statusFilter,
+            options: [
+              { label: t("system.allStatus"), value: "all" },
+              { label: t("system.active"), value: "active" },
+              { label: t("system.inactive"), value: "inactive" },
+            ],
+            onChange: setStatusFilter,
+          },
+        ]}
+      >
+        <ExportButton
+          onExportCsv={handleExport}
+          disabled={!filteredData || filteredData.length === 0}
+        />
+      </FilterBar>
+
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+        <KpiCard
+          title={t("system.totalOrganizations")}
+          value={kpiStats.total}
+          icon={Building2}
+        />
+        <KpiCard
+          title={t("system.active")}
+          value={kpiStats.active}
+          icon={CheckCircle}
+        />
+        <KpiCard
+          title={t("system.totalUsers")}
+          value={kpiStats.users}
+          icon={Users}
+        />
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name or slug..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={planFilter} onValueChange={setPlanFilter}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Plan" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Plans</SelectItem>
-            <SelectItem value="free">Free</SelectItem>
-            <SelectItem value="basic">Basic</SelectItem>
-            <SelectItem value="pro">Pro</SelectItem>
-            <SelectItem value="enterprise">Enterprise</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Table */}
       <ScrollableTable
         data={filteredData || []}
         columns={columns}
@@ -183,7 +246,7 @@ export default function Organizations() {
         pagination={data?.pagination}
         onPageChange={setPage}
         onPageSizeChange={setLimit}
-        emptyMessage="No organizations found"
+        emptyMessage={t("system.noOrganizationsFound")}
       />
     </div>
   );

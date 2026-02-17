@@ -1,146 +1,175 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartCard } from "@/components/dashboard/ChartCard";
+import { KpiCard } from "@/components/dashboard/KpiCard";
+import { PageHeader } from "@/components/dashboard/PageHeader";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/hooks/useTRPC";
-import { Building2, Calendar, DollarSign, Users } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
+import { Building2, Calendar, DollarSign, MapPin, Users } from "lucide-react";
 import Link from "next/link";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 export default function SystemDashboard() {
+  const { t } = useTranslation("dashboard");
   const { data: globalMetrics, isLoading } =
     trpc.metrics.globalOverview.useQuery();
+  const { data: tenantRanking, isLoading: loadingRanking } =
+    trpc.metrics.tenantRanking.useQuery({ limit: 5 });
   const { data: tenants } = trpc.tenant.list.useQuery({ page: 1, limit: 5 });
+
+  const topTenantsData =
+    tenantRanking?.map((t) => ({
+      name: t.tenantName,
+      revenue: Number(t.revenue),
+    })) ?? [];
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6">
-        <div>
-          <Skeleton className="h-8 w-64 mb-2" />
-          <Skeleton className="h-4 w-96" />
-        </div>
+      <div className="space-y-6">
+        <Skeleton className="h-16 w-full" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-4 w-24" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-16" />
-              </CardContent>
-            </Card>
+            <Skeleton key={i} className="h-32" />
           ))}
         </div>
       </div>
     );
   }
 
-  const stats = [
-    {
-      title: "Total Organizations",
-      value: globalMetrics?.totalTenants || 0,
-      subtitle: `${globalMetrics?.totalTenants || 0} total`,
-      icon: Building2,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50 dark:bg-blue-950",
-      href: "/system/organizations",
-    },
-    {
-      title: "Total Users",
-      value: globalMetrics?.totalUsers || 0,
-      subtitle: "Platform-wide",
-      icon: Users,
-      color: "text-green-600",
-      bgColor: "bg-green-50 dark:bg-green-950",
-      href: "/system/users",
-    },
-    {
-      title: "Total Reservations",
-      value: globalMetrics?.totalReservations || 0,
-      subtitle: "All-time",
-      icon: Calendar,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50 dark:bg-purple-950",
-    },
-    {
-      title: "Total Revenue",
-      value: `S/ ${(globalMetrics?.revenue || 0).toLocaleString()}`,
-      subtitle: "Platform revenue",
-      icon: DollarSign,
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-50 dark:bg-emerald-950",
-    },
-  ];
-
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">System Dashboard</h1>
-        <p className="text-muted-foreground">
-          Overview of platform health, organizations, and global metrics.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={t("system.title")}
+        description={t("system.dashboardDesc")}
+      />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          const content = (
-            <Card
-              key={stat.title}
-              className="hover:shadow-md transition-shadow"
-            >
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {stat.title}
-                </CardTitle>
-                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                  <Icon className={`h-4 w-4 ${stat.color}`} />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <p className="text-xs text-muted-foreground">{stat.subtitle}</p>
-              </CardContent>
-            </Card>
-          );
+        <KpiCard
+          title={t("system.totalTenants")}
+          value={globalMetrics?.totalTenants || 0}
+          subtitle={t("system.activeOrganizations")}
+          icon={Building2}
+        />
 
-          return stat.href ? (
-            <Link key={stat.title} href={stat.href}>
-              {content}
-            </Link>
-          ) : (
-            <div key={stat.title}>{content}</div>
-          );
-        })}
+        <KpiCard
+          title={t("system.totalUsers")}
+          value={globalMetrics?.totalUsers || 0}
+          subtitle={t("system.platformWide")}
+          icon={Users}
+        />
+
+        <KpiCard
+          title={t("system.totalFields")}
+          value={globalMetrics?.totalFields || 0}
+          subtitle={t("system.allOrganizations")}
+          icon={MapPin}
+        />
+
+        <KpiCard
+          title={t("system.totalRevenue")}
+          value={`S/ ${(globalMetrics?.revenue || 0).toLocaleString()}`}
+          subtitle={t("system.platformRevenue")}
+          icon={DollarSign}
+        />
       </div>
 
-      {/* Recent Organizations */}
+      {/* Revenue by Tenant Chart */}
+      <ChartCard
+        title={t("system.revenueByTenant")}
+        description={t("system.top5Revenue")}
+        isLoading={loadingRanking}
+        isEmpty={topTenantsData.length === 0}
+        emptyMessage={t("system.noRevenueData")}
+      >
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={topTenantsData}>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+            <XAxis
+              dataKey="name"
+              className="text-xs fill-muted-foreground"
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              className="text-xs fill-muted-foreground"
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(v) => `S/${v}`}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "hsl(var(--popover, 0 0% 100%))",
+                border: "1px solid hsl(var(--border, 240 5.9% 90%))",
+                borderRadius: "0.5rem",
+                fontSize: "0.875rem",
+              }}
+              formatter={(value: number) => [
+                `S/ ${value.toLocaleString()}`,
+                t("system.revenue"),
+              ]}
+            />
+            <Bar
+              dataKey="revenue"
+              fill="hsl(var(--chart-1))"
+              radius={[4, 4, 0, 0]}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartCard>
+
+      {/* Recent Organizations Table */}
       {tenants?.data && tenants.data.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Organizations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {tenants.data.map((tenant) => (
-                <Link
-                  key={tenant.id}
-                  href={`/system/organizations/${tenant.id}`}
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent transition-colors"
-                >
-                  <div>
-                    <p className="font-medium">{tenant.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {tenant.plan} • {tenant.slug}
-                    </p>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {new Date(tenant.createdAt).toLocaleDateString()}
-                  </div>
-                </Link>
-              ))}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold">
+                {t("system.recentOrganizations")}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {t("system.latestTenants")}
+              </p>
             </div>
-          </CardContent>
+            <Link
+              href="/system/organizations"
+              className="text-sm text-primary hover:underline"
+            >
+              {t("system.viewAll")}
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {tenants.data.map((tenant) => (
+              <Link
+                key={tenant.id}
+                href={`/system/organizations/${tenant.id}`}
+                className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors"
+              >
+                <div className="flex-1">
+                  <p className="font-medium">
+                    {tenant.displayName || tenant.name}
+                  </p>
+                  <p className="text-sm text-muted-foreground">{tenant.slug}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline">{tenant.plan}</Badge>
+                  <span className="text-sm text-muted-foreground">
+                    {new Date(tenant.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
         </Card>
       )}
     </div>

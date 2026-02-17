@@ -1,7 +1,7 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -17,8 +17,7 @@ import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
 import { formatPrice } from "@/lib/utils";
 import type { ReservationStatus, Sport } from "@prisma/client";
-import { ArrowLeft, Calendar, Mail, Phone, User } from "lucide-react";
-import Link from "next/link";
+import { Calendar, Mail, Phone, User } from "lucide-react";
 import { useParams } from "next/navigation";
 
 const STATUS_MAP: Record<ReservationStatus, string> = {
@@ -106,7 +105,7 @@ export default function ClientDetailPage() {
       title: t("clientDetail.statusCol"),
       width: "120px",
       render: (value) => (
-        <Badge variant="outline">
+        <Badge variant="soft">
           {t(STATUS_MAP[value as ReservationStatus] ?? String(value))}
         </Badge>
       ),
@@ -132,23 +131,12 @@ export default function ClientDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/clients">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t("clientDetail.back")}
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground">
-            {t("clientDetail.title")}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {t("clientDetail.description")}
-          </p>
-        </div>
-      </div>
+    <div className="p-6 space-y-6">
+      <PageHeader
+        title={t("clientDetail.title")}
+        description={t("clientDetail.description")}
+        backHref="/dashboard/clients"
+      />
 
       <Card>
         <CardHeader>

@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,8 +15,7 @@ import { useRBAC } from "@/hooks/useRBAC";
 import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
 import { PermissionAction, PermissionResource } from "@/types/rbac";
-import { ArrowLeft, Send } from "lucide-react";
-import Link from "next/link";
+import { Send } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -58,22 +58,11 @@ export default function InviteStaffPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/staff">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t("staffNew.back")}
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground">
-            {t("staffNew.title")}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {t("staffNew.description")}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title={t("staffNew.title")}
+        description={t("staffNew.description")}
+        backHref="/dashboard/staff"
+      />
 
       <Card className="max-w-xl">
         <CardHeader>

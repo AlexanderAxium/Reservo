@@ -1,3 +1,4 @@
+import { AuthPageGuard } from "@/components/AuthPageGuard";
 import { generateMetadata as generateSEOMetadata } from "@/lib/seo";
 import type { Metadata } from "next";
 
@@ -13,5 +14,5 @@ export default function SignInLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return <AuthPageGuard>{children}</AuthPageGuard>;
 }

@@ -1,8 +1,9 @@
 "use client";
 
+import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
+import { FilterBar } from "@/components/dashboard/FilterBar";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   ScrollableTable,
   type TableAction,
@@ -12,9 +13,9 @@ import { usePagination } from "@/hooks/usePagination";
 import { trpc } from "@/hooks/useTRPC";
 import { formatPrice } from "@/lib/utils";
 import type { ReservationStatus } from "@prisma/client";
-import { Search } from "lucide-react";
+import { subDays } from "date-fns";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 const STATUS_LABELS: Record<ReservationStatus, string> = {
   PENDING: "Pendiente",
@@ -40,15 +41,15 @@ type Reservation = {
 
 function StatusBadge({ status }: { status: ReservationStatus }) {
   const colors: Record<ReservationStatus, string> = {
-    CONFIRMED: "bg-emerald-500/10 text-emerald-600 border-emerald-500/50",
-    COMPLETED: "bg-emerald-500/10 text-emerald-600 border-emerald-500/50",
-    PENDING: "bg-amber-500/10 text-amber-600 border-amber-500/50",
-    CANCELLED: "bg-red-500/10 text-red-600 border-red-500/50",
-    NO_SHOW: "bg-red-500/10 text-red-600 border-red-500/50",
+    CONFIRMED: "text-emerald-600",
+    COMPLETED: "text-emerald-600",
+    PENDING: "text-amber-600",
+    CANCELLED: "text-red-600",
+    NO_SHOW: "text-red-600",
   };
 
   return (
-    <Badge variant="outline" className={colors[status] || ""}>
+    <Badge variant="soft" className={colors[status] || ""}>
       {STATUS_LABELS[status] || status}
     </Badge>
   );
@@ -61,16 +62,18 @@ export default function MyReservationsPage() {
   });
 
   const [statusFilter, setStatusFilter] = useState<"" | ReservationStatus>("");
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
+  const [dateRange, setDateRange] = useState({
+    from: subDays(new Date(), 30),
+    to: new Date(),
+  });
 
   const { data, isLoading, error } = trpc.reservation.myReservations.useQuery({
     page,
     limit,
     search: search || undefined,
     status: statusFilter === "" ? undefined : statusFilter,
-    startDate: startDate || undefined,
-    endDate: endDate || undefined,
+    startDate: dateRange.from.toISOString().split("T")[0],
+    endDate: dateRange.to.toISOString().split("T")[0],
   });
 
   const columns: TableColumn<Reservation>[] = [
@@ -132,57 +135,37 @@ export default function MyReservationsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Mis Reservas</h1>
-        <p className="text-muted-foreground">
-          Historial completo de todas tus reservas
-        </p>
-      </div>
+      <PageHeader
+        title="Mis Reservas"
+        description="Historial completo de todas tus reservas"
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por cancha..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value as "" | ReservationStatus);
-            setPage(1);
-          }}
-          className="px-3 py-2 border rounded-md"
-        >
-          <option value="">Todos los estados</option>
-          <option value="CONFIRMED">Confirmada</option>
-          <option value="PENDING">Pendiente</option>
-          <option value="COMPLETED">Completada</option>
-          <option value="CANCELLED">Cancelada</option>
-          <option value="NO_SHOW">No asistió</option>
-        </select>
-        <Input
-          type="date"
-          placeholder="Desde"
-          value={startDate}
-          onChange={(e) => {
-            setStartDate(e.target.value);
-            setPage(1);
-          }}
-        />
-        <Input
-          type="date"
-          placeholder="Hasta"
-          value={endDate}
-          onChange={(e) => {
-            setEndDate(e.target.value);
-            setPage(1);
-          }}
-        />
-      </div>
+      <FilterBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Buscar por cancha..."
+        filters={[
+          {
+            key: "status",
+            label: "Estado",
+            value: statusFilter || "all",
+            options: [
+              { label: "Todos los estados", value: "all" },
+              { label: "Confirmada", value: "CONFIRMED" },
+              { label: "Pendiente", value: "PENDING" },
+              { label: "Completada", value: "COMPLETED" },
+              { label: "Cancelada", value: "CANCELLED" },
+              { label: "No asistió", value: "NO_SHOW" },
+            ],
+            onChange: (val) => {
+              setStatusFilter(val === "all" ? "" : (val as ReservationStatus));
+              setPage(1);
+            },
+          },
+        ]}
+      >
+        <DateRangePicker dateRange={dateRange} onChange={setDateRange} />
+      </FilterBar>
 
       <ScrollableTable
         data={data?.data || []}

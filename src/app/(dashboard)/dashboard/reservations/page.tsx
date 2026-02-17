@@ -1,29 +1,36 @@
 "use client";
 
+import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
+import { ExportButton } from "@/components/dashboard/ExportButton";
+import { FilterBar } from "@/components/dashboard/FilterBar";
+import { KpiCard } from "@/components/dashboard/KpiCard";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   ScrollableTable,
   type TableAction,
   type TableColumn,
 } from "@/components/ui/scrollable-table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { usePagination } from "@/hooks/usePagination";
 import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
+import { exportToCsv } from "@/lib/export";
 import { formatPrice } from "@/lib/utils";
 import type { ReservationStatus, Sport } from "@prisma/client";
-import { Calendar, CalendarX, Plus, Search } from "lucide-react";
+import { subDays } from "date-fns";
+import {
+  Calendar,
+  CalendarX,
+  CheckCircle,
+  Clock,
+  DollarSign,
+  ListChecks,
+  Plus,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 type Reservation = {
   id: string;
@@ -62,7 +69,7 @@ function StatusBadge({
   };
 
   return (
-    <Badge variant="outline" className={colors[status] || ""}>
+    <Badge variant="soft" className={colors[status] || ""}>
       {labels[status] || status}
     </Badge>
   );
@@ -76,6 +83,10 @@ export default function ReservationsPage() {
   });
 
   const [statusFilter, setStatusFilter] = useState<"" | ReservationStatus>("");
+  const [dateRange, setDateRange] = useState({
+    from: subDays(new Date(), 30),
+    to: new Date(),
+  });
 
   const STATUS_LABELS: Record<ReservationStatus, string> = {
     PENDING: t("statuses.pending"),
@@ -91,6 +102,58 @@ export default function ReservationsPage() {
     search: search || undefined,
     status: statusFilter === "" ? undefined : statusFilter,
   });
+
+  // Compute KPIs from current page data
+  const kpiStats = useMemo(() => {
+    const reservations = data?.data || [];
+    return {
+      total: reservations.length,
+      confirmed: reservations.filter((r) => r.status === "CONFIRMED").length,
+      pending: reservations.filter((r) => r.status === "PENDING").length,
+      revenue: reservations.reduce(
+        (sum, r) => sum + (Number(r.amount) || 0),
+        0
+      ),
+    };
+  }, [data?.data]);
+
+  // Export function
+  const handleExport = () => {
+    if (!data?.data || data.data.length === 0) return;
+    exportToCsv(
+      data.data.map((r) => ({
+        field: r.field.name,
+        sport: r.field.sport,
+        client: r.user?.name || r.guestName || "Guest",
+        email: r.user?.email || r.guestEmail || "-",
+        date: new Date(r.startDate).toLocaleDateString("es-PE"),
+        startTime: new Date(r.startDate).toLocaleTimeString("es-PE", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        endTime: new Date(r.endDate).toLocaleTimeString("es-PE", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        amount: `S/ ${formatPrice(Number(r.amount))}`,
+        status: STATUS_LABELS[r.status],
+        created: new Date(r.createdAt).toLocaleDateString("es-PE"),
+      })),
+      `reservations-${new Date().toISOString().split("T")[0]}`,
+      [
+        { key: "field", label: "Field" },
+        { key: "sport", label: "Sport" },
+        { key: "client", label: "Client" },
+        { key: "email", label: "Email" },
+        { key: "date", label: "Date" },
+        { key: "startTime", label: "Start Time" },
+        { key: "endTime", label: "End Time" },
+        { key: "amount", label: "Amount" },
+        { key: "status", label: "Status" },
+        { key: "created", label: "Created" },
+      ]
+    );
+  };
 
   const columns: TableColumn<Reservation>[] = [
     {
@@ -187,73 +250,98 @@ export default function ReservationsPage() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{t("reservationsList.title")}</h1>
-          <p className="text-muted-foreground">
-            {t("reservationsList.description")}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link href="/dashboard/reservations/calendar">
-            <Button variant="outline">
-              <Calendar className="h-4 w-4 mr-2" />
-              {t("reservationsList.calendarView")}
-            </Button>
-          </Link>
-          <Link href="/dashboard/reservations/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              {t("reservationsList.newReservation")}
-            </Button>
-          </Link>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={t("reservationsList.title")}
+        description={t("reservationsList.description")}
+        actions={
+          <>
+            <Link href="/dashboard/reservations/calendar">
+              <Button variant="outline" size="sm">
+                <Calendar className="size-4" />
+                {t("reservationsList.calendarView")}
+              </Button>
+            </Link>
+            <Link href="/dashboard/reservations/new">
+              <Button size="sm">
+                <Plus className="size-4" />
+                {t("reservationsList.newReservation")}
+              </Button>
+            </Link>
+          </>
+        }
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={t("reservationsList.searchPlaceholder")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select
-          value={statusFilter || "__all__"}
-          onValueChange={(val) => {
-            setStatusFilter(
-              val === "__all__" ? "" : (val as ReservationStatus)
-            );
-            setPage(1);
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">
-              {t("reservationsList.allStatuses")}
-            </SelectItem>
-            <SelectItem value="PENDING">
-              {t("reservationsList.pending")}
-            </SelectItem>
-            <SelectItem value="CONFIRMED">
-              {t("reservationsList.confirmed")}
-            </SelectItem>
-            <SelectItem value="COMPLETED">
-              {t("reservationsList.completed")}
-            </SelectItem>
-            <SelectItem value="CANCELLED">
-              {t("reservationsList.cancelled")}
-            </SelectItem>
-            <SelectItem value="NO_SHOW">
-              {t("reservationsList.noShow")}
-            </SelectItem>
-          </SelectContent>
-        </Select>
+      <FilterBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t("reservationsList.searchPlaceholder")}
+        filters={[
+          {
+            key: "status",
+            label: t("reservationsList.allStatuses"),
+            value: statusFilter || "all",
+            options: [
+              {
+                label: t("reservationsList.allStatuses"),
+                value: "all",
+              },
+              {
+                label: t("reservationsList.pending"),
+                value: "PENDING",
+              },
+              {
+                label: t("reservationsList.confirmed"),
+                value: "CONFIRMED",
+              },
+              {
+                label: t("reservationsList.completed"),
+                value: "COMPLETED",
+              },
+              {
+                label: t("reservationsList.cancelled"),
+                value: "CANCELLED",
+              },
+              {
+                label: t("reservationsList.noShow"),
+                value: "NO_SHOW",
+              },
+            ],
+            onChange: (val) => {
+              setStatusFilter(val === "all" ? "" : (val as ReservationStatus));
+              setPage(1);
+            },
+          },
+        ]}
+      >
+        <DateRangePicker dateRange={dateRange} onChange={setDateRange} />
+        <ExportButton
+          onExportCsv={handleExport}
+          disabled={!data?.data || data.data.length === 0}
+        />
+      </FilterBar>
+
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <KpiCard
+          title={t("overview.totalReservations")}
+          value={kpiStats.total}
+          icon={ListChecks}
+        />
+        <KpiCard
+          title={t("statuses.confirmed")}
+          value={kpiStats.confirmed}
+          icon={CheckCircle}
+        />
+        <KpiCard
+          title={t("statuses.pending")}
+          value={kpiStats.pending}
+          icon={Clock}
+        />
+        <KpiCard
+          title={t("overview.periodRevenue")}
+          value={`S/ ${formatPrice(kpiStats.revenue)}`}
+          icon={DollarSign}
+        />
       </div>
 
       <ScrollableTable

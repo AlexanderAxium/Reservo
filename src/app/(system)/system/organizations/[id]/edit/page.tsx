@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/hooks/useTRPC";
+import { useTranslation } from "@/hooks/useTranslation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,6 +24,7 @@ import { toast } from "sonner";
 export default function EditOrganization({
   params,
 }: { params: Promise<{ id: string }> }) {
+  const { t } = useTranslation("dashboard");
   const router = useRouter();
   const unwrappedParams = React.use(params);
   const { data: tenant, isLoading } = trpc.tenant.getById.useQuery({
@@ -34,7 +36,7 @@ export default function EditOrganization({
     name: "",
     displayName: "",
     email: "",
-    plan: "free",
+    plan: "FREE",
     maxFields: 10,
     maxUsers: 5,
     logoUrl: null as string | null,
@@ -56,22 +58,22 @@ export default function EditOrganization({
 
   const updateMutation = trpc.tenant.update.useMutation({
     onSuccess: () => {
-      toast.success("Organization updated successfully");
+      toast.success(t("system.organizationUpdated"));
       utils.tenant.getById.invalidate({ id: unwrappedParams.id });
       router.push(`/system/organizations/${unwrappedParams.id}`);
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to update organization");
+      toast.error(error.message || t("system.organizationUpdateError"));
     },
   });
 
   const toggleActiveMutation = trpc.tenant.toggleActive.useMutation({
     onSuccess: () => {
-      toast.success("Organization status updated");
+      toast.success(t("system.organizationStatusUpdated"));
       utils.tenant.getById.invalidate({ id: unwrappedParams.id });
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to toggle status");
+      toast.error(error.message || t("system.organizationToggleError"));
     },
   });
 
@@ -96,7 +98,7 @@ export default function EditOrganization({
   }
 
   if (!tenant) {
-    return <div className="p-6">Organization not found</div>;
+    return <div className="p-6">{t("system.organizationNotFound")}</div>;
   }
 
   return (
@@ -108,7 +110,7 @@ export default function EditOrganization({
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">Edit Organization</h1>
+          <h1 className="text-2xl font-bold">{t("system.editOrganization")}</h1>
           <p className="text-muted-foreground">{tenant.name}</p>
         </div>
       </div>
@@ -116,11 +118,11 @@ export default function EditOrganization({
       <form onSubmit={handleSubmit}>
         <Card>
           <CardHeader>
-            <CardTitle>Organization Information</CardTitle>
+            <CardTitle>{t("system.organizationInformation")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <SingleImageUpload
-              label="Organization logo"
+              label={t("system.organizationLogo")}
               value={formData.logoUrl}
               onChange={(url) =>
                 setFormData((prev) => ({ ...prev, logoUrl: url ?? null }))
@@ -131,7 +133,7 @@ export default function EditOrganization({
             />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Organization Name *</Label>
+                <Label htmlFor="name">{t("system.organizationName")} *</Label>
                 <Input
                   id="name"
                   value={formData.name}
@@ -143,7 +145,7 @@ export default function EditOrganization({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="displayName">Display Name *</Label>
+                <Label htmlFor="displayName">{t("system.displayName")} *</Label>
                 <Input
                   id="displayName"
                   value={formData.displayName}
@@ -158,7 +160,7 @@ export default function EditOrganization({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Organization Email *</Label>
+                <Label htmlFor="email">{t("system.organizationEmail")} *</Label>
                 <Input
                   id="email"
                   type="email"
@@ -171,7 +173,7 @@ export default function EditOrganization({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="plan">Plan *</Label>
+                <Label htmlFor="plan">{t("system.plan")} *</Label>
                 <Select
                   value={formData.plan}
                   onValueChange={(value) =>
@@ -182,16 +184,16 @@ export default function EditOrganization({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="free">Free</SelectItem>
-                    <SelectItem value="basic">Basic</SelectItem>
-                    <SelectItem value="pro">Pro</SelectItem>
-                    <SelectItem value="enterprise">Enterprise</SelectItem>
+                    <SelectItem value="FREE">Free</SelectItem>
+                    <SelectItem value="BASIC">Basic</SelectItem>
+                    <SelectItem value="PROFESSIONAL">Professional</SelectItem>
+                    <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="maxFields">Max Fields</Label>
+                <Label htmlFor="maxFields">{t("system.maxFields")}</Label>
                 <Input
                   id="maxFields"
                   type="number"
@@ -206,7 +208,7 @@ export default function EditOrganization({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="maxUsers">Max Users</Label>
+                <Label htmlFor="maxUsers">{t("system.maxUsers")}</Label>
                 <Input
                   id="maxUsers"
                   type="number"
@@ -230,17 +232,22 @@ export default function EditOrganization({
                 }
                 disabled={toggleActiveMutation.isPending}
               >
-                {tenant.isActive ? "Deactivate" : "Activate"} Organization
+                {tenant.isActive
+                  ? t("system.deactivate")
+                  : t("system.activate")}{" "}
+                {t("system.organization")}
               </Button>
 
               <div className="flex gap-2">
                 <Link href={`/system/organizations/${unwrappedParams.id}`}>
                   <Button type="button" variant="outline">
-                    Cancel
+                    {t("system.cancel")}
                   </Button>
                 </Link>
                 <Button type="submit" disabled={updateMutation.isPending}>
-                  {updateMutation.isPending ? "Saving..." : "Save Changes"}
+                  {updateMutation.isPending
+                    ? t("system.saving")
+                    : t("system.saveChanges")}
                 </Button>
               </div>
             </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -7,11 +8,10 @@ import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
 import { Building2, Mail, MapPin, Phone, User } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 
 export default function SportCenterDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const { t } = useTranslation("dashboard");
   const id = params.id as string;
 
@@ -44,22 +44,15 @@ export default function SportCenterDetailPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{sportCenter.name}</h1>
-          <p className="text-muted-foreground">
-            {t("sportCenterDetail.nameLabel")}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => router.back()}>
-            {t("sportCenterDetail.back")}
-          </Button>
+      <PageHeader
+        title={sportCenter.name}
+        backHref="/dashboard/sport-centers"
+        actions={
           <Link href={`/dashboard/sport-centers/${id}/edit`}>
-            <Button>{t("sportCenterDetail.editCenter")}</Button>
+            <Button size="sm">{t("sportCenterDetail.editCenter")}</Button>
           </Link>
-        </div>
-      </div>
+        }
+      />
 
       <Card className="p-6 space-y-6">
         <div className="space-y-4">

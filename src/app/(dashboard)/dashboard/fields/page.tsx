@@ -1,5 +1,9 @@
 "use client";
 
+import { ExportButton } from "@/components/dashboard/ExportButton";
+import { FilterBar } from "@/components/dashboard/FilterBar";
+import { KpiCard } from "@/components/dashboard/KpiCard";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,15 +23,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -38,8 +33,12 @@ import {
 } from "@/components/ui/table";
 import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
+import { exportToCsv } from "@/lib/export";
 import { formatPrice } from "@/lib/utils";
 import {
+  Activity,
+  CheckCircle,
+  DollarSign,
   Edit,
   Eye,
   LayoutGrid,
@@ -51,7 +50,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type ViewMode = "list" | "grid";
@@ -124,117 +123,137 @@ export default function FieldsPage() {
     FUTSAL: t("sports.FUTSAL"),
   };
 
+  // Compute KPIs from current page data
+  const kpiStats = useMemo(() => {
+    const fields = data?.data || [];
+    const totalFields = fields.length;
+    const activeFields = fields.filter((f) => f.available).length;
+    const avgPrice =
+      totalFields > 0
+        ? fields.reduce((sum, f) => sum + Number(f.price), 0) / totalFields
+        : 0;
+    return {
+      total: totalFields,
+      active: activeFields,
+      avgPrice,
+    };
+  }, [data?.data]);
+
+  // Export function
+  const handleExport = () => {
+    if (!data?.data || data.data.length === 0) return;
+    exportToCsv(
+      data.data.map((f) => ({
+        name: f.name,
+        sport: sportLabels[f.sport] || f.sport,
+        address: f.address,
+        district: f.district || "-",
+        city: f.city || "-",
+        price: `S/ ${formatPrice(f.price)}`,
+        available: f.available
+          ? t("fieldsList.availableStatus")
+          : t("fieldsList.unavailableStatus"),
+        reservations: f._count?.reservations || 0,
+      })),
+      `fields-${new Date().toISOString().split("T")[0]}`,
+      [
+        { key: "name", label: t("fieldsList.csvName") },
+        { key: "sport", label: t("fieldsList.csvSport") },
+        { key: "address", label: t("fieldsList.csvAddress") },
+        { key: "district", label: t("fieldsList.csvDistrict") },
+        { key: "city", label: t("fieldsList.csvCity") },
+        { key: "price", label: t("fieldsList.csvPrice") },
+        { key: "available", label: t("fieldsList.csvAvailability") },
+        { key: "reservations", label: t("fieldsList.csvReservations") },
+      ]
+    );
+  };
+
   const defaultImageUrl =
     "https://images.unsplash.com/photo-1575361204480-05e88e6e8b1f?w=800";
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            {t("fieldsList.title")}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {t("fieldsList.description")}
-          </p>
-        </div>
-        <Link href="/dashboard/fields/new">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            {t("fieldsList.newField")}
-          </Button>
-        </Link>
-      </div>
+      <PageHeader
+        title={t("fieldsList.title")}
+        description={t("fieldsList.description")}
+        actions={
+          <Link href="/dashboard/fields/new">
+            <Button size="sm">
+              <Plus className="size-4" />
+              {t("fieldsList.newField")}
+            </Button>
+          </Link>
+        }
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("fieldsList.filters")}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="search-field" className="mb-2">
-                {t("fieldsList.search")}
-              </Label>
-              <Input
-                id="search-field"
-                type="text"
-                placeholder={t("fieldsList.searchPlaceholder")}
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-              />
-            </div>
-            <div>
-              <Label htmlFor="sport-filter" className="mb-2">
-                {t("fieldsList.sport")}
-              </Label>
-              <Select
-                value={sportFilter ?? "__all__"}
-                onValueChange={(val) => {
-                  setSportFilter(val === "__all__" ? undefined : val);
-                  setPage(1);
-                }}
-              >
-                <SelectTrigger id="sport-filter">
-                  <SelectValue placeholder={t("fieldsList.allSports")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">
-                    {t("fieldsList.allSports")}
-                  </SelectItem>
-                  <SelectItem value="FOOTBALL">
-                    {t("sports.FOOTBALL")}
-                  </SelectItem>
-                  <SelectItem value="TENNIS">{t("sports.TENNIS")}</SelectItem>
-                  <SelectItem value="BASKETBALL">
-                    {t("sports.BASKETBALL")}
-                  </SelectItem>
-                  <SelectItem value="VOLLEYBALL">
-                    {t("sports.VOLLEYBALL")}
-                  </SelectItem>
-                  <SelectItem value="FUTSAL">{t("sports.FUTSAL")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="availability-filter" className="mb-2">
-                {t("fieldsList.availability")}
-              </Label>
-              <Select
-                value={
-                  availableFilter === undefined
-                    ? "__all__"
-                    : availableFilter.toString()
-                }
-                onValueChange={(val) => {
-                  setAvailableFilter(
-                    val === "__all__" ? undefined : val === "true"
-                  );
-                  setPage(1);
-                }}
-              >
-                <SelectTrigger id="availability-filter">
-                  <SelectValue placeholder={t("fieldsList.allAvailability")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">
-                    {t("fieldsList.allAvailability")}
-                  </SelectItem>
-                  <SelectItem value="true">
-                    {t("fieldsList.available")}
-                  </SelectItem>
-                  <SelectItem value="false">
-                    {t("fieldsList.unavailable")}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <FilterBar
+        searchValue={search}
+        onSearchChange={(val) => {
+          setSearch(val);
+          setPage(1);
+        }}
+        searchPlaceholder={t("fieldsList.searchPlaceholder")}
+        filters={[
+          {
+            key: "sport",
+            label: t("fieldsList.sport"),
+            value: sportFilter ?? "all",
+            options: [
+              { label: t("fieldsList.allSports"), value: "all" },
+              { label: t("sports.FOOTBALL"), value: "FOOTBALL" },
+              { label: t("sports.TENNIS"), value: "TENNIS" },
+              { label: t("sports.BASKETBALL"), value: "BASKETBALL" },
+              { label: t("sports.VOLLEYBALL"), value: "VOLLEYBALL" },
+              { label: t("sports.FUTSAL"), value: "FUTSAL" },
+            ],
+            onChange: (val) => {
+              setSportFilter(val === "all" ? undefined : val);
+              setPage(1);
+            },
+          },
+          {
+            key: "availability",
+            label: t("fieldsList.availability"),
+            value:
+              availableFilter === undefined
+                ? "all"
+                : availableFilter.toString(),
+            options: [
+              { label: t("fieldsList.allAvailability"), value: "all" },
+              { label: t("fieldsList.available"), value: "true" },
+              { label: t("fieldsList.unavailable"), value: "false" },
+            ],
+            onChange: (val) => {
+              setAvailableFilter(val === "all" ? undefined : val === "true");
+              setPage(1);
+            },
+          },
+        ]}
+      >
+        <ExportButton
+          onExportCsv={handleExport}
+          disabled={!data?.data || data.data.length === 0}
+        />
+      </FilterBar>
+
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+        <KpiCard
+          title={t("metricsPage.totalFields")}
+          value={kpiStats.total}
+          icon={Activity}
+        />
+        <KpiCard
+          title={t("overview.activeFields")}
+          value={kpiStats.active}
+          icon={CheckCircle}
+        />
+        <KpiCard
+          title={t("fieldsList.avgPrice")}
+          value={`S/ ${formatPrice(kpiStats.avgPrice)}`}
+          icon={DollarSign}
+        />
+      </div>
 
       <Card>
         <CardHeader>

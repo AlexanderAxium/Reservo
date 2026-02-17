@@ -8,6 +8,8 @@ export interface Context {
     email: string;
     name: string;
     tenantId: string | null;
+    /** The user's real tenant (never overridden by impersonation). Use for RBAC lookups. */
+    originalTenantId: string | null;
     roles: string[];
     primaryRole: string;
   };
@@ -78,15 +80,33 @@ export const createContext = async (opts: {
     const primaryRole =
       rolePriority.find((role) => roles.includes(role)) || "client";
 
+    const userData = {
+      id: userWithTenant.id,
+      email: userWithTenant.email,
+      name: userWithTenant.name,
+      tenantId: userWithTenant.tenantId,
+      originalTenantId: userWithTenant.tenantId,
+      roles,
+      primaryRole,
+    };
+
+    // SYS_ADMIN tenant impersonation via header
+    const overrideTenantId = opts.req.headers.get("x-tenant-override");
+    if (overrideTenantId && roles.includes("sys_admin")) {
+      const overrideTenant = await prisma.tenant.findUnique({
+        where: { id: overrideTenantId },
+        select: { id: true, name: true, displayName: true },
+      });
+      if (overrideTenant) {
+        return {
+          user: { ...userData, tenantId: overrideTenant.id },
+          tenant: overrideTenant,
+        };
+      }
+    }
+
     return {
-      user: {
-        id: userWithTenant.id,
-        email: userWithTenant.email,
-        name: userWithTenant.name,
-        tenantId: userWithTenant.tenantId,
-        roles,
-        primaryRole,
-      },
+      user: userData,
       tenant: userWithTenant.tenant
         ? {
             id: userWithTenant.tenant.id,

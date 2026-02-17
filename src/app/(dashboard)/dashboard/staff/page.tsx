@@ -1,5 +1,8 @@
 "use client";
 
+import { FilterBar } from "@/components/dashboard/FilterBar";
+import { KpiCard } from "@/components/dashboard/KpiCard";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,7 +52,7 @@ import { useRBAC } from "@/hooks/useRBAC";
 import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
 import { PermissionAction, PermissionResource } from "@/types/rbac";
-import { KeyRound, Plus, Search, Shield, Users } from "lucide-react";
+import { KeyRound, Plus, Search, Shield, UserCog, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -181,7 +184,7 @@ function UsersTab() {
               .filter((r) => r.isActive)
               .slice(0, 3)
               .map((role) => (
-                <Badge key={role.id} variant="secondary" className="text-xs">
+                <Badge key={role.id} variant="outline" className="text-xs">
                   {role.displayName || role.name}
                 </Badge>
               ))
@@ -191,7 +194,7 @@ function UsersTab() {
             </span>
           )}
           {record.roles?.filter((r) => r.isActive).length > 3 && (
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="secondary" className="text-xs">
               +{record.roles.filter((r) => r.isActive).length - 3}
             </Badge>
           )}
@@ -227,27 +230,38 @@ function UsersTab() {
       : []),
   ];
 
+  const totalStaff = data?.pagination?.total || 0;
+  const activeRoles = allRoles?.filter((r) => r.isActive)?.length || 0;
+
   return (
     <>
-      <div className="flex items-center justify-between">
-        <div className="relative max-w-md flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={t("staffUsers.searchPlaceholder")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <KpiCard
+          title={t("staffUsers.totalStaff") || "Total Staff"}
+          value={totalStaff}
+          icon={Users}
+        />
+        <KpiCard
+          title={t("staffUsers.activeRoles") || "Active Roles"}
+          value={activeRoles}
+          icon={Shield}
+        />
+      </div>
+
+      <FilterBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t("staffUsers.searchPlaceholder")}
+      >
         {canCreateStaff && (
           <Link href="/dashboard/staff/new">
-            <Button>
+            <Button size="sm">
               <Plus className="h-4 w-4 mr-2" />
               {t("staffUsers.inviteStaff")}
             </Button>
           </Link>
         )}
-      </div>
+      </FilterBar>
 
       <ScrollableTable
         data={data?.data || []}
@@ -423,7 +437,7 @@ function RolesTab() {
         record.isSystem ? (
           <Badge variant="outline">{t("staffRoles.systemType")}</Badge>
         ) : (
-          <Badge variant="secondary">{t("staffRoles.customType")}</Badge>
+          <Badge variant="outline">{t("staffRoles.customType")}</Badge>
         ),
     },
     {
@@ -442,11 +456,13 @@ function RolesTab() {
       width: "100px",
       render: (_, record) =>
         record.isActive ? (
-          <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+          <Badge variant="soft" className="text-emerald-600">
             {t("staffRoles.activeStatus")}
           </Badge>
         ) : (
-          <Badge variant="destructive">{t("staffRoles.inactiveStatus")}</Badge>
+          <Badge variant="soft" className="text-red-600">
+            {t("staffRoles.inactiveStatus")}
+          </Badge>
         ),
     },
   ];
@@ -704,6 +720,7 @@ function PermissionsTab() {
                   return (
                     <Badge
                       key={p.id}
+                      variant="outline"
                       className={color || "bg-gray-100 text-gray-800"}
                     >
                       {t(`staffPermissions.actions.${p.action}`)}
@@ -745,26 +762,35 @@ export default function StaffPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">{t("staffPage.title")}</h1>
-        <p className="text-muted-foreground">{t("staffPage.description")}</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={t("staffPage.title")}
+        description={t("staffPage.description")}
+      />
 
       <Tabs defaultValue="users">
-        <TabsList>
-          <TabsTrigger value="users" className="gap-2">
+        <TabsList className="bg-transparent border-b w-full justify-start rounded-none h-auto p-0">
+          <TabsTrigger
+            value="users"
+            className="gap-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+          >
             <Users className="h-4 w-4" />
             {t("staffPage.usersTab")}
           </TabsTrigger>
           {canReadRoles && (
-            <TabsTrigger value="roles" className="gap-2">
+            <TabsTrigger
+              value="roles"
+              className="gap-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+            >
               <Shield className="h-4 w-4" />
               {t("staffPage.rolesTab")}
             </TabsTrigger>
           )}
           {canReadRoles && (
-            <TabsTrigger value="permissions" className="gap-2">
+            <TabsTrigger
+              value="permissions"
+              className="gap-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+            >
               <KeyRound className="h-4 w-4" />
               {t("staffPage.permissionsTab")}
             </TabsTrigger>

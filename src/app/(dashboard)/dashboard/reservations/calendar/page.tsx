@@ -1,7 +1,7 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ReservationCalendar } from "@/components/fields/ReservationCalendar";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -12,8 +12,6 @@ import {
 } from "@/components/ui/select";
 import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 
 export default function ReservationCalendarPage() {
@@ -55,22 +53,11 @@ export default function ReservationCalendarPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/reservations">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t("reservationCalendar.back")}
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground">
-            {t("reservationCalendar.title")}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {t("reservationCalendar.description")}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title={t("reservationCalendar.title")}
+        description={t("reservationCalendar.description")}
+        backHref="/dashboard/reservations"
+      />
 
       <div className="max-w-xs">
         <Label htmlFor="field-select" className="mb-2 block">

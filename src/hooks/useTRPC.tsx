@@ -30,8 +30,18 @@ export const TRPCProvider = ({ children }: { children: React.ReactNode }) => {
               typeof window !== "undefined"
                 ? localStorage.getItem("auth_token")
                 : null;
+            const tenantOverride =
+              typeof document !== "undefined"
+                ? document.cookie
+                    .split("; ")
+                    .find((c) => c.startsWith("x-tenant-override="))
+                    ?.split("=")[1]
+                : undefined;
             return {
               ...(token ? { authorization: `Bearer ${token}` } : {}),
+              ...(tenantOverride
+                ? { "x-tenant-override": tenantOverride }
+                : {}),
             };
           },
         }),

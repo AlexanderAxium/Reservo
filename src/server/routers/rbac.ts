@@ -669,13 +669,15 @@ export const rbacRouter = router({
   getRBACContext: publicProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ input, ctx }) => {
-      if (!input.userId || !ctx.user?.tenantId) {
+      // Use originalTenantId so impersonation doesn't break role resolution
+      const tenantId = ctx.user?.originalTenantId ?? ctx.user?.tenantId;
+      if (!input.userId || !tenantId) {
         return {
           userId: input.userId || "",
           userRoles: [],
           permissions: [],
         };
       }
-      return await getRBACContext(input.userId, ctx.user.tenantId);
+      return await getRBACContext(input.userId, tenantId);
     }),
 });

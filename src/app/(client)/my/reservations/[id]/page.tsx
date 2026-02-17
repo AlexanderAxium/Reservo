@@ -147,7 +147,17 @@ export default function MyReservationDetailPage() {
 
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Estado</span>
-            <Badge variant="outline">
+            <Badge
+              variant="soft"
+              className={
+                reservation.status === "CONFIRMED" ||
+                reservation.status === "COMPLETED"
+                  ? "text-emerald-600"
+                  : reservation.status === "PENDING"
+                    ? "text-amber-600"
+                    : "text-red-600"
+              }
+            >
               {STATUS_LABELS[reservation.status] || reservation.status}
             </Badge>
           </div>

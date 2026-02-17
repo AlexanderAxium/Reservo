@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +24,7 @@ import { useRBAC } from "@/hooks/useRBAC";
 import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
 import { PermissionAction, PermissionResource } from "@/types/rbac";
-import { ArrowLeft, Pencil, Shield } from "lucide-react";
+import { Pencil } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useMemo } from "react";
@@ -163,45 +164,37 @@ export default function RoleDetailPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/staff">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t("roleDetail.back")}
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <Shield className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground">
-              {role.displayName}
-            </h1>
+      <PageHeader
+        title={role.displayName}
+        description={
+          role.description || `${t("roleDetail.identifier")}: ${role.name}`
+        }
+        backHref="/dashboard/staff"
+        actions={
+          <div className="flex items-center gap-2">
             {role.isSystem && (
               <Badge variant="outline">{t("roleDetail.systemBadge")}</Badge>
             )}
             {role.isActive ? (
-              <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+              <Badge variant="soft" className="text-emerald-600">
                 {t("roleDetail.activeBadge")}
               </Badge>
             ) : (
-              <Badge variant="destructive">
+              <Badge variant="soft" className="text-red-600">
                 {t("roleDetail.inactiveBadge")}
               </Badge>
             )}
+            {canUpdateRole && (
+              <Link href={`/dashboard/roles/${roleId}/edit`}>
+                <Button variant="outline">
+                  <Pencil className="h-4 w-4 mr-2" />
+                  {t("roleDetail.editRole")}
+                </Button>
+              </Link>
+            )}
           </div>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {role.description || `${t("roleDetail.identifier")}: ${role.name}`}
-          </p>
-        </div>
-        {canUpdateRole && (
-          <Link href={`/dashboard/roles/${roleId}/edit`}>
-            <Button variant="outline">
-              <Pencil className="h-4 w-4 mr-2" />
-              {t("roleDetail.editRole")}
-            </Button>
-          </Link>
-        )}
-      </div>
+        }
+      />
 
       <Card>
         <CardHeader>

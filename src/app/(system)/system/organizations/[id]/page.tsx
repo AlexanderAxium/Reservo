@@ -4,8 +4,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useImpersonation } from "@/hooks/useImpersonation";
 import { trpc } from "@/hooks/useTRPC";
-import { ArrowLeft, Building2, Edit, MapPin, Users } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
+import {
+  ArrowLeft,
+  Building2,
+  Edit,
+  ExternalLink,
+  MapPin,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import React from "react";
 
@@ -15,6 +24,8 @@ export default function OrganizationDetail({
   params: Promise<{ id: string }>;
 }) {
   const unwrappedParams = React.use(params);
+  const { t } = useTranslation("dashboard");
+  const { startImpersonation } = useImpersonation();
   const { data: tenant, isLoading } = trpc.tenant.getById.useQuery({
     id: unwrappedParams.id,
   });
@@ -40,7 +51,7 @@ export default function OrganizationDetail({
   if (!tenant) {
     return (
       <div className="p-6">
-        <p>Organization not found</p>
+        <p>{t("system.organizationNotFound")}</p>
       </div>
     );
   }
@@ -59,90 +70,121 @@ export default function OrganizationDetail({
             <p className="text-muted-foreground">{tenant.slug}</p>
           </div>
         </div>
-        <Link href={`/system/organizations/${unwrappedParams.id}/edit`}>
-          <Button>
-            <Edit className="h-4 w-4 mr-2" />
-            Edit
+        <div className="flex items-center gap-2">
+          <Button
+            variant="default"
+            onClick={() =>
+              startImpersonation({
+                id: tenant.id,
+                name: tenant.displayName || tenant.name,
+              })
+            }
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            {t("system.enterDashboard")}
           </Button>
-        </Link>
+          <Link href={`/system/organizations/${unwrappedParams.id}/edit`}>
+            <Button variant="outline">
+              <Edit className="h-4 w-4 mr-2" />
+              {t("system.edit")}
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Fields</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {t("system.totalFields")}
+            </CardTitle>
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalFields || 0}</div>
             <p className="text-xs text-muted-foreground">
-              of {tenant.maxFields} allowed
+              {t("system.ofAllowed", { max: tenant.maxFields })}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {t("system.totalUsers")}
+            </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalUsers || 0}</div>
             <p className="text-xs text-muted-foreground">
-              of {tenant.maxUsers} allowed
+              {t("system.ofAllowed", { max: tenant.maxUsers })}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Reservations</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {t("system.reservations")}
+            </CardTitle>
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {stats?.totalReservations || 0}
             </div>
-            <p className="text-xs text-muted-foreground">Total bookings</p>
+            <p className="text-xs text-muted-foreground">
+              {t("system.totalBookings")}
+            </p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Organization Details</CardTitle>
+          <CardTitle>{t("system.organizationDetails")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm font-medium text-muted-foreground">
-                Display Name
+                {t("system.displayName")}
               </p>
               <p className="text-base">{tenant.displayName}</p>
             </div>
 
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Email</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                {t("system.email")}
+              </p>
               <p className="text-base">{tenant.email}</p>
             </div>
 
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Plan</p>
-              <Badge>{tenant.plan.toUpperCase()}</Badge>
+              <p className="text-sm font-medium text-muted-foreground">
+                {t("system.plan")}
+              </p>
+              <Badge variant="outline">{tenant.plan.toUpperCase()}</Badge>
             </div>
 
             <div>
               <p className="text-sm font-medium text-muted-foreground">
-                Status
+                {t("system.status")}
               </p>
-              <Badge variant={tenant.isActive ? "default" : "secondary"}>
-                {tenant.isActive ? "Active" : "Inactive"}
+              <Badge
+                variant="soft"
+                className={
+                  tenant.isActive ? "text-emerald-600" : "text-red-600"
+                }
+              >
+                {tenant.isActive ? t("system.active") : t("system.inactive")}
               </Badge>
             </div>
 
             <div>
               <p className="text-sm font-medium text-muted-foreground">
-                Created
+                {t("system.created")}
               </p>
               <p className="text-base">
                 {new Date(tenant.createdAt).toLocaleDateString()}
@@ -151,7 +193,7 @@ export default function OrganizationDetail({
 
             <div>
               <p className="text-sm font-medium text-muted-foreground">
-                Last Updated
+                {t("system.lastUpdated")}
               </p>
               <p className="text-base">
                 {new Date(tenant.updatedAt).toLocaleDateString()}

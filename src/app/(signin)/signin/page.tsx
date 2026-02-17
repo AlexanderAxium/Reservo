@@ -74,7 +74,7 @@ export default function SignInPage() {
       const { error } = await authClient.signIn.email({
         email: data.email,
         password: data.password,
-        callbackURL: "/",
+        callbackURL: "/auth/redirect",
         rememberMe: true,
       });
 
@@ -86,8 +86,7 @@ export default function SignInPage() {
         toast.success(t("welcome") || "Bienvenido", {
           description: t("sessionStarted") || "Sesión iniciada correctamente",
         });
-        // Let RoleBasedRedirect handle the redirection
-        router.push("/");
+        router.push("/auth/redirect");
       }
     } catch (_error) {
       toast.error(t("networkError") || "Error de red o servidor");
@@ -100,9 +99,9 @@ export default function SignInPage() {
     try {
       await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/dashboard",
+        callbackURL: "/auth/redirect",
         errorCallbackURL: "/signin",
-        newUserCallbackURL: "/dashboard",
+        newUserCallbackURL: "/auth/redirect",
       });
     } catch (_error) {
       toast.error(t("googleRedirectError") || "No se pudo redirigir a Google");

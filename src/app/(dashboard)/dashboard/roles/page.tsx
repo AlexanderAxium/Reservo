@@ -1,5 +1,7 @@
 "use client";
 
+import { FilterBar } from "@/components/dashboard/FilterBar";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,7 +14,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   ScrollableTable,
   type TableAction,
@@ -23,7 +24,7 @@ import { useRBAC } from "@/hooks/useRBAC";
 import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
 import { PermissionAction, PermissionResource } from "@/types/rbac";
-import { Plus, Search, Shield } from "lucide-react";
+import { Plus, Shield } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -124,7 +125,7 @@ export default function RolesPage() {
         record.isSystem ? (
           <Badge variant="outline">{t("rolesPage.systemType")}</Badge>
         ) : (
-          <Badge variant="secondary">{t("rolesPage.customType")}</Badge>
+          <Badge variant="outline">{t("rolesPage.customType")}</Badge>
         ),
     },
     {
@@ -143,11 +144,13 @@ export default function RolesPage() {
       width: "100px",
       render: (_, record) =>
         record.isActive ? (
-          <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+          <Badge variant="soft" className="text-emerald-600">
             {t("rolesPage.activeStatus")}
           </Badge>
         ) : (
-          <Badge variant="destructive">{t("rolesPage.inactiveStatus")}</Badge>
+          <Badge variant="soft" className="text-red-600">
+            {t("rolesPage.inactiveStatus")}
+          </Badge>
         ),
     },
   ];
@@ -189,34 +192,27 @@ export default function RolesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Shield className="h-6 w-6" />
-            {t("rolesPage.title")}
-          </h1>
-          <p className="text-muted-foreground">{t("rolesPage.description")}</p>
-        </div>
-        {canCreateRole && (
-          <Link href="/dashboard/roles/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              {t("rolesPage.createRole")}
-            </Button>
-          </Link>
-        )}
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={t("rolesPage.title")}
+        description={t("rolesPage.description")}
+        actions={
+          canCreateRole ? (
+            <Link href="/dashboard/roles/new">
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                {t("rolesPage.createRole")}
+              </Button>
+            </Link>
+          ) : undefined
+        }
+      />
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder={t("rolesPage.searchPlaceholder")}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
+      <FilterBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t("rolesPage.searchPlaceholder")}
+      />
 
       <ScrollableTable
         data={filteredData}

@@ -58,8 +58,8 @@ export function useRBAC() {
   }, [userRoles]);
 
   const isTenantMember = useMemo(() => {
-    return isTenantAdmin || isTenantStaff;
-  }, [isTenantAdmin, isTenantStaff]);
+    return isTenantAdmin || isTenantStaff || isSysAdmin;
+  }, [isTenantAdmin, isTenantStaff, isSysAdmin]);
 
   // Backward compatibility
   const isAdmin = useMemo(() => {

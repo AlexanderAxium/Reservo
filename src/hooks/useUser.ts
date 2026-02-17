@@ -3,7 +3,7 @@
 import { useAuthContext } from "@/AuthContext";
 import { useRBAC } from "@/hooks/useRBAC";
 import { trpc } from "@/utils/trpc";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
 export const USER_ROLE = {
   SYS_ADMIN: "sys_admin",
@@ -33,22 +33,17 @@ export function useUser() {
       refetchOnWindowFocus: false,
     });
 
-  const [primaryRole, setPrimaryRole] = useState<UserRole>(USER_ROLE.UNKNOWN);
-
-  // Calculate primary role based on user roles
-  useEffect(() => {
+  // Compute primary role synchronously to avoid one-tick race conditions
+  const primaryRole = useMemo<UserRole>(() => {
     if (!isAuthenticated || rbacLoading || !userRoles?.length) {
-      setPrimaryRole(USER_ROLE.UNKNOWN);
-      return;
+      return USER_ROLE.UNKNOWN;
     }
 
-    // Priority order: sys_admin > tenant_admin > tenant_staff > client
     const roleHierarchy: Record<string, UserRole> = {
       [USER_ROLE.SYS_ADMIN]: USER_ROLE.SYS_ADMIN,
       [USER_ROLE.TENANT_ADMIN]: USER_ROLE.TENANT_ADMIN,
       [USER_ROLE.TENANT_STAFF]: USER_ROLE.TENANT_STAFF,
       [USER_ROLE.CLIENT]: USER_ROLE.CLIENT,
-      // Backward compatibility mappings
       super_admin: USER_ROLE.SYS_ADMIN,
       admin: USER_ROLE.TENANT_ADMIN,
       owner: USER_ROLE.TENANT_ADMIN,
@@ -56,7 +51,6 @@ export function useUser() {
       viewer: USER_ROLE.CLIENT,
     };
 
-    // Find the highest priority role
     let highestRole: UserRole = USER_ROLE.CLIENT;
     const priorityOrder: UserRole[] = [
       USER_ROLE.SYS_ADMIN,
@@ -78,7 +72,7 @@ export function useUser() {
       }
     }
 
-    setPrimaryRole(highestRole);
+    return highestRole;
   }, [isAuthenticated, userRoles, rbacLoading]);
 
   const isLoading = rbacLoading || profileLoading;

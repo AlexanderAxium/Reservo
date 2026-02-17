@@ -1,22 +1,18 @@
 "use client";
 
+import { ExportButton } from "@/components/dashboard/ExportButton";
+import { FilterBar } from "@/components/dashboard/FilterBar";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   ScrollableTable,
   type TableAction,
   type TableColumn,
 } from "@/components/ui/scrollable-table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { usePagination } from "@/hooks/usePagination";
 import { trpc } from "@/hooks/useTRPC";
-import { Search } from "lucide-react";
+import { useTranslation } from "@/hooks/useTranslation";
+import { exportToCsv } from "@/lib/export";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -39,6 +35,7 @@ type User = {
 };
 
 export default function Users() {
+  const { t } = useTranslation("dashboard");
   const router = useRouter();
   const { page, limit, search, setPage, setLimit, setSearch } = usePagination({
     defaultLimit: 20,
@@ -53,10 +50,36 @@ export default function Users() {
     role: roleFilter !== "all" ? roleFilter : undefined,
   });
 
+  // Export function
+  const handleExport = () => {
+    if (!data?.data || data.data.length === 0) return;
+    exportToCsv(
+      data.data.map((u) => {
+        const roles = u.userRoles?.map((ur) => ur.role) ?? [];
+        const activeRole = roles.find((r) => r.isActive) ?? roles[0];
+        return {
+          name: u.name,
+          email: u.email,
+          role: activeRole ? (activeRole.displayName ?? activeRole.name) : "-",
+          organization: u.tenant?.name || "-",
+          joined: new Date(u.createdAt).toLocaleDateString(),
+        };
+      }),
+      `users-${new Date().toISOString().split("T")[0]}`,
+      [
+        { key: "name", label: "Name" },
+        { key: "email", label: "Email" },
+        { key: "role", label: "Primary Role" },
+        { key: "organization", label: "Organization" },
+        { key: "joined", label: "Joined" },
+      ]
+    );
+  };
+
   const columns: TableColumn<User>[] = [
     {
       key: "name",
-      title: "Name",
+      title: t("system.name"),
       width: "200px",
       render: (_, record) => (
         <div>
@@ -67,30 +90,30 @@ export default function Users() {
     },
     {
       key: "roles",
-      title: "Primary Role",
+      title: t("system.primaryRole"),
       width: "150px",
       render: (_, record) => {
         const roles = record.userRoles?.map((ur) => ur.role) ?? [];
         const activeRole = roles.find((r) => r.isActive) ?? roles[0];
         return activeRole ? (
-          <Badge variant="secondary">
+          <Badge variant="outline">
             {activeRole.displayName ?? activeRole.name}
           </Badge>
         ) : (
-          <span className="text-muted-foreground">No role</span>
+          <span className="text-muted-foreground">{t("system.noRole")}</span>
         );
       },
     },
     {
       key: "tenant",
-      title: "Organization",
+      title: t("system.organization"),
       width: "200px",
       render: (_, record) =>
         record.tenant?.name || <span className="text-muted-foreground">-</span>,
     },
     {
       key: "createdAt",
-      title: "Joined",
+      title: t("system.joined"),
       width: "120px",
       render: (value) => new Date(value as string).toLocaleDateString(),
     },
@@ -98,46 +121,44 @@ export default function Users() {
 
   const actions: TableAction<User>[] = [
     {
-      label: "View Details",
+      label: t("system.viewDetails"),
       onClick: (record) => router.push(`/system/users/${record.id}`),
     },
   ];
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Users</h1>
-        <p className="text-muted-foreground">
-          Manage all users across the platform.
-        </p>
-      </div>
+      <PageHeader
+        title={t("system.users")}
+        description={t("system.usersDesc")}
+      />
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name or email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Roles</SelectItem>
-            <SelectItem value="sys_admin">System Admin</SelectItem>
-            <SelectItem value="tenant_admin">Tenant Admin</SelectItem>
-            <SelectItem value="tenant_staff">Tenant Staff</SelectItem>
-            <SelectItem value="client">Client</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <FilterBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t("system.searchUsersPlaceholder")}
+        filters={[
+          {
+            key: "role",
+            label: t("system.filterByRole"),
+            value: roleFilter,
+            options: [
+              { label: t("system.allRoles"), value: "all" },
+              { label: t("system.sysAdminRole"), value: "sys_admin" },
+              { label: t("system.tenantAdminRole"), value: "tenant_admin" },
+              { label: t("system.tenantStaffRole"), value: "tenant_staff" },
+              { label: t("system.clientRole"), value: "client" },
+            ],
+            onChange: setRoleFilter,
+          },
+        ]}
+      >
+        <ExportButton
+          onExportCsv={handleExport}
+          disabled={!data?.data || data.data.length === 0}
+        />
+      </FilterBar>
 
-      {/* Table */}
       <ScrollableTable
         data={data?.data || []}
         columns={columns}
@@ -147,7 +168,7 @@ export default function Users() {
         pagination={data?.pagination}
         onPageChange={setPage}
         onPageSizeChange={setLimit}
-        emptyMessage="No users found"
+        emptyMessage={t("system.noUsersFound")}
       />
     </div>
   );

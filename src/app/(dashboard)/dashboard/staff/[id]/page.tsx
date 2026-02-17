@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -159,22 +160,11 @@ export default function StaffDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/staff">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t("staffDetail.back")}
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-foreground">
-            {t("staffDetail.title")}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {t("staffDetail.description")}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title={t("staffDetail.title")}
+        description={t("staffDetail.description")}
+        backHref="/dashboard/staff"
+      />
 
       <Card>
         <CardHeader>
@@ -254,7 +244,7 @@ export default function StaffDetailPage() {
                 .map((role) => (
                   <Badge
                     key={role.id}
-                    variant="secondary"
+                    variant="outline"
                     className="flex items-center gap-1 text-sm py-1 px-3"
                   >
                     {role.displayName || role.name}

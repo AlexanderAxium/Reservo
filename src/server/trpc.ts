@@ -1,9 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import {
-  isSysAdmin,
-  isTenantAdmin,
-  isTenantMember,
-} from "../services/rbacService";
+import { isTenantAdmin, isTenantMember } from "../services/rbacService";
 import { t } from "./context";
 
 // Base router and procedure helpers
@@ -42,14 +38,17 @@ export const tenantStaffProcedure = t.procedure.use(async ({ ctx, next }) => {
     });
   }
 
-  const isMember = await isTenantMember(ctx.user.id, ctx.user.tenantId);
-  const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+  // sys_admin always passes (roles comes from real tenant, not impersonated)
+  const isSys = ctx.user.roles.includes("sys_admin");
 
-  if (!isMember && !isSys) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "You must be a tenant staff member to access this resource",
-    });
+  if (!isSys) {
+    const isMember = await isTenantMember(ctx.user.id, ctx.user.tenantId);
+    if (!isMember) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "You must be a tenant staff member to access this resource",
+      });
+    }
   }
 
   return next({
@@ -76,14 +75,17 @@ export const tenantAdminProcedure = t.procedure.use(async ({ ctx, next }) => {
     });
   }
 
-  const isAdmin = await isTenantAdmin(ctx.user.id, ctx.user.tenantId);
-  const isSys = await isSysAdmin(ctx.user.id, ctx.user.tenantId);
+  // sys_admin always passes (roles comes from real tenant, not impersonated)
+  const isSys = ctx.user.roles.includes("sys_admin");
 
-  if (!isAdmin && !isSys) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "You must be a tenant admin to access this resource",
-    });
+  if (!isSys) {
+    const isAdmin = await isTenantAdmin(ctx.user.id, ctx.user.tenantId);
+    if (!isAdmin) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "You must be a tenant admin to access this resource",
+      });
+    }
   }
 
   return next({
@@ -103,9 +105,8 @@ export const sysAdminProcedure = t.procedure.use(async ({ ctx, next }) => {
     });
   }
 
-  const sysAdminCheck = await isSysAdmin(ctx.user.id, ctx.user.tenantId ?? "");
-
-  if (!sysAdminCheck) {
+  // Use ctx.user.roles (always from real tenant, never affected by impersonation)
+  if (!ctx.user.roles.includes("sys_admin")) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "You must be a system administrator to access this resource",

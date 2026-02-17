@@ -1,6 +1,7 @@
 "use client";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ReservationCalendar } from "@/components/fields/ReservationCalendar";
 import { ScheduleModal } from "@/components/fields/ScheduleModal";
 import {
@@ -265,25 +266,22 @@ export default function OwnerFieldDetailPage() {
   return (
     <ProtectedRoute>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <Link href="/dashboard/fields">
-            <Button variant="ghost" className="text-muted-foreground">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              {t("fieldDetail.backToDashboard")}
-            </Button>
-          </Link>
-          <div className="flex gap-2">
-            <Button variant="outline">
-              <Clock className="mr-2 h-4 w-4" />
-              {t("fieldDetail.configureSchedules")}
-            </Button>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              {t("fieldDetail.newReservation")}
-            </Button>
-          </div>
-        </div>
+        <PageHeader
+          title={field.name}
+          backHref="/dashboard/fields"
+          actions={
+            <>
+              <Button variant="outline" size="sm">
+                <Clock className="size-4" />
+                {t("fieldDetail.configureSchedules")}
+              </Button>
+              <Button size="sm">
+                <Plus className="size-4" />
+                {t("fieldDetail.newReservation")}
+              </Button>
+            </>
+          }
+        />
 
         {/* Información Principal de la Cancha */}
         <Card className="overflow-hidden">
@@ -303,10 +301,7 @@ export default function OwnerFieldDetailPage() {
                   target.src = defaultImageUrl;
                 }}
               />
-              <Badge
-                variant="default"
-                className="absolute top-2 right-2 bg-green-600"
-              >
+              <Badge variant="outline" className="absolute top-2 right-2">
                 {t(`sports.${field.sport}`)}
               </Badge>
             </div>
@@ -344,7 +339,7 @@ export default function OwnerFieldDetailPage() {
               {field.fieldFeatures && field.fieldFeatures.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
                   {field.fieldFeatures.map((ff) => (
-                    <Badge key={ff.id} variant="secondary" className="gap-1">
+                    <Badge key={ff.id} variant="outline" className="gap-1">
                       <FeatureIcon
                         iconName={ff.feature.icon}
                         className="h-3.5 w-3.5"

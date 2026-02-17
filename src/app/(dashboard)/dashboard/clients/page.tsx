@@ -1,7 +1,11 @@
 "use client";
 
+import { DateRangePicker } from "@/components/dashboard/DateRangePicker";
+import { ExportButton } from "@/components/dashboard/ExportButton";
+import { FilterBar } from "@/components/dashboard/FilterBar";
+import { KpiCard } from "@/components/dashboard/KpiCard";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import {
   ScrollableTable,
   type TableAction,
@@ -10,9 +14,11 @@ import {
 import { usePagination } from "@/hooks/usePagination";
 import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
-import { Search, Users } from "lucide-react";
+import { exportToCsv } from "@/lib/export";
+import { subDays, subMonths } from "date-fns";
+import { UserPlus, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 
 type Client = {
   id: string;
@@ -32,11 +38,51 @@ export default function ClientsPage() {
     defaultLimit: 20,
   });
 
+  const [dateRange, setDateRange] = useState({
+    from: subDays(new Date(), 30),
+    to: new Date(),
+  });
+
   const { data, isLoading, error } = trpc.user.getClients.useQuery({
     page,
     limit,
     search: search || undefined,
   });
+
+  // Compute KPIs from current page data
+  const kpiStats = useMemo(() => {
+    const clients = data?.data || [];
+    const oneMonthAgo = subMonths(new Date(), 1);
+    const newThisMonth = clients.filter(
+      (c) => new Date(c.createdAt) >= oneMonthAgo
+    ).length;
+    return {
+      total: clients.length,
+      newThisMonth,
+    };
+  }, [data?.data]);
+
+  // Export function
+  const handleExport = () => {
+    if (!data?.data || data.data.length === 0) return;
+    exportToCsv(
+      data.data.map((c) => ({
+        name: c.name,
+        email: c.email,
+        phone: c.phone || "-",
+        reservations: c._count.reservations,
+        registered: new Date(c.createdAt).toLocaleDateString("es-PE"),
+      })),
+      `clients-${new Date().toISOString().split("T")[0]}`,
+      [
+        { key: "name", label: t("clientsList.csvName") },
+        { key: "email", label: t("clientsList.csvEmail") },
+        { key: "phone", label: t("clientsList.csvPhone") },
+        { key: "reservations", label: t("clientsList.csvReservations") },
+        { key: "registered", label: t("clientsList.csvRegistered") },
+      ]
+    );
+  };
 
   const columns: TableColumn<Client>[] = [
     {
@@ -85,23 +131,34 @@ export default function ClientsPage() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{t("clientsList.title")}</h1>
-          <p className="text-muted-foreground">
-            {t("clientsList.description")}
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={t("clientsList.title")}
+        description={t("clientsList.description")}
+      />
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder={t("clientsList.searchPlaceholder")}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
+      <FilterBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t("clientsList.searchPlaceholder")}
+      >
+        <DateRangePicker dateRange={dateRange} onChange={setDateRange} />
+        <ExportButton
+          onExportCsv={handleExport}
+          disabled={!data?.data || data.data.length === 0}
+        />
+      </FilterBar>
+
+      <div className="grid grid-cols-2 gap-4">
+        <KpiCard
+          title={t("metricsPage.clients")}
+          value={kpiStats.total}
+          icon={Users}
+        />
+        <KpiCard
+          title={t("clientsList.newThisMonth")}
+          value={kpiStats.newThisMonth}
+          icon={UserPlus}
         />
       </div>
 

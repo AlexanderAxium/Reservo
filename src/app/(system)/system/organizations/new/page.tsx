@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/hooks/useTRPC";
+import { useTranslation } from "@/hooks/useTranslation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -53,16 +54,17 @@ const initialFormData: NewOrgFormData = {
 };
 
 export default function NewOrganization() {
+  const { t } = useTranslation("dashboard");
   const router = useRouter();
   const [formData, setFormData] = useState<NewOrgFormData>(initialFormData);
 
   const createMutation = trpc.tenant.create.useMutation({
     onSuccess: () => {
-      toast.success("Organization created successfully");
+      toast.success(t("system.organizationCreated"));
       router.push("/system/organizations");
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to create organization");
+      toast.error(error.message || t("system.organizationCreateError"));
     },
   });
 
@@ -89,9 +91,9 @@ export default function NewOrganization() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">New Organization</h1>
+          <h1 className="text-2xl font-bold">{t("system.newOrganization")}</h1>
           <p className="text-muted-foreground">
-            Create a new tenant organization.
+            {t("system.newOrganizationDesc")}
           </p>
         </div>
       </div>
@@ -99,12 +101,12 @@ export default function NewOrganization() {
       <form onSubmit={handleSubmit}>
         <Card>
           <CardHeader>
-            <CardTitle>Organization Information</CardTitle>
+            <CardTitle>{t("system.organizationInformation")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Organization Name *</Label>
+                <Label htmlFor="name">{t("system.organizationName")} *</Label>
                 <Input
                   id="name"
                   value={formData.name}
@@ -114,7 +116,7 @@ export default function NewOrganization() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="displayName">Display Name *</Label>
+                <Label htmlFor="displayName">{t("system.displayName")} *</Label>
                 <Input
                   id="displayName"
                   value={formData.displayName}
@@ -129,7 +131,7 @@ export default function NewOrganization() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="slug">Slug *</Label>
+                <Label htmlFor="slug">{t("system.slug")} *</Label>
                 <Input
                   id="slug"
                   value={formData.slug}
@@ -139,12 +141,12 @@ export default function NewOrganization() {
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  Used in URLs and must be unique
+                  {t("system.slugHint")}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Organization Email *</Label>
+                <Label htmlFor="email">{t("system.organizationEmail")} *</Label>
                 <Input
                   id="email"
                   type="email"
@@ -157,7 +159,7 @@ export default function NewOrganization() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="plan">Plan *</Label>
+                <Label htmlFor="plan">{t("system.plan")} *</Label>
                 <Select
                   value={formData.plan}
                   onValueChange={(value) =>
@@ -182,7 +184,7 @@ export default function NewOrganization() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="maxFields">Max Fields</Label>
+                <Label htmlFor="maxFields">{t("system.maxFields")}</Label>
                 <Input
                   id="maxFields"
                   type="number"
@@ -197,7 +199,7 @@ export default function NewOrganization() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="maxUsers">Max Users</Label>
+                <Label htmlFor="maxUsers">{t("system.maxUsers")}</Label>
                 <Input
                   id="maxUsers"
                   type="number"
@@ -213,10 +215,12 @@ export default function NewOrganization() {
             </div>
 
             <div className="border-t pt-4 mt-4">
-              <h3 className="font-semibold mb-4">Initial Admin User</h3>
+              <h3 className="font-semibold mb-4">
+                {t("system.initialAdminUser")}
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="adminName">Admin Name *</Label>
+                  <Label htmlFor="adminName">{t("system.adminName")} *</Label>
                   <Input
                     id="adminName"
                     value={formData.adminName}
@@ -231,7 +235,7 @@ export default function NewOrganization() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="adminEmail">Admin Email *</Label>
+                  <Label htmlFor="adminEmail">{t("system.adminEmail")} *</Label>
                   <Input
                     id="adminEmail"
                     type="email"
@@ -247,7 +251,9 @@ export default function NewOrganization() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="adminPassword">Admin Password *</Label>
+                  <Label htmlFor="adminPassword">
+                    {t("system.adminPassword")} *
+                  </Label>
                   <Input
                     id="adminPassword"
                     type="password"
@@ -263,7 +269,7 @@ export default function NewOrganization() {
                     minLength={8}
                   />
                   <p className="text-xs text-muted-foreground">
-                    At least 8 characters
+                    {t("system.passwordHint")}
                   </p>
                 </div>
               </div>
@@ -272,13 +278,13 @@ export default function NewOrganization() {
             <div className="flex justify-end gap-2 pt-4">
               <Link href="/system/organizations">
                 <Button type="button" variant="outline">
-                  Cancel
+                  {t("system.cancel")}
                 </Button>
               </Link>
               <Button type="submit" disabled={createMutation.isPending}>
                 {createMutation.isPending
-                  ? "Creating..."
-                  : "Create Organization"}
+                  ? t("system.creating")
+                  : t("system.createOrganization")}
               </Button>
             </div>
           </CardContent>

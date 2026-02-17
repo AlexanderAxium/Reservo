@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ImageUpload } from "@/components/fields/ImageUpload";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,7 +33,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { FeatureIcon } from "@/lib/feature-icons";
 import { trpc } from "@/utils/trpc";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, Save, Tag } from "lucide-react";
+import { Save, Tag } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -168,23 +169,11 @@ export default function NewOwnerFieldPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            {t("fieldForm.newTitle")}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {t("fieldForm.newDesc")}
-          </p>
-        </div>
-        <Link href="/dashboard/fields">
-          <Button variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            {t("fieldForm.back")}
-          </Button>
-        </Link>
-      </div>
+      <PageHeader
+        title={t("fieldForm.newTitle")}
+        description={t("fieldForm.newDesc")}
+        backHref="/dashboard/fields"
+      />
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

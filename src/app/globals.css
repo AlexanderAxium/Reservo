@@ -7,13 +7,13 @@
   --font-family-heading: "Quicksand", sans-serif;
 
   /* Colors for light mode */
-  --color-background: #f8fafb;
+  --color-background: #F9FBFC;
   --color-foreground: hsl(240 10% 23.9%);
   --color-card: hsl(0 0% 100%);
   --color-card-foreground: hsl(240 10% 3.9%);
   --color-popover: hsl(0 0% 100%);
   --color-popover-foreground: hsl(240 10% 3.9%);
-  --color-primary: #060c20;
+  --color-primary: #0072cf;
   --color-primary-foreground: hsl(0 0% 98%);
   --color-secondary: #0072cf;
   --color-secondary-foreground: hsl(0 0% 98%);
@@ -47,6 +47,13 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   --radius: 0.6rem;
+
+  /* Chart colors - subtle, muted palette */
+  --color-chart-1: hsl(210, 55%, 58%);
+  --color-chart-2: hsl(173, 40%, 50%);
+  --color-chart-3: hsl(250, 35%, 62%);
+  --color-chart-4: hsl(35, 55%, 58%);
+  --color-chart-5: hsl(350, 40%, 58%);
 }
 
 .dark {
@@ -80,6 +87,14 @@
   --sidebar-accent-foreground: hsl(0 0% 98%);
   --sidebar-border: hsl(220, 12%, 10%);
   --sidebar-ring: hsl(210, 50%, 58%);
+
+  /* Chart colors - dark mode, subtle */
+  --color-chart-1: hsl(210, 50%, 65%);
+  --color-chart-2: hsl(173, 35%, 55%);
+  --color-chart-3: hsl(250, 30%, 68%);
+  --color-chart-4: hsl(35, 45%, 62%);
+  --color-chart-5: hsl(350, 35%, 62%);
+
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);

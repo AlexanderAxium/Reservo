@@ -1,5 +1,7 @@
 "use client";
 
+import { FilterBar } from "@/components/dashboard/FilterBar";
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +26,7 @@ import { useRBAC } from "@/hooks/useRBAC";
 import { trpc } from "@/hooks/useTRPC";
 import { useTranslation } from "@/hooks/useTranslation";
 import { PermissionAction, PermissionResource } from "@/types/rbac";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -179,19 +181,17 @@ export default function FeaturesPage() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">{t("featuresPage.title")}</h1>
-          <p className="text-muted-foreground">
-            {t("featuresPage.description")}
-          </p>
-        </div>
-        <Button onClick={() => setShowCreateForm(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          {t("featuresPage.newFeature")}
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={t("featuresPage.title")}
+        description={t("featuresPage.description")}
+        actions={
+          <Button onClick={() => setShowCreateForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            {t("featuresPage.newFeature")}
+          </Button>
+        }
+      />
 
       {showCreateForm && (
         <Card className="p-6">
@@ -258,15 +258,11 @@ export default function FeaturesPage() {
         </Card>
       )}
 
-      <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder={t("featuresPage.searchPlaceholder")}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
+      <FilterBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder={t("featuresPage.searchPlaceholder")}
+      />
 
       <ScrollableTable
         data={data?.data || []}

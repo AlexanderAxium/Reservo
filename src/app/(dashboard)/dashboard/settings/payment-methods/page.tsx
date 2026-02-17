@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -116,20 +117,16 @@ export default function SettingsPaymentMethodsPage() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">
-            {t("settingsPaymentMethods.title")}
-          </h1>
-          <p className="text-muted-foreground">
-            {t("settingsPaymentMethods.description")}
-          </p>
-        </div>
-        <Button size="sm" onClick={() => setAdding(true)} disabled={adding}>
-          <Plus className="h-4 w-4 mr-1" />
-          {t("settingsPaymentMethods.addMethod")}
-        </Button>
-      </div>
+      <PageHeader
+        title={t("settingsPaymentMethods.title")}
+        description={t("settingsPaymentMethods.description")}
+        actions={
+          <Button size="sm" onClick={() => setAdding(true)} disabled={adding}>
+            <Plus className="h-4 w-4 mr-1" />
+            {t("settingsPaymentMethods.addMethod")}
+          </Button>
+        }
+      />
 
       {adding && (
         <Card>
@@ -208,7 +205,8 @@ export default function SettingsPaymentMethodsPage() {
                     <p className="font-medium text-foreground">{method.name}</p>
                     <p className="text-xs text-muted-foreground">
                       {method.provider}
-                      {method.requiresProof && " · Comprobante requerido"}
+                      {method.requiresProof &&
+                        ` · ${t("settingsPaymentMethods.proofRequired")}`}
                     </p>
                   </div>
                 </div>

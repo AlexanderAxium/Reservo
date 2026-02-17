@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ImageUpload } from "@/components/fields/ImageUpload";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -87,10 +88,11 @@ export default function EditSportCenterPage() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">{t("sportCenterForm.editTitle")}</h1>
-        <p className="text-muted-foreground">{t("sportCenterForm.editDesc")}</p>
-      </div>
+      <PageHeader
+        title={t("sportCenterForm.editTitle")}
+        description={t("sportCenterForm.editDesc")}
+        backHref="/dashboard/sport-centers"
+      />
 
       <Card className="p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
